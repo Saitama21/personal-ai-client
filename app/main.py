@@ -230,7 +230,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="Personal AI Client", version="2.0.0-pro", lifespan=lifespan)
+app = FastAPI(title="Personal AI Client", version="2.2.0-pro", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -256,10 +256,15 @@ def init_storage() -> None:
                 crop_json TEXT,
                 response TEXT NOT NULL,
                 model TEXT NOT NULL,
-                mock INTEGER NOT NULL DEFAULT 0
+                mock INTEGER NOT NULL DEFAULT 0,
+                openai_response_id TEXT
             )
             """
         )
+        analysis_columns = {row[1] for row in db.execute("PRAGMA table_info(analyses)").fetchall()}
+        if "openai_response_id" not in analysis_columns:
+            db.execute("ALTER TABLE analyses ADD COLUMN openai_response_id TEXT")
+
         db.execute(
             """
             CREATE TABLE IF NOT EXISTS projects (
@@ -268,6 +273,19 @@ def init_storage() -> None:
                 updated_at INTEGER NOT NULL,
                 name TEXT NOT NULL,
                 payload_json TEXT NOT NULL
+            )
+            """
+        )
+        db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS chat_messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                analysis_id INTEGER,
+                created_at INTEGER NOT NULL,
+                role TEXT NOT NULL,
+                content TEXT NOT NULL,
+                openai_response_id TEXT,
+                FOREIGN KEY (analysis_id) REFERENCES analyses(id) ON DELETE CASCADE
             )
             """
         )
@@ -287,21 +305,47 @@ def db_conn():
 
 def save_history(
     *, filename: str, media_type: str, prompt: str, crop: dict[str, float] | None,
-    response: str, model: str, mock: bool
+    response: str, model: str, mock: bool, openai_response_id: str | None = None
 ) -> int:
     with db_conn() as db:
         cursor = db.execute(
             """INSERT INTO analyses
-            (created_at, filename, media_type, prompt, crop_json, response, model, mock)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (created_at, filename, media_type, prompt, crop_json, response, model, mock, openai_response_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 int(time.time()), filename, media_type, prompt,
                 json.dumps(crop, ensure_ascii=False) if crop else None,
-                response, model, int(mock),
+                response, model, int(mock), openai_response_id,
             ),
         )
         db.commit()
         return int(cursor.lastrowid)
+
+
+def save_chat_message(
+    *, analysis_id: int | None, role: str, content: str, openai_response_id: str | None = None
+) -> int:
+    if role not in {"user", "assistant"}:
+        raise ValueError("Некорректная роль сообщения")
+    with db_conn() as db:
+        cursor = db.execute(
+            """INSERT INTO chat_messages
+            (analysis_id, created_at, role, content, openai_response_id)
+            VALUES (?, ?, ?, ?, ?)""",
+            (analysis_id, int(time.time()), role, content, openai_response_id),
+        )
+        db.commit()
+        return int(cursor.lastrowid)
+
+
+def get_chat_messages(analysis_id: int, limit: int = 100) -> list[dict[str, Any]]:
+    limit = max(1, min(limit, 300))
+    with db_conn() as db:
+        rows = db.execute(
+            "SELECT * FROM chat_messages WHERE analysis_id = ? ORDER BY id ASC LIMIT ?",
+            (analysis_id, limit),
+        ).fetchall()
+    return [dict(row) for row in rows]
 
 
 def parse_crop(raw: str | None) -> dict[str, float] | None:
@@ -372,7 +416,7 @@ def build_mock_response(filename: str, media_type: str, prompt: str, crop: dict[
 
 def analyze_with_openai(
     *, raw: bytes, filename: str, media_type: str, prompt: str, crop: dict[str, float] | None
-) -> str:
+) -> tuple[str, str]:
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise HTTPException(
@@ -422,7 +466,7 @@ def analyze_with_openai(
         text = response.output_text.strip()
         if not text:
             raise HTTPException(status_code=502, detail="Модель вернула пустой ответ")
-        return text
+        return text, response.id
     except HTTPException:
         raise
     except Exception as exc:  # SDK exceptions differ by installed version
@@ -453,7 +497,60 @@ def build_visual_content_for_openai(raw: bytes, filename: str, media_type: str, 
     return [{"type": "input_image", "image_url": image_data_url(processed, processed_type), "detail": "high"}], None, None
 
 
-def create_stock_removal_prompt(*, stock_mode: str, blank_summary: str, zero_reference: str, first_side: str, notes: str) -> str:
+def parse_shopturn_payload(raw: str | None) -> tuple[dict[str, Any], str]:
+    if not raw:
+        return {}, "Инструмент и поля ShopTurn не указаны."
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=400, detail="Некорректные данные ShopTurn") from exc
+    if not isinstance(data, dict):
+        raise HTTPException(status_code=400, detail="Данные ShopTurn должны быть объектом")
+    allowed = {
+        "machineProfile", "operation", "toolT", "toolD", "toolName", "holder", "insert",
+        "orientation", "noseRadius", "width", "coolant", "driven", "spindleMode", "speed",
+        "feed", "depth", "machining", "position", "x0", "z0", "x1", "z1", "fs1",
+        "fs2", "fs3", "ux", "uz", "incrementMode",
+    }
+    cleaned: dict[str, Any] = {}
+    for key in allowed:
+        value = data.get(key)
+        if isinstance(value, bool):
+            cleaned[key] = value
+        elif value is not None:
+            cleaned[key] = str(value)[:160]
+    machine = (
+        "Tengyue CK52PT-Y / Siemens SINUMERIK 828D ShopTurn"
+        if cleaned.get("machineProfile") == "tengyue_ck52pty"
+        else cleaned.get("machineProfile", "не указан")
+    )
+    summary = "\n".join([
+        f"Станок: {machine}.",
+        f"Операция: {cleaned.get('operation', 'не указана')}; Machining={cleaned.get('machining', '—')}; Pos.={cleaned.get('position', '—')}.",
+        (
+            f"Инструмент: T{cleaned.get('toolT', '?')} D{cleaned.get('toolD', '?')}; "
+            f"{cleaned.get('toolName', 'не указан')}; державка {cleaned.get('holder', '—')}; "
+            f"пластина/режущая часть {cleaned.get('insert', '—')}; ориентация {cleaned.get('orientation', '—')}; "
+            f"R={cleaned.get('noseRadius', '—')}; ширина={cleaned.get('width', '—')}."
+        ),
+        (
+            f"Режимы: S={cleaned.get('speed', '—')} ({cleaned.get('spindleMode', 'rpm')}); "
+            f"F={cleaned.get('feed', '—')}; глубина D={cleaned.get('depth', '—')}; "
+            f"СОЖ={'ON' if cleaned.get('coolant') else 'OFF'}; "
+            f"приводной={'да' if cleaned.get('driven') else 'нет'}."
+        ),
+        (
+            f"Поля цикла: X0={cleaned.get('x0', '—')}; Z0={cleaned.get('z0', '—')}; "
+            f"X1={cleaned.get('x1', '—')}; Z1={cleaned.get('z1', '—')}; "
+            f"режим X1/Z1={cleaned.get('incrementMode', 'absolute')}; "
+            f"FS1={cleaned.get('fs1', '0')}; FS2={cleaned.get('fs2', '0')}; "
+            f"FS3={cleaned.get('fs3', '0')}; UX={cleaned.get('ux', '0')}; UZ={cleaned.get('uz', '0')}"
+        ),
+    ])
+    return cleaned, summary
+
+
+def create_stock_removal_prompt(*, stock_mode: str, blank_summary: str, zero_reference: str, first_side: str, notes: str, tool_summary: str = "") -> str:
     mode_text = "токарная обработка X/Z" if stock_mode == "lathe" else "фрезерная обработка"
     return f"""Ты CNC-assistant. На основе чертежа и параметров заготовки составь заготовительный план Stock Removal.
 Режим: {mode_text}.
@@ -461,6 +558,8 @@ def create_stock_removal_prompt(*, stock_mode: str, blank_summary: str, zero_ref
 База/ноль детали: {zero_reference or 'не указано'}.
 Первая сторона обработки: {first_side or 'не указано'}.
 Дополнительные замечания пользователя: {notes or 'нет'}.
+Инструмент и настройки ShopTurn:
+{tool_summary or 'не указаны'}
 
 Сделай ответ на русском и строго по структуре:
 1. Краткий вывод.
@@ -469,13 +568,14 @@ def create_stock_removal_prompt(*, stock_mode: str, blank_summary: str, zero_ref
 4. Предлагаемый план Stock Removal по шагам.
 5. Если режим токарный: таблица координат X/Z для ориентировочного контура. X указывай в диаметрах.
 6. Если режим фрезерный: список поверхностей/карманов/уступов и съёма материала.
-7. Отдельно блок 'Важно проверить'.
+7. Отдельно блок 'Инструмент и ShopTurn 828D': T/D, выбранный инструмент, F/S, поля X0/Z0/X1/Z1, FS1–FS3, D, UX и UZ.
+8. Отдельно блок 'Важно проверить'.
 
 Нельзя выдумывать скрытые размеры. Если данных мало — так и скажи. Если на чертеже есть повторы или спорные места, перечисли допущения явно.
 """
 
 
-def build_stock_removal_mock(filename: str, media_type: str, stock_mode: str, blank_summary: str, zero_reference: str, first_side: str, notes: str, raw: bytes | None = None) -> str:
+def build_stock_removal_mock(filename: str, media_type: str, stock_mode: str, blank_summary: str, zero_reference: str, first_side: str, notes: str, raw: bytes | None = None, tool_summary: str = "") -> str:
     file_kind = "SLDDRW" if media_type == SLDDRW_MEDIA_TYPE else ("PDF" if media_type == "application/pdf" else "изображение")
     preview = extract_slddrw_preview(raw or b"") if media_type == SLDDRW_MEDIA_TYPE and raw is not None else None
     extracted = [
@@ -517,6 +617,9 @@ def build_stock_removal_mock(filename: str, media_type: str, stock_mode: str, bl
 ### Ориентировочная схема
 {coord_table}
 
+### Инструмент и ShopTurn 828D
+{tool_summary or "Не заполнено"}
+
 ### Дополнительно
 - Замечания пользователя: {notes or 'нет'}
 - Это демонстрационный расчёт. Для живого результата отключи `MOCK_MODE`.
@@ -524,7 +627,7 @@ def build_stock_removal_mock(filename: str, media_type: str, stock_mode: str, bl
 """
 
 
-def stock_removal_with_openai(*, raw: bytes, filename: str, media_type: str, stock_mode: str, blank_summary: str, zero_reference: str, first_side: str, notes: str) -> str:
+def stock_removal_with_openai(*, raw: bytes, filename: str, media_type: str, stock_mode: str, blank_summary: str, zero_reference: str, first_side: str, notes: str, tool_summary: str = "") -> tuple[str, str]:
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise HTTPException(status_code=503, detail="OPENAI_API_KEY не настроен. Включите MOCK_MODE=true для проверки интерфейса.")
@@ -539,6 +642,7 @@ def stock_removal_with_openai(*, raw: bytes, filename: str, media_type: str, sto
             zero_reference=zero_reference,
             first_side=first_side,
             notes=notes,
+            tool_summary=tool_summary,
         )
 
         if media_type == "application/pdf":
@@ -571,7 +675,7 @@ def stock_removal_with_openai(*, raw: bytes, filename: str, media_type: str, sto
         text = response.output_text.strip()
         if not text:
             raise HTTPException(status_code=502, detail="Модель вернула пустой ответ")
-        return text
+        return text, response.id
     except HTTPException:
         raise
     except Exception as exc:
@@ -584,6 +688,87 @@ def stock_removal_with_openai(*, raw: bytes, filename: str, media_type: str, sto
                 pass
 
 
+
+
+def sanitize_chat_conversation(value: Any) -> list[dict[str, str]]:
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise HTTPException(status_code=400, detail="История диалога должна быть массивом")
+    result: list[dict[str, str]] = []
+    for item in value[-20:]:
+        if not isinstance(item, dict):
+            continue
+        role = str(item.get("role") or "").strip()
+        content = str(item.get("content") or "").strip()
+        if role not in {"user", "assistant"} or not content:
+            continue
+        result.append({"role": role, "content": content[:12000]})
+    return result
+
+
+def build_chat_mock(question: str, context_text: str, conversation: list[dict[str, str]]) -> str:
+    previous_count = len(conversation)
+    context_note = "Предыдущий анализ получен." if context_text.strip() else "Предыдущий анализ не передан."
+    return (
+        "## Тестовый ответ диалога\n\n"
+        f"**Ваш вопрос:** {question}\n\n"
+        f"{context_note} В истории диалога сообщений: **{previous_count}**.\n\n"
+        "Сейчас включён `MOCK_MODE`, поэтому это демонстрационный ответ. "
+        "В рабочем режиме ассистент продолжит разговор с учётом предыдущего анализа и вопросов."
+    )
+
+
+def chat_with_openai(
+    *, question: str, previous_response_id: str | None,
+    context_text: str, conversation: list[dict[str, str]]
+) -> tuple[str, str]:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise HTTPException(
+            status_code=503,
+            detail="OPENAI_API_KEY не настроен. Включите MOCK_MODE=true для проверки интерфейса.",
+        )
+
+    from openai import OpenAI
+
+    client = OpenAI(api_key=api_key)
+    chat_instructions = SYSTEM_INSTRUCTIONS + """
+
+Продолжай технический диалог с пользователем. Учитывай предыдущий анализ, уточняющие вопросы и ответы.
+Не начинай анализ заново без необходимости. Если пользователь отвечает на твой вопрос, используй ответ для уточнения вывода.
+Если данных всё ещё недостаточно, задай один конкретный вопрос. Не заканчивай фразами вроде «если хотите, могу» — вместо этого дай полезный ответ или задай нужный вопрос.
+"""
+    try:
+        if previous_response_id:
+            response = client.responses.create(
+                model=MODEL,
+                instructions=chat_instructions,
+                previous_response_id=previous_response_id,
+                input=[{"role": "user", "content": question}],
+            )
+        else:
+            input_messages: list[dict[str, Any]] = []
+            if context_text.strip():
+                input_messages.append({
+                    "role": "assistant",
+                    "content": "Предыдущий ответ ассистента:\n" + context_text.strip()[:16000],
+                })
+            input_messages.extend(conversation[-16:])
+            input_messages.append({"role": "user", "content": question})
+            response = client.responses.create(
+                model=MODEL,
+                instructions=chat_instructions,
+                input=input_messages,
+            )
+        text = response.output_text.strip()
+        if not text:
+            raise HTTPException(status_code=502, detail="Модель вернула пустой ответ")
+        return text, response.id
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Ошибка OpenAI API в диалоге: {exc}") from exc
 
 
 def sanitize_project_payload(payload: dict[str, Any]) -> tuple[str, str]:
@@ -756,8 +941,8 @@ def health() -> dict[str, Any]:
         "api_key_configured": bool(os.getenv("OPENAI_API_KEY")),
         "max_file_mb": MAX_FILE_MB,
         "supported_types": ["JPG", "PNG", "WEBP", "PDF", "SLDDRW"],
-        "version": "2.0.0-pro",
-        "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "sinumerik_export"],
+        "version": "2.2.0-pro",
+        "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52pty_profile"],
     }
 
 
@@ -780,11 +965,71 @@ def history(limit: int = 30) -> list[dict[str, Any]]:
 @app.delete("/api/history/{analysis_id}")
 def delete_history(analysis_id: int) -> dict[str, bool]:
     with db_conn() as db:
+        db.execute("DELETE FROM chat_messages WHERE analysis_id = ?", (analysis_id,))
         cursor = db.execute("DELETE FROM analyses WHERE id = ?", (analysis_id,))
         db.commit()
     if cursor.rowcount == 0:
         raise HTTPException(status_code=404, detail="Запись не найдена")
     return {"ok": True}
+
+
+@app.get("/api/chat/{analysis_id}")
+def chat_history(analysis_id: int, limit: int = 100) -> list[dict[str, Any]]:
+    with db_conn() as db:
+        analysis = db.execute("SELECT id FROM analyses WHERE id = ?", (analysis_id,)).fetchone()
+    if not analysis:
+        raise HTTPException(status_code=404, detail="Анализ не найден")
+    return get_chat_messages(analysis_id, limit)
+
+
+@app.post("/api/chat")
+def continue_chat(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    question = str(payload.get("question") or "").strip()
+    if len(question) < 1:
+        raise HTTPException(status_code=400, detail="Введите сообщение")
+    if len(question) > 6000:
+        raise HTTPException(status_code=413, detail="Сообщение слишком длинное")
+
+    previous_response_id_raw = str(payload.get("previous_response_id") or "").strip()
+    previous_response_id = previous_response_id_raw[:200] or None
+    context_text = str(payload.get("context_text") or "")[:20000]
+    conversation = sanitize_chat_conversation(payload.get("conversation"))
+
+    analysis_id: int | None = None
+    raw_analysis_id = payload.get("analysis_id")
+    if raw_analysis_id not in {None, ""}:
+        try:
+            analysis_id = int(raw_analysis_id)
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail="Некорректный ID анализа") from exc
+        if analysis_id <= 0:
+            raise HTTPException(status_code=400, detail="Некорректный ID анализа")
+
+    if MOCK_MODE:
+        response_text = build_chat_mock(question, context_text, conversation)
+        openai_response_id = None
+    else:
+        response_text, openai_response_id = chat_with_openai(
+            question=question,
+            previous_response_id=previous_response_id,
+            context_text=context_text,
+            conversation=conversation,
+        )
+
+    save_chat_message(analysis_id=analysis_id, role="user", content=question)
+    save_chat_message(
+        analysis_id=analysis_id,
+        role="assistant",
+        content=response_text,
+        openai_response_id=openai_response_id,
+    )
+    return {
+        "response": response_text,
+        "response_id": openai_response_id,
+        "model": MODEL,
+        "mock": MOCK_MODE,
+        "analysis_id": analysis_id,
+    }
 
 
 @app.post("/api/analyze")
@@ -809,10 +1054,11 @@ async def analyze(
     if media_type in {"application/pdf", SLDDRW_MEDIA_TYPE} and crop:
         crop = None
 
+    openai_response_id: str | None = None
     if MOCK_MODE:
         response_text = build_mock_response(file.filename or "file", media_type, prompt.strip(), crop, raw)
     else:
-        response_text = analyze_with_openai(
+        response_text, openai_response_id = analyze_with_openai(
             raw=raw,
             filename=file.filename or "file",
             media_type=media_type,
@@ -828,10 +1074,19 @@ async def analyze(
         response=response_text,
         model=MODEL,
         mock=MOCK_MODE,
+        openai_response_id=openai_response_id,
+    )
+    save_chat_message(analysis_id=analysis_id, role="user", content=prompt.strip())
+    save_chat_message(
+        analysis_id=analysis_id,
+        role="assistant",
+        content=response_text,
+        openai_response_id=openai_response_id,
     )
     return {
         "id": analysis_id,
         "response": response_text,
+        "response_id": openai_response_id,
         "model": MODEL,
         "mock": MOCK_MODE,
         "crop": crop,
@@ -849,6 +1104,7 @@ async def stock_removal(
     zero_reference: str | None = Form(None),
     first_side: str | None = Form(None),
     notes: str | None = Form(None),
+    shopturn_json: str | None = Form(None),
 ) -> dict[str, Any]:
     media_type = detect_media_type(file)
     if media_type not in STANDARD_ALLOWED_TYPES | {SLDDRW_MEDIA_TYPE}:
@@ -867,18 +1123,42 @@ async def stock_removal(
     else:
         blank_summary = f"{blank_width or '?'} × {blank_height or '?'} × {blank_length or '?'} мм"
 
-    response_text = build_stock_removal_mock(
-        file.filename or "file", media_type, stock_mode, blank_summary, zero_reference or "", first_side or "", notes or "", raw
-    ) if MOCK_MODE else stock_removal_with_openai(
-        raw=raw, filename=file.filename or "file", media_type=media_type, stock_mode=stock_mode, blank_summary=blank_summary,
-        zero_reference=zero_reference or "", first_side=first_side or "", notes=notes or ""
-    )
+    shopturn_data, tool_summary = parse_shopturn_payload(shopturn_json)
+    openai_response_id: str | None = None
+    if MOCK_MODE:
+        response_text = build_stock_removal_mock(
+            file.filename or "file", media_type, stock_mode, blank_summary,
+            zero_reference or "", first_side or "", notes or "", raw, tool_summary
+        )
+    else:
+        response_text, openai_response_id = stock_removal_with_openai(
+            raw=raw, filename=file.filename or "file", media_type=media_type,
+            stock_mode=stock_mode, blank_summary=blank_summary,
+            zero_reference=zero_reference or "", first_side=first_side or "", notes=notes or "",
+            tool_summary=tool_summary
+        )
 
+    stock_prompt = f"Stock Removal | {blank_summary} | {shopturn_data.get('operation', 'operation not set')} | T{shopturn_data.get('toolT', '?')} D{shopturn_data.get('toolD', '?')}"
     analysis_id = save_history(
-        filename=file.filename or "file", media_type=media_type, prompt=f"Stock Removal | {blank_summary}", crop=None,
+        filename=file.filename or "file", media_type=media_type, prompt=stock_prompt, crop=None,
         response=response_text, model=MODEL, mock=MOCK_MODE,
+        openai_response_id=openai_response_id,
     )
-    return {"id": analysis_id, "response": response_text, "model": MODEL, "mock": MOCK_MODE}
+    save_chat_message(analysis_id=analysis_id, role="user", content=stock_prompt)
+    save_chat_message(
+        analysis_id=analysis_id,
+        role="assistant",
+        content=response_text,
+        openai_response_id=openai_response_id,
+    )
+    return {
+        "id": analysis_id,
+        "response": response_text,
+        "response_id": openai_response_id,
+        "model": MODEL,
+        "mock": MOCK_MODE,
+        "shopturn": shopturn_data,
+    }
 
 
 @app.post("/api/slddrw-preview")

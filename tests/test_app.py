@@ -151,3 +151,92 @@ def test_ai_contour_mock():
     assert body["mock"] is True
     assert len(body["points"]) >= 2
     assert body["points"][0]["type"] == "start"
+
+
+def test_follow_up_chat_mock_and_history():
+    analysis = client.post(
+        "/api/analyze",
+        data={"prompt": "Проверь чертёж"},
+        files={"file": ("chat.png", make_png(), "image/png")},
+    )
+    assert analysis.status_code == 200
+    initial = analysis.json()
+
+    follow_up = client.post(
+        "/api/chat",
+        json={
+            "question": "Материал AISI 304. Что меняется?",
+            "analysis_id": initial["id"],
+            "previous_response_id": initial.get("response_id"),
+            "context_text": initial["response"],
+            "conversation": [],
+        },
+    )
+    assert follow_up.status_code == 200
+    body = follow_up.json()
+    assert body["mock"] is True
+    assert "Тестовый ответ диалога" in body["response"]
+
+    history = client.get(f"/api/chat/{initial['id']}")
+    assert history.status_code == 200
+    messages = history.json()
+    assert any(m["role"] == "user" and "AISI 304" in m["content"] for m in messages)
+    assert any(m["role"] == "assistant" and "Тестовый ответ диалога" in m["content"] for m in messages)
+
+
+def test_follow_up_chat_rejects_empty_message():
+    response = client.post("/api/chat", json={"question": ""})
+    assert response.status_code == 400
+
+
+def test_stock_removal_accepts_shopturn_tool_flow():
+    shopturn = {
+        "machineProfile": "tengyue_ck52pty",
+        "operation": "od_turn",
+        "toolT": "1",
+        "toolD": "1",
+        "toolName": "Наружный проходной",
+        "holder": "PCLNR 2525M12",
+        "insert": "CNMG 120408",
+        "speed": "650",
+        "feed": "0.18",
+        "depth": "1.5",
+        "machining": "Longitudinal",
+        "position": "Outside",
+        "x0": "140.000",
+        "z0": "0.000",
+        "x1": "130.000",
+        "z1": "-55.000",
+        "fs1": "0.000",
+        "fs2": "0.000",
+        "fs3": "0.000",
+        "ux": "0.100",
+        "uz": "0.100",
+        "coolant": True,
+        "driven": False,
+    }
+    import json
+    response = client.post(
+        "/api/stock-removal",
+        data={
+            "stock_mode": "lathe",
+            "blank_diameter": "140",
+            "blank_length": "58",
+            "zero_reference": "Z0 по правому торцу",
+            "first_side": "торец А",
+            "notes": "AISI 304",
+            "shopturn_json": json.dumps(shopturn, ensure_ascii=False),
+        },
+        files={"file": ("part.png", make_png(), "image/png")},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["shopturn"]["toolT"] == "1"
+    assert body["shopturn"]["operation"] == "od_turn"
+    assert "Tengyue CK52PT-Y" in body["response"]
+
+
+def test_health_reports_shopturn_feature():
+    body = client.get("/api/health").json()
+    assert body["version"] == "2.2.0-pro"
+    assert "shopturn_tool_flow" in body["features"]

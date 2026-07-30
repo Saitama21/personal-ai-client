@@ -22,7 +22,7 @@
         <button class="nav-item" data-view="settings">Настройки</button>
       </nav>
       <div class="status-card glass-soft"><span class="status-dot" id="statusDot"></span><div><strong id="statusTitle">Проверка...</strong><small id="statusText">Соединение с сервером</small></div></div>
-      <div class="sidebar-footer">Создатель: Єрошов Іван<br>Версия 2.0 PRO</div>
+      <div class="sidebar-footer">Создатель: Єрошов Іван<br>Версия 2.2 ShopTurn Flow</div>
     </aside>
 
     <main>
@@ -52,7 +52,24 @@
             <div id="progress" class="progress hidden"><span></span><p>Файл обрабатывается...</p></div>
           </section>
         </div>
-        <section class="panel result-panel glass"><div class="panel-heading"><div><span class="eyebrow">03 · Результат</span><h2>Ответ ассистента</h2></div><div id="resultMeta" class="result-meta"></div></div><div id="resultEmpty" class="result-empty"><div>✦</div><strong>Здесь появится результат</strong><span>Он сохранится в истории автоматически</span></div><article id="resultContent" class="result-content hidden"></article></section>
+        <section class="panel result-panel glass">
+          <div class="panel-heading"><div><span class="eyebrow">03 · Результат</span><h2>Ответ ассистента</h2></div><div id="resultMeta" class="result-meta"></div></div>
+          <div id="resultEmpty" class="result-empty"><div>✦</div><strong>Здесь появится результат</strong><span>Он сохранится в истории автоматически</span></div>
+          <article id="resultContent" class="result-content hidden"></article>
+          <div id="analysisChatPanel" class="follow-chat hidden">
+            <div class="follow-chat-head">
+              <div><span class="eyebrow">ПРОДОЛЖЕНИЕ</span><h3>Уточнить ответ</h3></div>
+              <button id="analysisChatClear" class="small-button glass-soft">Очистить диалог</button>
+            </div>
+            <div id="analysisChatMessages" class="chat-messages"></div>
+            <div class="chat-composer glass-soft">
+              <textarea id="analysisChatInput" rows="2" placeholder="Ответьте ассистенту или задайте уточняющий вопрос..."></textarea>
+              <button id="analysisChatSend" class="primary-button chat-send">Отправить</button>
+            </div>
+            <div id="analysisChatProgress" class="chat-progress hidden">Ассистент отвечает...</div>
+            <div class="chat-hint">Enter — отправить · Shift+Enter — новая строка</div>
+          </div>
+        </section>
       </section>
 
       <section id="stockView" class="view">
@@ -73,7 +90,119 @@
           </section>
         </div>
 
-        <section class="panel result-panel glass"><div class="panel-heading"><div><span class="eyebrow">ПЛАН</span><h2>Результат Stock Removal</h2></div><div id="stockResultMeta" class="result-meta"></div></div><div id="stockResultEmpty" class="result-empty"><div>◎</div><strong>План ещё не сформирован</strong></div><article id="stockResultContent" class="result-content hidden"></article></section>
+        <section class="panel shopturn-panel glass">
+          <div class="panel-heading">
+            <div><span class="eyebrow">TENGYUE CK52PT-Y · SHOPTURN</span><h2>Инструмент и ввод в SINUMERIK 828D</h2></div>
+            <div class="shopturn-status"><span class="badge" id="shopturnProfileBadge">CK52PT-Y · 828D</span><span class="badge" id="shopturnReadyBadge">Не заполнено</span></div>
+          </div>
+
+          <div class="shopturn-grid">
+            <section class="shopturn-card glass-soft">
+              <div class="mini-heading">1. Выбор инструмента и операции</div>
+              <div class="form-grid shopturn-form-grid">
+                <label><span>Профиль станка</span><select id="machineProfileSelect"><option value="tengyue_ck52pty">Tengyue CK52PT-Y · SINUMERIK 828D</option><option value="custom">Другой станок / ручной профиль</option></select></label>
+                <label><span>Операция ShopTurn</span><select id="shopOperationSelect">
+                  <option value="face">Face · Торцовка</option>
+                  <option value="od_turn">OD Turning · Наружное точение</option>
+                  <option value="contour">Stock Removal · Контур X/Z</option>
+                  <option value="id_turn">ID Turning · Расточка</option>
+                  <option value="groove">Groove · Канавка</option>
+                  <option value="partoff">Part-off · Отрезка</option>
+                  <option value="thread_ext">Thread OD · Наружная резьба</option>
+                  <option value="thread_int">Thread ID · Внутренняя резьба</option>
+                  <option value="drilling">Drilling · Сверление</option>
+                  <option value="milling">Driven tool · Приводной инструмент</option>
+                </select></label>
+                <label class="full"><span>Готовый инструмент / пресет</span><select id="toolPresetSelect"></select></label>
+                <label><span>T · позиция револьвера</span><input id="toolTInput" value="1" inputmode="numeric" /></label>
+                <label><span>D · корректор инструмента</span><input id="toolDInput" value="1" inputmode="numeric" /></label>
+                <label><span>Название инструмента</span><input id="toolNameInput" placeholder="Наружный проходной" /></label>
+                <label><span>Державка</span><input id="toolHolderInput" placeholder="PCLNR 2525M12" /></label>
+                <label><span>Пластина / режущая часть</span><input id="toolInsertInput" placeholder="CNMG 120408" /></label>
+                <label><span>Ориентация</span><select id="toolOrientationSelect"><option value="right">Правый</option><option value="left">Левый</option><option value="neutral">Нейтральный</option><option value="internal">Внутренний</option><option value="axial">Осевой</option><option value="radial">Радиальный</option></select></label>
+                <label><span>Радиус вершины, мм</span><input id="toolNoseRadiusInput" value="0.8" inputmode="decimal" /></label>
+                <label><span>Ширина канавки / инструмента, мм</span><input id="toolWidthInput" placeholder="3.0" inputmode="decimal" /></label>
+                <label class="inline-check"><input id="toolCoolantToggle" type="checkbox" checked /> СОЖ включить</label>
+                <label class="inline-check"><input id="toolDrivenToggle" type="checkbox" /> Приводной инструмент</label>
+              </div>
+              <div class="button-row compact-buttons"><button id="applyToolPresetBtn" class="secondary-button">Применить пресет</button><button id="saveCustomToolBtn" class="small-button">Сохранить свой</button><button id="autoFillShopturnBtn" class="small-button">Подставить из контура</button></div>
+            </section>
+
+            <section class="shopturn-card glass-soft">
+              <div class="mini-heading">2. Режимы и поля цикла</div>
+              <div class="form-grid shopturn-form-grid">
+                <label><span>Режим шпинделя</span><select id="spindleModeSelect"><option value="rpm">S · об/мин</option><option value="css">CSS · м/мин</option></select></label>
+                <label><span>S · обороты / скорость</span><input id="spindleSpeedInput" value="650" inputmode="decimal" /></label>
+                <label><span>F · подача, мм/об</span><input id="feedInput" value="0.18" inputmode="decimal" /></label>
+                <label><span>D · глубина прохода, мм</span><input id="depthInput" value="1.0" inputmode="decimal" /></label>
+                <label><span>Machining</span><input id="machiningInput" value="Longitudinal" /></label>
+                <label><span>Pos.</span><input id="positionInput" value="Outside" /></label>
+                <label><span>X0</span><input id="cycleX0Input" inputmode="decimal" /></label>
+                <label><span>Z0</span><input id="cycleZ0Input" inputmode="decimal" /></label>
+                <label><span>X1</span><input id="cycleX1Input" inputmode="decimal" /></label>
+                <label><span>Z1</span><input id="cycleZ1Input" inputmode="decimal" /></label>
+                <label><span>FS1</span><input id="fs1Input" value="0.000" inputmode="decimal" /></label>
+                <label><span>FS2</span><input id="fs2Input" value="0.000" inputmode="decimal" /></label>
+                <label><span>FS3</span><input id="fs3Input" value="0.000" inputmode="decimal" /></label>
+                <label><span>UX · припуск X</span><input id="uxInput" value="0.100" inputmode="decimal" /></label>
+                <label><span>UZ · припуск Z</span><input id="uzInput" value="0.100" inputmode="decimal" /></label>
+                <label><span>Режим координат X1/Z1</span><select id="incrementModeSelect"><option value="absolute">Абсолютно</option><option value="incremental">INC · приращение</option></select></label>
+              </div>
+              <div class="shopturn-summary glass-soft" id="toolSummaryCard"></div>
+            </section>
+          </div>
+
+          <div class="shopturn-wizard-grid">
+            <section class="shopturn-console glass-soft">
+              <div class="console-header"><div><strong id="consoleProgramName">Stock removal</strong><span id="consolePath">NC/WKS → Program</span></div><div class="console-alert">828D / ShopTurn</div></div>
+              <div class="console-body">
+                <div class="console-part-preview"><div class="console-chuck"></div><div class="console-blank-shape"></div><div class="console-finished-shape"></div><div class="console-tool-shape" id="consoleToolShape"></div></div>
+                <div class="console-fields">
+                  <div class="console-top-fields"><span>T <strong id="screenT">1</strong></span><span>D <strong id="screenD">1</strong></span><span>F <strong id="screenF">0.180</strong></span><span>S <strong id="screenS">650</strong></span></div>
+                  <div class="console-row" data-shop-field="machining"><span>Machining</span><strong id="screenMachining">Longitudinal</strong></div>
+                  <div class="console-row" data-shop-field="position"><span>Pos.</span><strong id="screenPosition">Outside</strong></div>
+                  <div class="console-row" data-shop-field="x0"><span>X0</span><strong id="screenX0">0.000</strong></div>
+                  <div class="console-row" data-shop-field="z0"><span>Z0</span><strong id="screenZ0">0.000</strong></div>
+                  <div class="console-row" data-shop-field="x1"><span>X1</span><strong id="screenX1">0.000</strong></div>
+                  <div class="console-row" data-shop-field="z1"><span>Z1</span><strong id="screenZ1">0.000</strong></div>
+                  <div class="console-row" data-shop-field="fs"><span>FS1 / FS2 / FS3</span><strong id="screenFS">0 / 0 / 0</strong></div>
+                  <div class="console-row" data-shop-field="depth"><span>D · depth</span><strong id="screenDepth">1.000</strong></div>
+                  <div class="console-row" data-shop-field="allowance"><span>UX / UZ</span><strong id="screenAllowance">0.100 / 0.100</strong></div>
+                </div>
+              </div>
+              <div class="console-softkeys"><button>T,S,M</button><button>Set WO</button><button>Meas. workp.</button><button>Meas. tool</button><button>Position</button><button class="active">Stock rem.</button><button id="consoleAcceptBtn" class="accept">Accept</button></div>
+            </section>
+
+            <section class="shopturn-wizard glass-soft">
+              <div class="wizard-head"><div><span class="eyebrow">ПОШАГОВЫЙ МАСТЕР</span><h3 id="wizardTitle">Открой программу</h3></div><span id="wizardCounter" class="badge">Шаг 1</span></div>
+              <div class="wizard-progress"><span id="wizardProgressBar"></span></div>
+              <div id="wizardBreadcrumb" class="wizard-breadcrumb"></div>
+              <div id="wizardInstruction" class="wizard-instruction"></div>
+              <div id="wizardValues" class="wizard-values"></div>
+              <div class="wizard-nav"><button id="wizardPrevBtn" class="small-button">← Назад</button><button id="wizardCopyBtn" class="small-button">Копировать данные шага</button><button id="wizardNextBtn" class="primary-button">Далее →</button></div>
+              <div id="wizardAllSteps" class="wizard-step-list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="panel result-panel glass">
+          <div class="panel-heading"><div><span class="eyebrow">ПЛАН</span><h2>Результат Stock Removal</h2></div><div id="stockResultMeta" class="result-meta"></div></div>
+          <div id="stockResultEmpty" class="result-empty"><div>◎</div><strong>План ещё не сформирован</strong></div>
+          <article id="stockResultContent" class="result-content hidden"></article>
+          <div id="stockChatPanel" class="follow-chat hidden">
+            <div class="follow-chat-head">
+              <div><span class="eyebrow">ТЕХНОЛОГИЧЕСКИЙ ДИАЛОГ</span><h3>Уточнить Stock Removal</h3></div>
+              <button id="stockChatClear" class="small-button glass-soft">Очистить диалог</button>
+            </div>
+            <div id="stockChatMessages" class="chat-messages"></div>
+            <div class="chat-composer glass-soft">
+              <textarea id="stockChatInput" rows="2" placeholder="Например: материал AISI 304, отверстия уже есть, какая последовательность обработки?"></textarea>
+              <button id="stockChatSend" class="primary-button chat-send">Отправить</button>
+            </div>
+            <div id="stockChatProgress" class="chat-progress hidden">Ассистент отвечает...</div>
+            <div class="chat-hint">Enter — отправить · Shift+Enter — новая строка</div>
+          </div>
+        </section>
 
         <section class="panel contour-panel glass">
           <div class="panel-heading"><div><span class="eyebrow">PRO EDITOR</span><h2>Редактор контура X/Z</h2></div><div class="editor-state"><span id="autosaveState">Автосохранение включено</span><span class="badge" id="validationBadge">Не проверен</span></div></div>
