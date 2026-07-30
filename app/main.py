@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
 from typing import Any
 import re
+import zlib
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -51,7 +52,22 @@ def detect_media_type(file: UploadFile) -> str:
     return content_type
 
 
-def extract_embedded_images(raw: bytes) -> list[tuple[bytes, str]]:
+def normalize_image_blob(blob: bytes) -> tuple[bytes, str] | None:
+    try:
+        with Image.open(io.BytesIO(blob)) as image:
+            image.load()
+            if image.width < 32 or image.height < 32:
+                return None
+            if image.mode not in {"RGB", "RGBA"}:
+                image = image.convert("RGBA" if "A" in image.getbands() else "RGB")
+            output = io.BytesIO()
+            image.save(output, format="PNG", optimize=True)
+            return output.getvalue(), "image/png"
+    except Exception:
+        return None
+
+
+def extract_raw_embedded_images(raw: bytes) -> list[tuple[bytes, str]]:
     found: list[tuple[bytes, str]] = []
 
     png_sig = b"\x89PNG\r\n\x1a\n"
@@ -61,12 +77,12 @@ def extract_embedded_images(raw: bytes) -> list[tuple[bytes, str]]:
         if idx == -1:
             break
         end = raw.find(b"IEND\xaeB`\x82", idx)
-        if end != -1:
-            blob = raw[idx:end + 8]
-            found.append((blob, "image/png"))
-            start = end + 8
-        else:
+        if end == -1:
             break
+        normalized = normalize_image_blob(raw[idx:end + 8])
+        if normalized:
+            found.append(normalized)
+        start = end + 8
 
     start = 0
     while True:
@@ -74,14 +90,63 @@ def extract_embedded_images(raw: bytes) -> list[tuple[bytes, str]]:
         if idx == -1:
             break
         end = raw.find(b"\xff\xd9", idx + 2)
-        if end != -1:
-            blob = raw[idx:end + 2]
-            found.append((blob, "image/jpeg"))
-            start = end + 2
-        else:
+        if end == -1:
             break
+        normalized = normalize_image_blob(raw[idx:end + 2])
+        if normalized:
+            found.append(normalized)
+        start = end + 2
 
     return found
+
+
+def extract_solidworks_compressed_images(raw: bytes) -> list[tuple[bytes, str]]:
+    # SolidWorks drawing streams in this file family are stored in small
+    # custom records containing a raw-DEFLATE payload. The record layout
+    # gives compressed and uncompressed sizes; metadata length varies,
+    # so we probe a narrow safe range for the actual payload start.
+    magic = b"\x14\x00\x06\x00\x08\x00\x31\x39\xed\x19"
+    found: list[tuple[bytes, str]] = []
+    search_from = 0
+
+    while True:
+        header = raw.find(magic, search_from)
+        if header == -1:
+            break
+        search_from = header + 1
+        if header + 26 > len(raw):
+            continue
+
+        compressed_size = int.from_bytes(raw[header + 14:header + 18], "little")
+        uncompressed_size = int.from_bytes(raw[header + 18:header + 22], "little")
+        if not (1 <= compressed_size <= 50 * 1024 * 1024):
+            continue
+        if not (1 <= uncompressed_size <= 100 * 1024 * 1024):
+            continue
+
+        for data_offset in range(26, 81):
+            start = header + data_offset
+            end = start + compressed_size
+            if end > len(raw):
+                break
+            try:
+                unpacked = zlib.decompress(raw[start:end], -15)
+            except zlib.error:
+                continue
+            if len(unpacked) != uncompressed_size:
+                continue
+            normalized = normalize_image_blob(unpacked)
+            if normalized:
+                found.append(normalized)
+                break
+
+    return found
+
+
+def extract_embedded_images(raw: bytes) -> list[tuple[bytes, str]]:
+    candidates = extract_solidworks_compressed_images(raw)
+    candidates.extend(extract_raw_embedded_images(raw))
+    return candidates
 
 
 def choose_best_image(candidates: list[tuple[bytes, str]]) -> tuple[bytes, str] | None:
@@ -90,9 +155,10 @@ def choose_best_image(candidates: list[tuple[bytes, str]]) -> tuple[bytes, str] 
     for blob, media_type in candidates:
         try:
             with Image.open(io.BytesIO(blob)) as image:
+                image.load()
                 score = image.width * image.height
         except Exception:
-            score = len(blob)
+            continue
         if score > best_score:
             best = (blob, media_type)
             best_score = score
@@ -164,7 +230,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="Personal AI Client", version="1.1.0", lifespan=lifespan)
+app = FastAPI(title="Personal AI Client", version="1.2.1", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
