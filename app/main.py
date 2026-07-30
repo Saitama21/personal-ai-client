@@ -12,9 +12,9 @@ from typing import Any
 import re
 import zlib
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Body, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from PIL import Image, UnidentifiedImageError
 
@@ -230,7 +230,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="Personal AI Client", version="1.2.1", lifespan=lifespan)
+app = FastAPI(title="Personal AI Client", version="2.0.0-pro", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -257,6 +257,17 @@ def init_storage() -> None:
                 response TEXT NOT NULL,
                 model TEXT NOT NULL,
                 mock INTEGER NOT NULL DEFAULT 0
+            )
+            """
+        )
+        db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS projects (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                payload_json TEXT NOT NULL
             )
             """
         )
@@ -573,6 +584,164 @@ def stock_removal_with_openai(*, raw: bytes, filename: str, media_type: str, sto
                 pass
 
 
+
+
+def sanitize_project_payload(payload: dict[str, Any]) -> tuple[str, str]:
+    name = str(payload.get("name") or "Без названия").strip()[:120] or "Без названия"
+    project_data = payload.get("data", {})
+    if not isinstance(project_data, dict):
+        raise HTTPException(status_code=400, detail="Поле data должно быть объектом")
+    encoded = json.dumps(project_data, ensure_ascii=False, separators=(",", ":"))
+    if len(encoded.encode("utf-8")) > 2 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Проект больше 2 МБ")
+    return name, encoded
+
+
+def project_row_to_dict(row: sqlite3.Row, include_data: bool = True) -> dict[str, Any]:
+    item = {
+        "id": int(row["id"]),
+        "created_at": int(row["created_at"]),
+        "updated_at": int(row["updated_at"]),
+        "name": row["name"],
+    }
+    if include_data:
+        item["data"] = json.loads(row["payload_json"])
+    return item
+
+
+def extract_json_object(text: str) -> dict[str, Any]:
+    cleaned = text.strip()
+    if cleaned.startswith("```"):
+        cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned, flags=re.I)
+        cleaned = re.sub(r"\s*```$", "", cleaned)
+    try:
+        value = json.loads(cleaned)
+    except json.JSONDecodeError:
+        start = cleaned.find("{")
+        end = cleaned.rfind("}")
+        if start == -1 or end <= start:
+            raise HTTPException(status_code=502, detail="AI не вернул JSON-контура")
+        try:
+            value = json.loads(cleaned[start:end + 1])
+        except json.JSONDecodeError as exc:
+            raise HTTPException(status_code=502, detail="Не удалось разобрать JSON-контура") from exc
+    if not isinstance(value, dict):
+        raise HTTPException(status_code=502, detail="Некорректная структура контура")
+    return value
+
+
+def validate_contour_points(raw_points: Any) -> list[dict[str, Any]]:
+    if not isinstance(raw_points, list) or len(raw_points) < 2:
+        raise HTTPException(status_code=502, detail="AI не сформировал минимум две точки")
+    allowed_types = {"start", "lineX", "lineZ", "arcCW", "arcCCW", "chamfer"}
+    points: list[dict[str, Any]] = []
+    for index, item in enumerate(raw_points[:300]):
+        if not isinstance(item, dict):
+            continue
+        try:
+            x = float(item.get("x"))
+            z = float(item.get("z"))
+        except (TypeError, ValueError):
+            continue
+        point_type = str(item.get("type") or ("start" if index == 0 else "lineX"))
+        if point_type not in allowed_types:
+            point_type = "lineX"
+        points.append({
+            "x": round(x, 4),
+            "z": round(z, 4),
+            "type": "start" if index == 0 else point_type,
+            "rv": str(item.get("rv") or "—")[:30],
+            "direction": str(item.get("direction") or "—")[:30],
+        })
+    if len(points) < 2:
+        raise HTTPException(status_code=502, detail="Контур содержит недостаточно корректных точек")
+    return points
+
+
+def build_contour_mock(blank_diameter: str, blank_length: str) -> dict[str, Any]:
+    try:
+        diameter = float(str(blank_diameter or 140).replace(",", "."))
+    except ValueError:
+        diameter = 140.0
+    try:
+        length = float(str(blank_length or 58).replace(",", "."))
+    except ValueError:
+        length = 58.0
+    points = [
+        {"x": diameter, "z": 0.0, "type": "start", "rv": "—", "direction": "—"},
+        {"x": 130.0, "z": -3.0, "type": "lineX", "rv": "—", "direction": "по X"},
+        {"x": 130.0, "z": -20.0, "type": "lineZ", "rv": "—", "direction": "по Z"},
+        {"x": 92.0, "z": -20.0, "type": "chamfer", "rv": "2×45°", "direction": "—"},
+        {"x": 92.0, "z": -40.0, "type": "lineZ", "rv": "—", "direction": "по Z"},
+        {"x": 70.0, "z": -40.0, "type": "lineX", "rv": "—", "direction": "по X"},
+        {"x": 70.0, "z": -min(length, 55.0), "type": "lineZ", "rv": "—", "direction": "по Z"},
+    ]
+    return {
+        "name": "AI-контур (тест)",
+        "confidence": 0.72,
+        "assumptions": ["Контур ориентировочный", "X задан в диаметрах", "Z0 расположен на правом торце"],
+        "points": points,
+    }
+
+
+def contour_with_openai(*, raw: bytes, filename: str, media_type: str, blank_diameter: str, blank_length: str, notes: str) -> dict[str, Any]:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=503, detail="OPENAI_API_KEY не настроен")
+    from openai import OpenAI
+    client = OpenAI(api_key=api_key)
+    uploaded_file_id: str | None = None
+    prompt = f"""Проанализируй технический чертёж и предложи ориентировочный наружный токарный контур X/Z для Stock Removal.
+Заготовка: диаметр {blank_diameter or 'не указан'} мм, длина {blank_length or 'не указана'} мм.
+Примечания: {notes or 'нет'}.
+X указывай в диаметрах. Z0 считать на правом торце, рабочее направление Z отрицательное.
+Возвращай ТОЛЬКО JSON без markdown:
+{{"name":"...","confidence":0.0,"assumptions":["..."],"points":[{{"x":140,"z":0,"type":"start","rv":"—","direction":"—"}},{{"x":130,"z":-3,"type":"lineX","rv":"—","direction":"по X"}}]}}
+Допустимые type: start, lineX, lineZ, arcCW, arcCCW, chamfer. Не выдумывай невидимые размеры; сомнительные места перечисли в assumptions.
+"""
+    try:
+        if media_type == "application/pdf":
+            uploaded = client.files.create(file=(filename, raw, "application/pdf"), purpose="user_data")
+            uploaded_file_id = uploaded.id
+            content: list[dict[str, Any]] = [
+                {"type": "input_text", "text": prompt},
+                {"type": "input_file", "file_id": uploaded.id},
+            ]
+        elif media_type == SLDDRW_MEDIA_TYPE:
+            context, preview = build_slddrw_context(raw, filename)
+            content = [{"type": "input_text", "text": prompt + "\n\n" + context}]
+            if preview:
+                image_raw, image_type = preview
+                content.append({"type": "input_image", "image_url": image_data_url(image_raw, image_type), "detail": "high"})
+        else:
+            image_raw, image_type = crop_image(raw, None)
+            content = [
+                {"type": "input_text", "text": prompt},
+                {"type": "input_image", "image_url": image_data_url(image_raw, image_type), "detail": "high"},
+            ]
+        response = client.responses.create(
+            model=MODEL,
+            instructions="Ты CNC-инженер. Возвращай только валидный JSON по заданной схеме.",
+            input=[{"role": "user", "content": content}],
+        )
+        value = extract_json_object(response.output_text)
+        return {
+            "name": str(value.get("name") or "AI-контур")[:120],
+            "confidence": max(0.0, min(1.0, float(value.get("confidence") or 0.0))),
+            "assumptions": [str(x)[:300] for x in value.get("assumptions", []) if isinstance(x, (str, int, float))][:20],
+            "points": validate_contour_points(value.get("points")),
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Ошибка построения AI-контура: {exc}") from exc
+    finally:
+        if uploaded_file_id and not KEEP_OPENAI_FILES:
+            try:
+                client.files.delete(uploaded_file_id)
+            except Exception:
+                pass
+
 @app.get("/")
 def index() -> FileResponse:
     return FileResponse(STATIC_DIR / "index.html")
@@ -587,6 +756,8 @@ def health() -> dict[str, Any]:
         "api_key_configured": bool(os.getenv("OPENAI_API_KEY")),
         "max_file_mb": MAX_FILE_MB,
         "supported_types": ["JPG", "PNG", "WEBP", "PDF", "SLDDRW"],
+        "version": "2.0.0-pro",
+        "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "sinumerik_export"],
     }
 
 
@@ -708,3 +879,103 @@ async def stock_removal(
         response=response_text, model=MODEL, mock=MOCK_MODE,
     )
     return {"id": analysis_id, "response": response_text, "model": MODEL, "mock": MOCK_MODE}
+
+
+@app.post("/api/slddrw-preview")
+async def slddrw_preview(file: UploadFile = File(...)) -> Response:
+    if Path(file.filename or "").suffix.lower() != ".slddrw":
+        raise HTTPException(status_code=415, detail="Нужен файл SLDDRW")
+    raw = await file.read()
+    if not raw or len(raw) > MAX_FILE_MB * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Некорректный размер файла")
+    preview = extract_slddrw_preview(raw)
+    if not preview:
+        raise HTTPException(status_code=422, detail="Встроенное превью не найдено")
+    image_raw, image_type = preview
+    return Response(content=image_raw, media_type=image_type, headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/projects")
+def list_projects(limit: int = 100) -> list[dict[str, Any]]:
+    limit = max(1, min(limit, 300))
+    with db_conn() as db:
+        rows = db.execute("SELECT * FROM projects ORDER BY updated_at DESC LIMIT ?", (limit,)).fetchall()
+    return [project_row_to_dict(row, include_data=False) for row in rows]
+
+
+@app.post("/api/projects")
+def create_project(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    name, encoded = sanitize_project_payload(payload)
+    now = int(time.time())
+    with db_conn() as db:
+        cursor = db.execute(
+            "INSERT INTO projects (created_at, updated_at, name, payload_json) VALUES (?, ?, ?, ?)",
+            (now, now, name, encoded),
+        )
+        db.commit()
+        row = db.execute("SELECT * FROM projects WHERE id = ?", (cursor.lastrowid,)).fetchone()
+    return project_row_to_dict(row)
+
+
+@app.get("/api/projects/{project_id}")
+def get_project(project_id: int) -> dict[str, Any]:
+    with db_conn() as db:
+        row = db.execute("SELECT * FROM projects WHERE id = ?", (project_id,)).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Проект не найден")
+    return project_row_to_dict(row)
+
+
+@app.put("/api/projects/{project_id}")
+def update_project(project_id: int, payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    name, encoded = sanitize_project_payload(payload)
+    now = int(time.time())
+    with db_conn() as db:
+        cursor = db.execute(
+            "UPDATE projects SET updated_at = ?, name = ?, payload_json = ? WHERE id = ?",
+            (now, name, encoded, project_id),
+        )
+        db.commit()
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Проект не найден")
+        row = db.execute("SELECT * FROM projects WHERE id = ?", (project_id,)).fetchone()
+    return project_row_to_dict(row)
+
+
+@app.delete("/api/projects/{project_id}")
+def delete_project(project_id: int) -> dict[str, bool]:
+    with db_conn() as db:
+        cursor = db.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+        db.commit()
+    if cursor.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Проект не найден")
+    return {"ok": True}
+
+
+@app.post("/api/contour-ai")
+async def generate_contour_ai(
+    file: UploadFile = File(...),
+    blank_diameter: str | None = Form(None),
+    blank_length: str | None = Form(None),
+    notes: str | None = Form(None),
+) -> dict[str, Any]:
+    media_type = detect_media_type(file)
+    if media_type not in STANDARD_ALLOWED_TYPES | {SLDDRW_MEDIA_TYPE}:
+        raise HTTPException(status_code=415, detail="Поддерживаются JPG, PNG, WEBP, PDF и SLDDRW")
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(status_code=400, detail="Файл пуст")
+    if len(raw) > MAX_FILE_MB * 1024 * 1024:
+        raise HTTPException(status_code=413, detail=f"Файл больше {MAX_FILE_MB} МБ")
+    if MOCK_MODE:
+        result = build_contour_mock(blank_diameter or "", blank_length or "")
+    else:
+        result = contour_with_openai(
+            raw=raw,
+            filename=file.filename or "file",
+            media_type=media_type,
+            blank_diameter=blank_diameter or "",
+            blank_length=blank_length or "",
+            notes=notes or "",
+        )
+    return {**result, "model": MODEL, "mock": MOCK_MODE}

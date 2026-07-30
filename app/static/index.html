@@ -3,49 +3,34 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Personal AI Client</title>
+  <title>Personal AI Client PRO</title>
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
-  <div class="background-orb orb-a"></div>
-  <div class="background-orb orb-b"></div>
-  <div class="background-orb orb-c"></div>
-
+  <div class="background-orb orb-a"></div><div class="background-orb orb-b"></div><div class="background-orb orb-c"></div>
   <div class="app-shell">
     <aside class="sidebar glass">
       <div class="brand">
-        <div class="rozfood-logo" aria-label="ROZFOOD">ROZFOOD</div>
-        <div class="brand-copy">
-          <strong>Personal AI Client</strong>
-          <span>Фото · PDF · SLDDRW · Stock Removal</span>
-        </div>
+        <div class="rozfood-logo">ROZFOOD</div>
+        <div class="brand-copy"><strong>Personal AI Client <span class="pro-badge">PRO</span></strong><span>SLDDRW · Stock Removal · SINUMERIK</span></div>
       </div>
-
       <nav>
         <button class="nav-item active" data-view="analysis">Новый анализ</button>
-        <button class="nav-item" data-view="stock">Stock Removal</button>
+        <button class="nav-item" data-view="stock">Stock Removal PRO</button>
+        <button class="nav-item" data-view="projects">Проекты</button>
         <button class="nav-item" data-view="history">История</button>
         <button class="nav-item" data-view="settings">Настройки</button>
       </nav>
-
-      <div class="status-card glass-soft">
-        <span class="status-dot" id="statusDot"></span>
-        <div>
-          <strong id="statusTitle">Проверка...</strong>
-          <small id="statusText">Соединение с сервером</small>
-        </div>
-      </div>
-
-      <div class="sidebar-footer">Создатель: Єрошов Іван<br>Версия 1.2 Liquid Glass</div>
+      <div class="status-card glass-soft"><span class="status-dot" id="statusDot"></span><div><strong id="statusTitle">Проверка...</strong><small id="statusText">Соединение с сервером</small></div></div>
+      <div class="sidebar-footer">Создатель: Єрошов Іван<br>Версия 2.0 PRO</div>
     </aside>
 
     <main>
       <header class="topbar">
-        <div>
-          <h1 id="pageTitle">Новый анализ</h1>
-          <p id="pageSubtitle">Загрузите изображение, PDF или SLDDRW и задайте вопрос</p>
-        </div>
+        <div><h1 id="pageTitle">Новый анализ</h1><p id="pageSubtitle">Загрузите изображение, PDF или SLDDRW и задайте вопрос</p></div>
         <div class="topbar-actions">
+          <div class="project-pill glass-soft"><span>Проект</span><strong id="activeProjectName">Локальный черновик</strong></div>
+          <button id="saveProjectBtn" class="ghost-button glass-soft">Сохранить проект</button>
           <div class="file-indicator glass-soft" id="currentFilePill">Файл не выбран</div>
           <button id="newAnalysisBtn" class="ghost-button glass-soft">Очистить</button>
         </div>
@@ -54,124 +39,94 @@
       <section id="analysisView" class="view active">
         <div class="workspace-grid">
           <section class="panel media-panel glass">
-            <div class="panel-heading">
-              <div><span class="eyebrow">01 · Файл</span><h2>Область анализа</h2></div>
-              <span id="fileBadge" class="badge">Нет файла</span>
-            </div>
-
-            <label id="dropZone" class="drop-zone glass-soft">
-              <input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp,application/pdf,.slddrw,application/octet-stream" hidden />
-              <div class="drop-icon">⇪</div>
-              <strong>Перетащите файл сюда</strong>
-              <span>или нажмите для выбора · JPG, PNG, WEBP, PDF, SLDDRW</span>
-            </label>
-
-            <div id="previewArea" class="preview-area hidden">
-              <canvas id="imageCanvas"></canvas>
-              <iframe id="pdfPreview" title="Предпросмотр PDF"></iframe>
-              <div id="selectionHint" class="selection-hint">Проведите мышью или пальцем, чтобы выделить область</div>
-            </div>
-
-            <div class="media-toolbar">
-              <button id="selectAllBtn" class="small-button glass-soft" disabled>Выделить всё</button>
-              <button id="clearSelectionBtn" class="small-button glass-soft" disabled>Сбросить рамку</button>
-              <span id="selectionInfo">Область не выбрана</span>
-            </div>
+            <div class="panel-heading"><div><span class="eyebrow">01 · Файл</span><h2>Область анализа</h2></div><span id="fileBadge" class="badge">Нет файла</span></div>
+            <label id="dropZone" class="drop-zone glass-soft"><input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp,application/pdf,.slddrw,application/octet-stream" hidden /><div class="drop-icon">⇪</div><strong>Перетащите файл сюда</strong><span>JPG, PNG, WEBP, PDF, SLDDRW</span></label>
+            <div id="previewArea" class="preview-area hidden"><canvas id="imageCanvas"></canvas><iframe id="pdfPreview" title="Предпросмотр PDF"></iframe><div id="selectionHint" class="selection-hint">Проведите мышью, чтобы выделить область</div></div>
+            <div class="media-toolbar"><button id="selectAllBtn" class="small-button glass-soft" disabled>Выделить всё</button><button id="clearSelectionBtn" class="small-button glass-soft" disabled>Сбросить рамку</button><span id="selectionInfo">Область не выбрана</span></div>
           </section>
-
           <section class="panel prompt-panel glass">
             <div class="panel-heading"><div><span class="eyebrow">02 · Задание</span><h2>Что нужно сделать</h2></div></div>
-            <div class="quick-prompts">
-              <button data-prompt="Подробно опиши, что видно на изображении. Отдельно укажи важные детали и неуверенные места.">Описание</button>
-              <button data-prompt="Найди возможные дефекты, повреждения или отклонения. Укажи степень уверенности и практические действия.">Дефекты</button>
-              <button data-prompt="Извлеки весь читаемый текст и структурируй его. Неразборчивые фрагменты пометь отдельно.">Текст</button>
-              <button data-prompt="Проанализируй технический документ или чертёж. Выдели размеры, допуски, материалы и спорные места.">Тех-анализ</button>
-            </div>
-            <textarea id="promptInput" placeholder="Например: проанализируй выделенный участок, найди дефекты и объясни, что делать дальше..."></textarea>
-            <button id="analyzeBtn" class="primary-button">Запустить анализ</button>
-            <div id="progress" class="progress hidden"><span></span><p>Файл обрабатывается и отправляется модели...</p></div>
+            <div class="quick-prompts"><button data-prompt="Подробно опиши изображение и важные детали.">Описание</button><button data-prompt="Найди дефекты и предложи практические действия.">Дефекты</button><button data-prompt="Извлеки читаемый текст и размеры.">Текст и размеры</button><button data-prompt="Проанализируй технический чертёж: размеры, допуски, материал, спорные места.">Тех-анализ</button></div>
+            <textarea id="promptInput" placeholder="Что нужно проверить или рассчитать?"></textarea>
+            <button id="analyzeBtn" class="primary-button" disabled>Запустить анализ</button>
+            <div id="progress" class="progress hidden"><span></span><p>Файл обрабатывается...</p></div>
           </section>
         </div>
-
-        <section class="panel result-panel glass">
-          <div class="panel-heading"><div><span class="eyebrow">03 · Результат</span><h2>Ответ ассистента</h2></div><div id="resultMeta" class="result-meta"></div></div>
-          <div id="resultEmpty" class="result-empty"><div>✦</div><strong>Здесь появится результат</strong><span>Он сохранится в истории автоматически</span></div>
-          <article id="resultContent" class="result-content hidden"></article>
-        </section>
+        <section class="panel result-panel glass"><div class="panel-heading"><div><span class="eyebrow">03 · Результат</span><h2>Ответ ассистента</h2></div><div id="resultMeta" class="result-meta"></div></div><div id="resultEmpty" class="result-empty"><div>✦</div><strong>Здесь появится результат</strong><span>Он сохранится в истории автоматически</span></div><article id="resultContent" class="result-content hidden"></article></section>
       </section>
 
       <section id="stockView" class="view">
         <div class="workspace-grid stock-grid">
           <section class="panel glass stock-form-panel">
-            <div class="panel-heading"><div><span class="eyebrow">МОДУЛЬ</span><h2>Stock Removal</h2></div><span class="badge" id="stockFileBadge">Нет файла</span></div>
-            <p class="helper-text">Использует текущий загруженный файл. Подходит для JPG, PDF и SLDDRW. Для SLDDRW клиент вытаскивает превью и текстовые подсказки автоматически.</p>
-
-            <div class="segmented glass-soft">
-              <button class="segmented-item active" data-mode="lathe" id="latheModeBtn">Токарный X/Z</button>
-              <button class="segmented-item" data-mode="mill" id="millModeBtn">Фрезерный</button>
-            </div>
-
-            <div id="latheFields" class="form-grid">
-              <label><span>Диаметр заготовки, мм</span><input id="blankDiameter" type="text" placeholder="например 140" /></label>
-              <label><span>Длина/толщина заготовки, мм</span><input id="blankLength" type="text" placeholder="например 58" /></label>
-            </div>
-
-            <div id="millFields" class="form-grid hidden">
-              <label><span>Ширина заготовки, мм</span><input id="blankWidth" type="text" placeholder="например 180" /></label>
-              <label><span>Высота заготовки, мм</span><input id="blankHeight" type="text" placeholder="например 120" /></label>
-              <label><span>Толщина / длина, мм</span><input id="blankLengthMill" type="text" placeholder="например 12" /></label>
-            </div>
-
-            <div class="form-grid form-grid-wide">
-              <label><span>Ноль детали / база</span><input id="zeroReference" type="text" placeholder="например Z0 по правому торцу, X0 по оси" /></label>
-              <label><span>Первая сторона обработки</span><input id="firstSide" type="text" placeholder="например торец А" /></label>
-              <label class="full"><span>Примечания</span><textarea id="stockNotes" placeholder="Например: отверстия уже пробиты лазером, обработка только наружного контура и ступеней"></textarea></label>
-            </div>
-
-            <button id="stockBtn" class="primary-button">Сформировать Stock Removal</button>
-            <div id="stockProgress" class="progress hidden"><span></span><p>Собираю размеры, контур и план съёма материала...</p></div>
+            <div class="panel-heading"><div><span class="eyebrow">ПАРАМЕТРЫ</span><h2>Stock Removal</h2></div><span class="badge" id="stockFileBadge">Нет файла</span></div>
+            <div class="segmented glass-soft"><button class="segmented-item active" data-mode="lathe">Токарный X/Z</button><button class="segmented-item" data-mode="mill">Фрезерный</button></div>
+            <div id="latheFields" class="form-grid"><label><span>Диаметр заготовки, мм</span><input id="blankDiameter" inputmode="decimal" placeholder="140" /></label><label><span>Длина заготовки, мм</span><input id="blankLength" inputmode="decimal" placeholder="58" /></label></div>
+            <div id="millFields" class="form-grid hidden"><label><span>Ширина, мм</span><input id="blankWidth" placeholder="180" /></label><label><span>Высота, мм</span><input id="blankHeight" placeholder="120" /></label><label><span>Толщина, мм</span><input id="blankLengthMill" placeholder="12" /></label></div>
+            <div class="form-grid form-grid-wide"><label><span>Ноль детали / база</span><input id="zeroReference" value="Z0 по правому торцу, X0 по оси" /></label><label><span>Первая сторона</span><input id="firstSide" placeholder="Торец А" /></label><label class="full"><span>Примечания</span><textarea id="stockNotes" placeholder="Отверстия уже есть, обработка наружного контура..."></textarea></label></div>
+            <div class="button-row"><button id="stockBtn" class="primary-button" disabled>Сформировать план</button><button id="aiContourBtn" class="secondary-button" disabled>AI-контур X/Z</button></div>
+            <div id="stockProgress" class="progress hidden"><span></span><p>Строю план и контур...</p></div>
           </section>
-
           <section class="panel glass stock-side-panel">
-            <div class="panel-heading"><div><span class="eyebrow">ПАМЯТКА</span><h2>Что получится</h2></div></div>
-            <ul class="info-list">
-              <li>извлечённые размеры детали;</li>
-              <li>список недостающих данных;</li>
-              <li>предлагаемый порядок переходов;</li>
-              <li>таблица X/Z для ориентировочного контура;</li>
-              <li>блок «Важно проверить» перед вводом в стойку.</li>
-            </ul>
-            <div class="glass-soft mini-card">
-              <strong>Важно</strong>
-              <p>Модуль даёт ориентировочный результат. Финальный контур и технологию всё равно нужно сверить по исходному чертежу и фактической заготовке.</p>
-            </div>
+            <div class="panel-heading"><div><span class="eyebrow">КОНТРОЛЬ</span><h2>Перед обработкой</h2></div></div>
+            <div class="check-grid"><label><input id="confirmDrawing" type="checkbox" /> Чертёж проверен</label><label><input id="confirmBlank" type="checkbox" /> Заготовка измерена</label><label><input id="confirmZero" type="checkbox" /> Z0 подтверждён</label><label><input id="confirmTool" type="checkbox" /> Инструмент проверен</label></div>
+            <div class="glass-soft mini-card"><strong>PRO-защита</strong><p>Экспорт в SINUMERIK помечается предупреждением, пока валидация контура не пройдена.</p></div>
           </section>
         </div>
 
-        <section class="panel result-panel glass">
-          <div class="panel-heading"><div><span class="eyebrow">РЕЗУЛЬТАТ</span><h2>Stock Removal план</h2></div><div id="stockResultMeta" class="result-meta"></div></div>
-          <div id="stockResultEmpty" class="result-empty"><div>◎</div><strong>План ещё не сформирован</strong><span>Укажи заготовку и запусти модуль</span></div>
-          <article id="stockResultContent" class="result-content hidden"></article>
+        <section class="panel result-panel glass"><div class="panel-heading"><div><span class="eyebrow">ПЛАН</span><h2>Результат Stock Removal</h2></div><div id="stockResultMeta" class="result-meta"></div></div><div id="stockResultEmpty" class="result-empty"><div>◎</div><strong>План ещё не сформирован</strong></div><article id="stockResultContent" class="result-content hidden"></article></section>
+
+        <section class="panel contour-panel glass">
+          <div class="panel-heading"><div><span class="eyebrow">PRO EDITOR</span><h2>Редактор контура X/Z</h2></div><div class="editor-state"><span id="autosaveState">Автосохранение включено</span><span class="badge" id="validationBadge">Не проверен</span></div></div>
+
+          <div class="pro-toolbar glass-soft">
+            <div class="toolbar-group"><button id="undoBtn" title="Ctrl/Cmd+Z">↶</button><button id="redoBtn" title="Ctrl/Cmd+Shift+Z">↷</button></div>
+            <div class="toolbar-group"><button id="addPointBtn">＋ Точка</button><button id="duplicatePointBtn">Дублировать</button><button id="editPointBtn">Редактировать</button><button id="deletePointBtn" class="danger-lite">Удалить</button></div>
+            <div class="toolbar-group"><button id="reverseContourBtn">Развернуть</button><button id="closeContourBtn">Замкнуть</button><button id="validateContourBtn">Проверить</button></div>
+            <div class="toolbar-group offset-group"><input id="offsetXInput" placeholder="ΔX" inputmode="decimal" /><input id="offsetZInput" placeholder="ΔZ" inputmode="decimal" /><button id="applyOffsetBtn">Сместить</button></div>
+            <div class="toolbar-group"><button id="importBtn">Импорт</button><button id="exportJsonBtn">JSON</button><button id="exportCsvBtn">CSV</button><button id="exportSinumerikBtn" class="accent-button">SINUMERIK</button><input id="importContourInput" type="file" accept="application/json,text/csv" hidden /></div>
+          </div>
+
+          <div class="editor-settings glass-soft">
+            <label>Представление X<select id="xModeSelect"><option value="diameter">Диаметр</option><option value="radius">Радиус</option></select></label>
+            <label>Обработка<select id="processSelect"><option value="outer">Наружная</option><option value="inner">Внутренняя</option></select></label>
+            <label>Z0<select id="z0Select"><option value="right">Справа</option><option value="left">Слева</option></select></label>
+            <label class="inline-check"><input id="snapToggle" type="checkbox" checked /> Привязка</label>
+            <label>Шаг<input id="snapStepInput" value="0.1" inputmode="decimal" /></label>
+            <label class="inline-check"><input id="blankOverlayToggle" type="checkbox" checked /> Заготовка</label>
+            <label class="inline-check"><input id="labelsToggle" type="checkbox" checked /> Номера</label>
+            <label class="inline-check"><input id="dimensionsToggle" type="checkbox" /> Размеры</label>
+          </div>
+
+          <div class="contour-top-grid">
+            <section class="contour-card glass-soft">
+              <div class="stat-row" id="contourStats"></div>
+              <div class="table-wrap"><table class="contour-table"><thead><tr><th>№</th><th>X</th><th>Z</th><th>Тип элемента</th><th>R / угол</th><th>Направление</th></tr></thead><tbody id="contourTableBody"></tbody></table></div>
+              <div class="legend-inline" id="legendInline"></div>
+            </section>
+            <section class="contour-card glass-soft graph-card">
+              <div class="graph-topbar"><div class="graph-actions"><button id="zoomInBtn">Масштаб +</button><button id="zoomOutBtn">Масштаб −</button><button id="fitGraphBtn">Вписать</button></div><div class="toggle-bar"><label><input id="toggleGrid" type="checkbox" checked /> Сетка</label><label><input id="toggleAxes" type="checkbox" checked /> Оси</label><label><input id="toggleLegend" type="checkbox" checked /> Легенда</label></div></div>
+              <div class="graph-wrap"><canvas id="contourCanvas" width="1000" height="560"></canvas><div class="canvas-tip">Перетаскивай точки мышкой · колесо меняет масштаб</div></div>
+              <div class="graph-info-grid"><div class="info-box"><div><span>Начальная:</span> <strong id="startPointInfo">—</strong></div><div><span>Конечная:</span> <strong id="endPointInfo">—</strong></div></div><div class="info-box"><div><span>Контур:</span> <strong id="contourTypeInfo">Открытый</strong></div><div><span>Длина:</span> <strong id="contourLengthInfo">—</strong></div></div></div>
+            </section>
+          </div>
+
+          <div class="contour-bottom-grid">
+            <section class="contour-card glass-soft sinumerik-card"><div class="mini-heading">SINUMERIK 828D → Stock Removal → New Contour</div><div class="sinumerik-layout"><div class="sinumerik-screen"><div class="screen-head">Stock removal</div><div class="screen-item active">New contour</div><div class="screen-item"><span id="sinType">Straight</span></div><div class="screen-item">X <span id="sinX">0.000</span></div><div class="screen-item">Z <span id="sinZ">0.000</span></div><div class="screen-buttons"><button>Accept</button><button>Cancel</button></div></div><div class="instruction-box"><div class="step-badge" id="stepBadge">Шаг 1</div><h3 id="stepTitle">Начальная точка</h3><ol id="stepInstructions" class="step-list"></ol></div></div></section>
+            <section class="contour-card glass-soft"><div class="step-nav"><button id="prevStepBtn">← Назад</button><strong>Текущий элемент</strong><button id="nextStepBtn">Далее →</button></div><div class="graph-wrap mini-graph"><canvas id="miniContourCanvas" width="620" height="300"></canvas></div><div class="current-step-card"><div><span>Тип:</span> <strong id="currentElementType">—</strong></div><div><span>Длина:</span> <strong id="currentElementLength">—</strong></div><div><span>Направление:</span> <strong id="currentElementDirection">—</strong></div></div></section>
+            <section class="contour-card glass-soft diagnostics-card"><div class="mini-heading">Диагностика контура</div><div id="validationList" class="validation-list"><div class="validation-empty">Нажми «Проверить»</div></div><div class="legend-stack" id="legendStack"></div></section>
+          </div>
         </section>
       </section>
 
-      <section id="historyView" class="view">
-        <div class="panel history-panel glass">
-          <div class="panel-heading"><div><span class="eyebrow">Журнал</span><h2>История анализов</h2></div><button id="refreshHistoryBtn" class="small-button glass-soft">Обновить</button></div>
-          <div id="historyList" class="history-list"></div>
-        </div>
-      </section>
+      <section id="projectsView" class="view"><div class="panel glass"><div class="panel-heading"><div><span class="eyebrow">RAILWAY VOLUME</span><h2>Проекты</h2></div><button id="newProjectBtn" class="small-button">Новый проект</button></div><div class="project-create-row glass-soft"><input id="projectNameInput" placeholder="Название проекта" /><button id="createProjectBtn" class="secondary-button">Создать и сохранить</button></div><div id="projectsList" class="projects-list"></div></div></section>
 
-      <section id="settingsView" class="view">
-        <div class="settings-grid">
-          <div class="panel setting-card glass"><span class="eyebrow">Модель</span><h2 id="modelName">—</h2><p>Меняется переменной <code>OPENAI_MODEL</code> на сервере.</p></div>
-          <div class="panel setting-card glass"><span class="eyebrow">Режим</span><h2 id="modeName">—</h2><p>Тестовый режим не расходует API и возвращает демонстрационный ответ.</p></div>
-          <div class="panel setting-card glass"><span class="eyebrow">Форматы</span><h2 id="fileLimit">—</h2><p id="supportedFormatsText">Поддерживаются: JPG, PNG, WEBP, PDF, SLDDRW.</p></div>
-        </div>
-      </section>
+      <section id="historyView" class="view"><div class="panel history-panel glass"><div class="panel-heading"><div><span class="eyebrow">ЖУРНАЛ</span><h2>История анализов</h2></div><button id="refreshHistoryBtn" class="small-button">Обновить</button></div><div id="historyList" class="history-list"></div></div></section>
+
+      <section id="settingsView" class="view"><div class="settings-grid"><div class="panel setting-card glass"><span class="eyebrow">Модель</span><h2 id="modelName">—</h2><p>OpenAI-модель сервера.</p></div><div class="panel setting-card glass"><span class="eyebrow">Режим</span><h2 id="modeName">—</h2><p>LIVE или MOCK.</p></div><div class="panel setting-card glass"><span class="eyebrow">Версия</span><h2 id="appVersion">—</h2><p id="supportedFormatsText">Форматы.</p></div><div class="panel setting-card glass"><span class="eyebrow">Горячие клавиши</span><p><code>Ctrl/Cmd+Z</code> отмена<br><code>Ctrl/Cmd+Shift+Z</code> повтор<br><code>Delete</code> удалить точку<br><code>A</code> добавить точку<br><code>S</code> сохранить проект</p></div></div></section>
     </main>
   </div>
 
+  <div id="pointModal" class="modal hidden"><div class="modal-backdrop" data-close-modal></div><div class="modal-card glass"><div class="modal-head"><h2 id="pointModalTitle">Точка контура</h2><button data-close-modal>×</button></div><div class="modal-grid"><label>X, мм<input id="pointXInput" inputmode="decimal" /></label><label>Z, мм<input id="pointZInput" inputmode="decimal" /></label><label>Тип<select id="pointTypeSelect"><option value="lineX">Прямая по X</option><option value="lineZ">Прямая по Z</option><option value="arcCW">Дуга CW</option><option value="arcCCW">Дуга CCW</option><option value="chamfer">Фаска</option></select></label><label>R / угол<input id="pointRvInput" placeholder="R5 или 2×45°" /></label><label>Направление<input id="pointDirectionInput" placeholder="по X / по Z / CW" /></label><label>Вставить после<select id="pointInsertSelect"></select></label></div><div class="modal-actions"><button data-close-modal>Отмена</button><button id="savePointModalBtn" class="primary-button">Сохранить</button></div></div></div>
   <div id="toast" class="toast"></div>
   <script src="/static/app.js"></script>
 </body>
