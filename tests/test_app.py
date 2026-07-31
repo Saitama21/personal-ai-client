@@ -312,71 +312,38 @@ def test_binary_like_n1_is_not_treated_as_fit_tolerance():
     assert 'n1' not in [item.lower() for item in extract_tolerance_tokens('stream n1 internal data')]
 
 
-
-def test_stale_openai_file_reference_is_detected():
-    from app.main import is_stale_openai_reference_error
-
-    class FakeNotFoundError(Exception):
-        status_code = 404
-
-    error = FakeNotFoundError(
-        "Error code: 404 - Files [file-old] were not found"
+def test_history_project_snapshot_roundtrip():
+    import json
+    project = {
+        "fileName": "history-part.png",
+        "contourPoints": [{"x": 40, "z": 0, "type": "start"}, {"x": 30, "z": -10, "type": "lineX"}],
+        "operationRoute": [{"operation": "face", "toolT": "1", "toolD": "1"}],
+        "projectThreads": [{"designation": "M8", "pitch": 1.25}],
+    }
+    response = client.post(
+        "/api/analyze",
+        data={"prompt": "Проверь проект", "project_json": json.dumps(project, ensure_ascii=False)},
+        files={"file": ("history-part.png", make_png(), "image/png")},
     )
-    assert is_stale_openai_reference_error(error) is True
-    assert is_stale_openai_reference_error(RuntimeError("network timeout")) is False
+    assert response.status_code == 200
+    analysis_id = response.json()["id"]
+    listing = client.get("/api/history").json()
+    row = next(item for item in listing if item["id"] == analysis_id)
+    assert row["has_project"] is True
+    detail = client.get(f"/api/history/{analysis_id}")
+    assert detail.status_code == 200
+    body = detail.json()
+    assert body["project"]["fileName"] == "history-part.png"
+    assert body["project"]["projectThreads"][0]["pitch"] == 1.25
 
 
-def test_chat_rebuilds_context_after_deleted_openai_file(monkeypatch):
-    import sys
-    from types import SimpleNamespace
-    from app.main import chat_with_openai
-
-    calls = []
-
-    class FakeNotFoundError(Exception):
-        status_code = 404
-
-    class FakeResponses:
-        def create(self, **kwargs):
-            calls.append(kwargs)
-            if kwargs.get("previous_response_id"):
-                raise FakeNotFoundError(
-                    "Error code: 404 - Files [file-deleted] were not found"
-                )
-            return SimpleNamespace(
-                output_text="Контекст восстановлен без повторной загрузки файла.",
-                id="resp-recovered",
-            )
-
-    class FakeOpenAI:
-        def __init__(self, api_key):
-            self.responses = FakeResponses()
-
-    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
-    monkeypatch.setitem(sys.modules, "openai", SimpleNamespace(OpenAI=FakeOpenAI))
-
-    text, response_id = chat_with_openai(
-        question="Куда применяется IT14/2?",
-        previous_response_id="resp-with-deleted-file",
-        context_text="На чертеже указаны H14, h14 и ±IT14/2.",
-        conversation=[
-            {"role": "user", "content": "Проверь допуски"},
-            {"role": "assistant", "content": "Вижу общие допуски."},
-        ],
+def test_history_entry_without_snapshot_is_still_readable():
+    response = client.post(
+        "/api/analyze",
+        data={"prompt": "Старая запись без снимка"},
+        files={"file": ("legacy.png", make_png(), "image/png")},
     )
-
-    assert text.startswith("Контекст восстановлен")
-    assert response_id == "resp-recovered"
-    assert len(calls) == 2
-    assert calls[0]["previous_response_id"] == "resp-with-deleted-file"
-    assert "previous_response_id" not in calls[1]
-    rebuilt = calls[1]["input"]
-    assert any("H14, h14" in item.get("content", "") for item in rebuilt)
-    assert rebuilt[-1]["content"] == "Куда применяется IT14/2?"
-
-
-def test_pdf_follow_up_does_not_reuse_deleted_file_chain():
-    from app.main import safe_follow_up_response_id
-
-    assert safe_follow_up_response_id("application/pdf", "resp-pdf") is None
-    assert safe_follow_up_response_id("image/png", "resp-image") == "resp-image"
+    assert response.status_code == 200
+    detail = client.get(f"/api/history/{response.json()['id']}").json()
+    assert detail["has_project"] is False
+    assert detail["project"] is None

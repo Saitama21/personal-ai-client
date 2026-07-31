@@ -35,7 +35,7 @@
         <button class="nav-item" data-view="settings"><span class="nav-icon" aria-hidden="true">⚙</span><span>Настройки</span></button>
       </nav>
       <div class="status-card glass-soft"><span class="status-dot" id="statusDot"></span><div><strong id="statusTitle">Проверка...</strong><small id="statusText">Соединение с сервером</small></div></div>
-      <div class="sidebar-footer">Создатель: Єрошов Іван<br>Версия 2.3.1 Drawing Intelligence</div>
+      <div class="sidebar-footer">Создатель: Єрошов Іван<br>Версия 2.3.1 UX + Multi-Operation</div>
     </aside>
 
     <main>
@@ -163,7 +163,7 @@
               <div class="mini-heading">1. Выбор инструмента и операции</div>
               <div class="form-grid shopturn-form-grid">
                 <label><span>Профиль станка</span><select id="machineProfileSelect"><option value="tengyue_ck52pty">Tengyue CK52PT-Y · SINUMERIK 828D</option><option value="custom">Другой станок / ручной профиль</option></select></label>
-                <label><span>Операция ShopTurn</span><select id="shopOperationSelect"><option value="">Выберите операцию</option>
+                <label><span>Текущая операция для настройки</span><select id="shopOperationSelect"><option value="">Выберите операцию</option>
                   <option value="face">Face · Торцовка</option>
                   <option value="od_turn">OD Turning · Наружное точение</option>
                   <option value="contour">Stock Removal · Контур X/Z</option>
@@ -175,6 +175,20 @@
                   <option value="drilling">Drilling · Сверление</option>
                   <option value="milling">Driven tool · Приводной инструмент</option>
                 </select></label>
+                <div class="operation-multi-picker full" id="operationMultiPicker">
+                  <div class="operation-picker-head">
+                    <div><span class="field-label">Несколько операций для маршрута</span><strong id="selectedOperationCount">Не выбраны</strong></div>
+                    <button id="operationPickerToggle" type="button" class="small-button" aria-expanded="false">Выбрать операции ▾</button>
+                  </div>
+                  <div id="operationPickerMenu" class="operation-picker-menu hidden">
+                    <div id="operationPickerOptions" class="operation-picker-options"></div>
+                    <div class="operation-picker-actions">
+                      <button id="typicalRouteBtn" type="button" class="small-button">Типовой маршрут</button>
+                      <button id="clearOperationSelectionBtn" type="button" class="small-button">Сбросить выбор</button>
+                      <button id="addSelectedOperationsBtn" type="button" class="secondary-button">Добавить выбранные</button>
+                    </div>
+                  </div>
+                </div>
                 <label class="full"><span>Готовый инструмент / пресет</span><select id="toolPresetSelect"></select></label>
                 <label><span>T · позиция револьвера</span><input id="toolTInput" value="1" inputmode="numeric" /></label>
                 <label><span>D · корректор инструмента</span><input id="toolDInput" value="1" inputmode="numeric" /></label>

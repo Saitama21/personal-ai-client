@@ -1237,3 +1237,90 @@ html[data-theme="dark"] .primary-button:disabled {
   .route-actions button { width: 100%; }
   .chamfer-canvas-wrap canvas { min-height: 180px; }
 }
+
+/* PRO 2.3.1 — history restore, multi-operation picker and mobile UX */
+.badge.badge-missing {
+  color: #ff3b4d;
+  border-color: color-mix(in srgb, #ff3148 72%, var(--line));
+  background: color-mix(in srgb, #ff3148 14%, var(--button-bg));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 38%, transparent), 0 0 0 1px color-mix(in srgb, #ff3148 12%, transparent);
+  font-weight: 800;
+}
+html[data-theme="dark"] .badge.badge-missing { color: #ff7b87; background: rgba(150,20,38,.23); }
+.restored-file::after { content: ' · из истории'; color: var(--accent); font-size: 10px; }
+
+.operation-multi-picker {
+  position: relative;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--glass-soft) 76%, transparent);
+}
+.operation-picker-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.operation-picker-head > div { min-width: 0; display: grid; gap: 4px; }
+.operation-picker-head .field-label { color: var(--muted); font-size: 12px; }
+.operation-picker-head strong { color: var(--text-strong); }
+.operation-picker-menu { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.operation-picker-options { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+.operation-option {
+  min-width: 0; display: grid; grid-template-columns: 24px minmax(0,1fr); align-items: center; gap: 9px;
+  padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--button-bg); cursor: pointer;
+}
+.operation-option.selected { border-color: color-mix(in srgb, var(--accent) 58%, var(--line)); background: color-mix(in srgb, var(--accent) 12%, var(--button-bg)); }
+.operation-option input { width: 19px; height: 19px; accent-color: var(--accent); }
+.operation-option span { min-width: 0; display: grid; gap: 3px; }
+.operation-option strong { overflow-wrap: anywhere; color: var(--text); }
+.operation-option small { color: var(--muted); overflow-wrap: anywhere; }
+.operation-picker-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+
+.history-list { min-width: 0; }
+.history-item {
+  min-width: 0; grid-template-columns: minmax(0,1fr) auto; align-items: center;
+  background: color-mix(in srgb, var(--glass-soft) 80%, transparent); border-color: var(--line);
+}
+.history-copy { min-width: 0; overflow: hidden; }
+.history-title-row { min-width: 0; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.history-title-row h3 { min-width: 0; max-width: 100%; margin: 0; overflow-wrap: anywhere; word-break: break-word; }
+.history-item p {
+  max-width: 100%; margin-top: 6px; color: var(--muted-strong); white-space: normal;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere;
+}
+.history-item small { display: block; margin-top: 8px; color: var(--muted); }
+.history-tag { padding: 4px 7px; border-radius: 999px; border: 1px solid var(--line); background: var(--button-bg); color: var(--muted-strong); font-size: 9px; font-weight: 800; }
+.history-tag.project-tag { color: var(--accent); border-color: color-mix(in srgb,var(--accent) 35%,var(--line)); }
+.history-actions { display: flex; align-items: center; justify-content: flex-end; gap: 7px; flex-wrap: wrap; }
+.history-actions button { width: auto; white-space: nowrap; }
+.history-actions .danger-lite { min-width: 42px; }
+
+@media (max-width: 700px) {
+  body { padding-bottom: calc(clamp(72px, 19vw, 86px) + var(--safe-bottom)); }
+  .sidebar { left: max(5px,var(--safe-left)); right: max(5px,var(--safe-right)); bottom: max(5px,var(--safe-bottom)); padding: 4px; border-radius: 22px; }
+  .sidebar nav { gap: 1px; }
+  .nav-item {
+    min-height: clamp(49px, 14vw, 57px); grid-template-rows: clamp(21px,6vw,25px) auto; gap: 1px;
+    padding: 4px 1px; border-radius: 15px; font-size: clamp(7.4px,2.45vw,9.2px); line-height: 1.05; letter-spacing: -.01em;
+  }
+  .nav-icon { width: clamp(22px,6.4vw,26px); height: clamp(22px,6.4vw,26px); border-radius: 8px; font-size: clamp(11px,3.5vw,14px); }
+  .nav-item.active { box-shadow: inset 0 1px 0 var(--glass-highlight), 0 5px 14px color-mix(in srgb,var(--accent) 10%,transparent); }
+  .history-panel { padding-inline: 12px; overflow: hidden; }
+  .history-panel .panel-heading { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: start; }
+  .history-panel .panel-heading .small-button { min-width: 0; padding-inline: 12px; }
+  .history-item { display: grid; grid-template-columns: minmax(0,1fr); gap: 12px; padding: 13px; border-radius: 18px; }
+  .history-title-row { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: start; }
+  .history-title-row h3 { font-size: clamp(15px,4.6vw,19px); line-height: 1.22; grid-column: 1 / -1; }
+  .history-item p { font-size: 12px; line-height: 1.45; -webkit-line-clamp: 3; }
+  .history-actions { display: grid; grid-template-columns: minmax(0,.8fr) minmax(0,1.2fr) 44px; width: 100%; gap: 6px; }
+  .history-actions button { width: 100%; min-width: 0; padding-inline: 7px; font-size: 11px; }
+  .operation-picker-head { align-items: stretch; flex-direction: column; }
+  .operation-picker-head button { width: 100%; }
+  .operation-picker-options { grid-template-columns: 1fr; }
+  .operation-picker-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .operation-picker-actions .secondary-button { grid-column: 1 / -1; }
+}
+@media (max-width: 380px) {
+  .nav-item { font-size: 7.1px; }
+  .history-actions { grid-template-columns: 1fr 1fr; }
+  .history-actions .danger-lite { grid-column: 1 / -1; }
+}
+html[data-theme="light"] .badge.badge-missing { color: #c51f35; background: rgba(197,31,53,.10); border-color: rgba(197,31,53,.62); }
+html[data-theme="dark"] .badge.badge-missing { color: #ff7b87; background: rgba(150,20,38,.23); border-color: rgba(255,123,135,.58); }

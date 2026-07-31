@@ -376,7 +376,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="Personal AI Client", version="2.3.1-pro", lifespan=lifespan)
+app = FastAPI(title="Personal AI Client", version="2.3.0-pro", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -410,6 +410,8 @@ def init_storage() -> None:
         analysis_columns = {row[1] for row in db.execute("PRAGMA table_info(analyses)").fetchall()}
         if "openai_response_id" not in analysis_columns:
             db.execute("ALTER TABLE analyses ADD COLUMN openai_response_id TEXT")
+        if "project_payload_json" not in analysis_columns:
+            db.execute("ALTER TABLE analyses ADD COLUMN project_payload_json TEXT")
 
         db.execute(
             """
@@ -449,19 +451,44 @@ def db_conn():
         db.close()
 
 
+def encode_history_project_snapshot(project_snapshot: dict[str, Any] | None) -> str | None:
+    if not project_snapshot:
+        return None
+    if not isinstance(project_snapshot, dict):
+        raise HTTPException(status_code=400, detail="Снимок проекта должен быть объектом")
+    encoded = json.dumps(project_snapshot, ensure_ascii=False, separators=(",", ":"))
+    if len(encoded.encode("utf-8")) > 2 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Снимок проекта больше 2 МБ")
+    return encoded
+
+
+def parse_history_project_snapshot(raw: str | None) -> dict[str, Any] | None:
+    if not raw:
+        return None
+    try:
+        value = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=400, detail="Некорректный JSON снимка проекта") from exc
+    if not isinstance(value, dict):
+        raise HTTPException(status_code=400, detail="Снимок проекта должен быть объектом")
+    return value
+
+
 def save_history(
     *, filename: str, media_type: str, prompt: str, crop: dict[str, float] | None,
-    response: str, model: str, mock: bool, openai_response_id: str | None = None
+    response: str, model: str, mock: bool, openai_response_id: str | None = None,
+    project_snapshot: dict[str, Any] | None = None,
 ) -> int:
+    encoded_snapshot = encode_history_project_snapshot(project_snapshot)
     with db_conn() as db:
         cursor = db.execute(
             """INSERT INTO analyses
-            (created_at, filename, media_type, prompt, crop_json, response, model, mock, openai_response_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (created_at, filename, media_type, prompt, crop_json, response, model, mock, openai_response_id, project_payload_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 int(time.time()), filename, media_type, prompt,
                 json.dumps(crop, ensure_ascii=False) if crop else None,
-                response, model, int(mock), openai_response_id,
+                response, model, int(mock), openai_response_id, encoded_snapshot,
             ),
         )
         db.commit()
@@ -903,48 +930,6 @@ def build_chat_mock(question: str, context_text: str, conversation: list[dict[st
     )
 
 
-def safe_follow_up_response_id(media_type: str, response_id: str | None) -> str | None:
-    """Do not expose a response chain that depends on a deleted temporary PDF."""
-    if media_type == "application/pdf" and not KEEP_OPENAI_FILES:
-        return None
-    return response_id
-
-
-def build_chat_input(
-    *, question: str, context_text: str, conversation: list[dict[str, str]]
-) -> list[dict[str, Any]]:
-    """Rebuild a follow-up request without relying on a remote response chain."""
-    input_messages: list[dict[str, Any]] = []
-    if context_text.strip():
-        input_messages.append({
-            "role": "assistant",
-            "content": "Предыдущий ответ ассистента:\n" + context_text.strip()[:16000],
-        })
-    input_messages.extend(conversation[-16:])
-    input_messages.append({"role": "user", "content": question})
-    return input_messages
-
-
-def is_stale_openai_reference_error(exc: Exception) -> bool:
-    """Return True when OpenAI rejected an expired/deleted file or response reference."""
-    status_code = getattr(exc, "status_code", None)
-    response = getattr(exc, "response", None)
-    if status_code is None and response is not None:
-        status_code = getattr(response, "status_code", None)
-
-    message = str(exc).lower()
-    stale_markers = (
-        "files [",
-        "file was not found",
-        "files were not found",
-        "previous_response_id",
-        "previous response",
-        "response was not found",
-        "no response found",
-    )
-    return status_code in {400, 404} and any(marker in message for marker in stale_markers)
-
-
 def chat_with_openai(
     *, question: str, previous_response_id: str | None,
     context_text: str, conversation: list[dict[str, str]]
@@ -965,40 +950,28 @@ def chat_with_openai(
 Не начинай анализ заново без необходимости. Если пользователь отвечает на твой вопрос, используй ответ для уточнения вывода.
 Если данных всё ещё недостаточно, задай один конкретный вопрос. Не заканчивай фразами вроде «если хотите, могу» — вместо этого дай полезный ответ или задай нужный вопрос.
 """
-    fallback_input = build_chat_input(
-        question=question,
-        context_text=context_text,
-        conversation=conversation,
-    )
-
     try:
         if previous_response_id:
-            try:
-                response = client.responses.create(
-                    model=MODEL,
-                    instructions=chat_instructions,
-                    previous_response_id=previous_response_id,
-                    input=[{"role": "user", "content": question}],
-                )
-            except Exception as exc:
-                # A response created from a PDF can still refer to its OpenAI file.
-                # The app deletes temporary OpenAI files after analysis, so an old
-                # response chain may later return 404. Rebuild the conversation from
-                # locally stored text/history instead of exposing that error to users.
-                if not is_stale_openai_reference_error(exc):
-                    raise
-                response = client.responses.create(
-                    model=MODEL,
-                    instructions=chat_instructions,
-                    input=fallback_input,
-                )
-        else:
             response = client.responses.create(
                 model=MODEL,
                 instructions=chat_instructions,
-                input=fallback_input,
+                previous_response_id=previous_response_id,
+                input=[{"role": "user", "content": question}],
             )
-
+        else:
+            input_messages: list[dict[str, Any]] = []
+            if context_text.strip():
+                input_messages.append({
+                    "role": "assistant",
+                    "content": "Предыдущий ответ ассистента:\n" + context_text.strip()[:16000],
+                })
+            input_messages.extend(conversation[-16:])
+            input_messages.append({"role": "user", "content": question})
+            response = client.responses.create(
+                model=MODEL,
+                instructions=chat_instructions,
+                input=input_messages,
+            )
         text = response.output_text.strip()
         if not text:
             raise HTTPException(status_code=502, detail="Модель вернула пустой ответ")
@@ -1006,11 +979,6 @@ def chat_with_openai(
     except HTTPException:
         raise
     except Exception as exc:
-        if is_stale_openai_reference_error(exc):
-            raise HTTPException(
-                status_code=502,
-                detail="История OpenAI устарела, а автоматическое восстановление не удалось. Повторите сообщение.",
-            ) from exc
         raise HTTPException(status_code=502, detail=f"Ошибка OpenAI API в диалоге: {exc}") from exc
 
 
@@ -1185,7 +1153,7 @@ def health() -> dict[str, Any]:
         "max_file_mb": MAX_FILE_MB,
         "supported_types": ["JPG", "PNG", "WEBP", "PDF", "SLDDRW"],
         "version": "2.3.1-pro",
-        "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52pty_profile", "drawing_intelligence", "tolerance_detection", "metric_thread_catalog", "chamfer_marker", "multi_operation_route", "contour_mirroring", "stale_openai_reference_recovery"],
+        "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52pty_profile", "drawing_intelligence", "tolerance_detection", "metric_thread_catalog", "chamfer_marker", "multi_operation_route", "contour_mirroring", "history_project_restore", "mobile_history", "multi_operation_picker"],
     }
 
 
@@ -1206,15 +1174,33 @@ def history(limit: int = 30) -> list[dict[str, Any]]:
     limit = max(1, min(limit, 100))
     with db_conn() as db:
         rows = db.execute(
-            "SELECT * FROM analyses ORDER BY id DESC LIMIT ?", (limit,)
+            """SELECT id, created_at, filename, media_type, prompt, model, mock,
+                      CASE WHEN project_payload_json IS NOT NULL AND length(project_payload_json) > 2 THEN 1 ELSE 0 END AS has_project
+               FROM analyses ORDER BY id DESC LIMIT ?""",
+            (limit,),
         ).fetchall()
     result = []
     for row in rows:
         item = dict(row)
-        item["crop"] = json.loads(item.pop("crop_json")) if item.get("crop_json") else None
         item["mock"] = bool(item["mock"])
+        item["has_project"] = bool(item["has_project"])
         result.append(item)
     return result
+
+
+@app.get("/api/history/{analysis_id}")
+def history_detail(analysis_id: int) -> dict[str, Any]:
+    with db_conn() as db:
+        row = db.execute("SELECT * FROM analyses WHERE id = ?", (analysis_id,)).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Запись не найдена")
+    item = dict(row)
+    item["crop"] = json.loads(item.pop("crop_json")) if item.get("crop_json") else None
+    item["mock"] = bool(item["mock"])
+    raw_snapshot = item.pop("project_payload_json", None)
+    item["project"] = json.loads(raw_snapshot) if raw_snapshot else None
+    item["has_project"] = item["project"] is not None
+    return item
 
 
 @app.delete("/api/history/{analysis_id}")
@@ -1292,6 +1278,7 @@ async def analyze(
     file: UploadFile = File(...),
     prompt: str = Form(...),
     crop_json: str | None = Form(None),
+    project_json: str | None = Form(None),
 ) -> dict[str, Any]:
     media_type = detect_media_type(file)
     if media_type not in STANDARD_ALLOWED_TYPES | {SLDDRW_MEDIA_TYPE}:
@@ -1306,6 +1293,7 @@ async def analyze(
         raise HTTPException(status_code=413, detail=f"Файл больше {MAX_FILE_MB} МБ")
 
     crop = parse_crop(crop_json)
+    project_snapshot = parse_history_project_snapshot(project_json)
     if media_type in {"application/pdf", SLDDRW_MEDIA_TYPE} and crop:
         crop = None
 
@@ -1330,6 +1318,7 @@ async def analyze(
         model=MODEL,
         mock=MOCK_MODE,
         openai_response_id=openai_response_id,
+        project_snapshot=project_snapshot,
     )
     save_chat_message(analysis_id=analysis_id, role="user", content=prompt.strip())
     save_chat_message(
@@ -1345,7 +1334,7 @@ async def analyze(
     return {
         "id": analysis_id,
         "response": response_text,
-        "response_id": safe_follow_up_response_id(media_type, openai_response_id),
+        "response_id": openai_response_id,
         "model": MODEL,
         "mock": MOCK_MODE,
         "crop": crop,
@@ -1365,6 +1354,7 @@ async def stock_removal(
     first_side: str | None = Form(None),
     notes: str | None = Form(None),
     shopturn_json: str | None = Form(None),
+    project_json: str | None = Form(None),
 ) -> dict[str, Any]:
     media_type = detect_media_type(file)
     if media_type not in STANDARD_ALLOWED_TYPES | {SLDDRW_MEDIA_TYPE}:
@@ -1384,6 +1374,7 @@ async def stock_removal(
         blank_summary = f"{blank_width or '?'} × {blank_height or '?'} × {blank_length or '?'} мм"
 
     shopturn_data, tool_summary = parse_shopturn_payload(shopturn_json)
+    project_snapshot = parse_history_project_snapshot(project_json)
     openai_response_id: str | None = None
     if MOCK_MODE:
         response_text = build_stock_removal_mock(
@@ -1403,6 +1394,7 @@ async def stock_removal(
         filename=file.filename or "file", media_type=media_type, prompt=stock_prompt, crop=None,
         response=response_text, model=MODEL, mock=MOCK_MODE,
         openai_response_id=openai_response_id,
+        project_snapshot=project_snapshot,
     )
     save_chat_message(analysis_id=analysis_id, role="user", content=stock_prompt)
     save_chat_message(
@@ -1414,7 +1406,7 @@ async def stock_removal(
     return {
         "id": analysis_id,
         "response": response_text,
-        "response_id": safe_follow_up_response_id(media_type, openai_response_id),
+        "response_id": openai_response_id,
         "model": MODEL,
         "mock": MOCK_MODE,
         "shopturn": shopturn_data,
