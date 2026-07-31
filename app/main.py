@@ -87,6 +87,11 @@ METRIC_THREAD_CATALOG: dict[str, dict[str, Any]] = {
 SYSTEM_INSTRUCTIONS = """Ты персональный AI-ассистент для анализа фотографий, документов, технических изображений, PDF и машиностроительных чертежей.
 Отвечай на русском языке, если пользователь не попросил иначе. Будь конкретным: сначала краткий вывод, затем найденные детали, риски или неопределенности, после этого практические действия.
 При анализе чертежа обязательно ищи и явно перечисляй: размерные допуски, посадки, геометрические допуски, шероховатость, резьбы, фаски, скругления, технические требования и общие допуски в основной надписи или примечаниях.
+Строго применяй следующее правило общих допусков без дополнительных вопросов:
+- H14: нижнее отклонение равно 0, верхнее отклонение равно +IT14;
+- h14: верхнее отклонение равно 0, нижнее отклонение равно −IT14;
+- ±IT14/2: поле допуска симметричное, нижнее отклонение равно −IT14/2, верхнее отклонение равно +IT14/2.
+Не путай регистр букв: H14 относится к внутреннему размеру/отверстию, h14 — к наружному размеру/валу. Числовое значение IT14 зависит от номинального диапазона размера и должно браться из соответствующей таблицы допусков.
 Если метрическая резьба указана только как M8 без шага, не задавай вопрос о стандартном шаге: используй стандартный крупный шаг M8×1.25 и пометь его как автоматически принятый. Аналогично применяй крупный стандартный шаг для других обозначений M без явного шага.
 Если кромка показана, но фаска не задана, не выдумывай её. Отдельно сообщи, где нужно решение пользователя: фаска заданного размера либо только притупление/снятие остроты.
 Не выдумывай текст или размеры, которых невозможно уверенно увидеть. Для опасных технических операций обязательно указывай, что результат нужно проверить по исходной документации и на реальной стойке/станке.
@@ -132,6 +137,7 @@ def infer_metric_threads(text: str) -> list[dict[str, Any]]:
 
 def extract_tolerance_tokens(text: str) -> list[str]:
     patterns = [
+        r"(?:±|\+\s*/\s*-)\s*IT\s*14\s*/\s*2",
         r"(?:Ø|⌀)?\s*\d+(?:[.,]\d+)?\s*\+\s*\d+(?:[.,]\d+)?\s*/\s*-?\s*\d+(?:[.,]\d+)?",
         r"(?:Ø|⌀)?\s*\d+(?:[.,]\d+)?\s*[±]\s*\d+(?:[.,]\d+)?",
         r"\b(?:H|h|G|g|JS|js|K|k|N|n|P|p|R|r|S|s)\s*(?:[3-9]|1[0-4])\b",
@@ -143,16 +149,59 @@ def extract_tolerance_tokens(text: str) -> list[str]:
     for pattern in patterns:
         for match in re.finditer(pattern, text or "", flags=re.IGNORECASE):
             value = " ".join(match.group(0).split()).strip(" .,:;")
-            key = value.lower()
+            # Letter case is meaningful for ISO fit fields: H14 and h14 are different.
+            key = value if re.fullmatch(r"[A-Za-z]{1,2}\s*(?:[3-9]|1[0-4])", value) else value.lower()
             if value and key not in seen:
                 seen.add(key)
                 values.append(value)
     return values[:40]
 
 
+GENERAL_TOLERANCE_RULES: dict[str, dict[str, str]] = {
+    "H14": {
+        "designation": "H14",
+        "application": "внутренний размер / отверстие",
+        "lower_deviation": "0",
+        "upper_deviation": "+IT14",
+        "display": "H14 = нижнее отклонение 0, верхнее +IT14",
+    },
+    "h14": {
+        "designation": "h14",
+        "application": "наружный размер / вал",
+        "lower_deviation": "−IT14",
+        "upper_deviation": "0",
+        "display": "h14 = нижнее отклонение −IT14, верхнее 0",
+    },
+    "±IT14/2": {
+        "designation": "±IT14/2",
+        "application": "прочий линейный размер с симметричным полем допуска",
+        "lower_deviation": "−IT14/2",
+        "upper_deviation": "+IT14/2",
+        "display": "±IT14/2 = нижнее отклонение −IT14/2, верхнее +IT14/2",
+    },
+}
+
+
+def interpret_general_tolerance_rules(text: str) -> list[dict[str, str]]:
+    """Return explicit interpretations for the three agreed general-tolerance marks.
+
+    H/h are intentionally case-sensitive because their meanings differ.
+    """
+    source = text or ""
+    detected: list[str] = []
+    if re.search(r"(?<![A-Za-zА-Яа-я0-9])H\s*14(?!\d)", source):
+        detected.append("H14")
+    if re.search(r"(?<![A-Za-zА-Яа-я0-9])h\s*14(?!\d)", source):
+        detected.append("h14")
+    if re.search(r"(?:±|\+\s*/\s*-)\s*IT\s*14\s*/\s*2", source, flags=re.IGNORECASE):
+        detected.append("±IT14/2")
+    return [dict(GENERAL_TOLERANCE_RULES[key]) for key in detected]
+
+
 def build_drawing_intelligence(text: str) -> dict[str, Any]:
     threads = infer_metric_threads(text)
     tolerances = extract_tolerance_tokens(text)
+    tolerance_interpretations = interpret_general_tolerance_rules(text)
     chamfer_tokens = []
     for pattern in [
         r"\b\d+(?:[.,]\d+)?\s*[xх×]\s*\d+(?:[.,]\d+)?\s*°",
@@ -166,6 +215,7 @@ def build_drawing_intelligence(text: str) -> dict[str, Any]:
     return {
         "threads": threads,
         "tolerances": tolerances,
+        "tolerance_interpretations": tolerance_interpretations,
         "chamfers_detected": chamfer_tokens[:20],
         "requires_chamfer_decision": not bool(chamfer_tokens),
         "notes": [
@@ -180,6 +230,10 @@ def augment_drawing_prompt(prompt: str) -> str:
 
 Обязательная проверка чертежа перед ответом:
 - найди все локальные и общие допуски, посадки, геометрические допуски, шероховатость и технические требования;
+- если указано H14, трактуй как нижнее отклонение 0 и верхнее +IT14;
+- если указано h14, трактуй как верхнее отклонение 0 и нижнее −IT14;
+- если указано ±IT14/2, трактуй как симметричное поле: нижнее −IT14/2 и верхнее +IT14/2;
+- не путай H14 и h14 и не задавай по этим обозначениям уточняющий вопрос;
 - отдельно перечисли резьбы. Если написано только M без шага, прими стандартный крупный шаг и прямо укажи, что он принят автоматически;
 - перечисли все явно заданные фаски и скругления;
 - если фаска не задана, не спрашивай общий вопрос. Укажи конкретные кромки, для которых оператор должен выбрать «фаска» или «снять остроту»;
@@ -376,7 +430,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="Personal AI Client", version="2.3.0-pro", lifespan=lifespan)
+app = FastAPI(title="Personal AI Client", version="2.3.2-pro", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -1152,8 +1206,8 @@ def health() -> dict[str, Any]:
         "api_key_configured": bool(os.getenv("OPENAI_API_KEY")),
         "max_file_mb": MAX_FILE_MB,
         "supported_types": ["JPG", "PNG", "WEBP", "PDF", "SLDDRW"],
-        "version": "2.3.1-pro",
-        "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52pty_profile", "drawing_intelligence", "tolerance_detection", "metric_thread_catalog", "chamfer_marker", "multi_operation_route", "contour_mirroring", "history_project_restore", "mobile_history", "multi_operation_picker"],
+        "version": "2.3.2-pro",
+        "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52pty_profile", "drawing_intelligence", "tolerance_detection", "metric_thread_catalog", "chamfer_marker", "multi_operation_route", "contour_mirroring", "history_project_restore", "mobile_history", "multi_operation_picker", "general_tolerance_h14_rule"],
     }
 
 

@@ -1324,3 +1324,18 @@ html[data-theme="dark"] .badge.badge-missing { color: #ff7b87; background: rgba(
 }
 html[data-theme="light"] .badge.badge-missing { color: #c51f35; background: rgba(197,31,53,.10); border-color: rgba(197,31,53,.62); }
 html[data-theme="dark"] .badge.badge-missing { color: #ff7b87; background: rgba(150,20,38,.23); border-color: rgba(255,123,135,.58); }
+
+/* PRO 2.3.2 · explicit H14 / h14 / ±IT14/2 interpretation */
+.tolerance-rule-card {
+  display: grid;
+  gap: 4px;
+  min-width: min(100%, 260px);
+  padding: 11px 13px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--glass-border));
+  background: color-mix(in srgb, var(--accent) 9%, var(--control-bg));
+  color: var(--text);
+}
+.tolerance-rule-card strong { color: var(--accent); font-size: 14px; }
+.tolerance-rule-card span { font-weight: 750; line-height: 1.4; }
+.tolerance-rule-card small { color: var(--muted); line-height: 1.35; }

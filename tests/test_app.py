@@ -238,7 +238,7 @@ def test_stock_removal_accepts_shopturn_tool_flow():
 
 def test_health_reports_shopturn_feature():
     body = client.get("/api/health").json()
-    assert body["version"] == "2.3.1-pro"
+    assert body["version"] == "2.3.2-pro"
     assert "shopturn_tool_flow" in body["features"]
 
 
@@ -347,3 +347,38 @@ def test_history_entry_without_snapshot_is_still_readable():
     detail = client.get(f"/api/history/{response.json()['id']}").json()
     assert detail["has_project"] is False
     assert detail["project"] is None
+
+
+def test_general_tolerance_rules_are_case_sensitive_and_interpreted():
+    from app.main import interpret_general_tolerance_rules
+
+    rules = interpret_general_tolerance_rules('Неуказанные отклонения: отверстий H14, валов h14, прочих ±IT14/2.')
+    by_name = {item['designation']: item for item in rules}
+
+    assert by_name['H14']['lower_deviation'] == '0'
+    assert by_name['H14']['upper_deviation'] == '+IT14'
+    assert by_name['h14']['lower_deviation'] == '−IT14'
+    assert by_name['h14']['upper_deviation'] == '0'
+    assert by_name['±IT14/2']['lower_deviation'] == '−IT14/2'
+    assert by_name['±IT14/2']['upper_deviation'] == '+IT14/2'
+
+
+def test_drawing_intelligence_returns_general_tolerance_interpretations():
+    from app.main import build_drawing_intelligence
+
+    intel = build_drawing_intelligence('H14 h14 ±IT14/2')
+    names = [item['designation'] for item in intel['tolerance_interpretations']]
+    assert names == ['H14', 'h14', '±IT14/2']
+
+
+def test_health_reports_general_tolerance_rule_feature():
+    body = client.get('/api/health').json()
+    assert 'general_tolerance_h14_rule' in body['features']
+
+
+def test_tolerance_token_extraction_keeps_H14_and_h14_separate():
+    from app.main import extract_tolerance_tokens
+    tokens = extract_tolerance_tokens('H14 h14 ±IT14/2')
+    assert 'H14' in tokens
+    assert 'h14' in tokens
+    assert '±IT14/2' in tokens
