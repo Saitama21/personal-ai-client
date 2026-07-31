@@ -376,7 +376,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="Personal AI Client", version="2.3.0-pro", lifespan=lifespan)
+app = FastAPI(title="Personal AI Client", version="2.3.1-pro", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -903,6 +903,48 @@ def build_chat_mock(question: str, context_text: str, conversation: list[dict[st
     )
 
 
+def safe_follow_up_response_id(media_type: str, response_id: str | None) -> str | None:
+    """Do not expose a response chain that depends on a deleted temporary PDF."""
+    if media_type == "application/pdf" and not KEEP_OPENAI_FILES:
+        return None
+    return response_id
+
+
+def build_chat_input(
+    *, question: str, context_text: str, conversation: list[dict[str, str]]
+) -> list[dict[str, Any]]:
+    """Rebuild a follow-up request without relying on a remote response chain."""
+    input_messages: list[dict[str, Any]] = []
+    if context_text.strip():
+        input_messages.append({
+            "role": "assistant",
+            "content": "Предыдущий ответ ассистента:\n" + context_text.strip()[:16000],
+        })
+    input_messages.extend(conversation[-16:])
+    input_messages.append({"role": "user", "content": question})
+    return input_messages
+
+
+def is_stale_openai_reference_error(exc: Exception) -> bool:
+    """Return True when OpenAI rejected an expired/deleted file or response reference."""
+    status_code = getattr(exc, "status_code", None)
+    response = getattr(exc, "response", None)
+    if status_code is None and response is not None:
+        status_code = getattr(response, "status_code", None)
+
+    message = str(exc).lower()
+    stale_markers = (
+        "files [",
+        "file was not found",
+        "files were not found",
+        "previous_response_id",
+        "previous response",
+        "response was not found",
+        "no response found",
+    )
+    return status_code in {400, 404} and any(marker in message for marker in stale_markers)
+
+
 def chat_with_openai(
     *, question: str, previous_response_id: str | None,
     context_text: str, conversation: list[dict[str, str]]
@@ -923,28 +965,40 @@ def chat_with_openai(
 Не начинай анализ заново без необходимости. Если пользователь отвечает на твой вопрос, используй ответ для уточнения вывода.
 Если данных всё ещё недостаточно, задай один конкретный вопрос. Не заканчивай фразами вроде «если хотите, могу» — вместо этого дай полезный ответ или задай нужный вопрос.
 """
+    fallback_input = build_chat_input(
+        question=question,
+        context_text=context_text,
+        conversation=conversation,
+    )
+
     try:
         if previous_response_id:
-            response = client.responses.create(
-                model=MODEL,
-                instructions=chat_instructions,
-                previous_response_id=previous_response_id,
-                input=[{"role": "user", "content": question}],
-            )
+            try:
+                response = client.responses.create(
+                    model=MODEL,
+                    instructions=chat_instructions,
+                    previous_response_id=previous_response_id,
+                    input=[{"role": "user", "content": question}],
+                )
+            except Exception as exc:
+                # A response created from a PDF can still refer to its OpenAI file.
+                # The app deletes temporary OpenAI files after analysis, so an old
+                # response chain may later return 404. Rebuild the conversation from
+                # locally stored text/history instead of exposing that error to users.
+                if not is_stale_openai_reference_error(exc):
+                    raise
+                response = client.responses.create(
+                    model=MODEL,
+                    instructions=chat_instructions,
+                    input=fallback_input,
+                )
         else:
-            input_messages: list[dict[str, Any]] = []
-            if context_text.strip():
-                input_messages.append({
-                    "role": "assistant",
-                    "content": "Предыдущий ответ ассистента:\n" + context_text.strip()[:16000],
-                })
-            input_messages.extend(conversation[-16:])
-            input_messages.append({"role": "user", "content": question})
             response = client.responses.create(
                 model=MODEL,
                 instructions=chat_instructions,
-                input=input_messages,
+                input=fallback_input,
             )
+
         text = response.output_text.strip()
         if not text:
             raise HTTPException(status_code=502, detail="Модель вернула пустой ответ")
@@ -952,6 +1006,11 @@ def chat_with_openai(
     except HTTPException:
         raise
     except Exception as exc:
+        if is_stale_openai_reference_error(exc):
+            raise HTTPException(
+                status_code=502,
+                detail="История OpenAI устарела, а автоматическое восстановление не удалось. Повторите сообщение.",
+            ) from exc
         raise HTTPException(status_code=502, detail=f"Ошибка OpenAI API в диалоге: {exc}") from exc
 
 
@@ -1125,8 +1184,8 @@ def health() -> dict[str, Any]:
         "api_key_configured": bool(os.getenv("OPENAI_API_KEY")),
         "max_file_mb": MAX_FILE_MB,
         "supported_types": ["JPG", "PNG", "WEBP", "PDF", "SLDDRW"],
-        "version": "2.3.0-pro",
-        "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52pty_profile", "drawing_intelligence", "tolerance_detection", "metric_thread_catalog", "chamfer_marker", "multi_operation_route", "contour_mirroring"],
+        "version": "2.3.1-pro",
+        "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52pty_profile", "drawing_intelligence", "tolerance_detection", "metric_thread_catalog", "chamfer_marker", "multi_operation_route", "contour_mirroring", "stale_openai_reference_recovery"],
     }
 
 
@@ -1286,7 +1345,7 @@ async def analyze(
     return {
         "id": analysis_id,
         "response": response_text,
-        "response_id": openai_response_id,
+        "response_id": safe_follow_up_response_id(media_type, openai_response_id),
         "model": MODEL,
         "mock": MOCK_MODE,
         "crop": crop,
@@ -1355,7 +1414,7 @@ async def stock_removal(
     return {
         "id": analysis_id,
         "response": response_text,
-        "response_id": openai_response_id,
+        "response_id": safe_follow_up_response_id(media_type, openai_response_id),
         "model": MODEL,
         "mock": MOCK_MODE,
         "shopturn": shopturn_data,

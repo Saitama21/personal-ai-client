@@ -238,7 +238,7 @@ def test_stock_removal_accepts_shopturn_tool_flow():
 
 def test_health_reports_shopturn_feature():
     body = client.get("/api/health").json()
-    assert body["version"] == "2.3.0-pro"
+    assert body["version"] == "2.3.1-pro"
     assert "shopturn_tool_flow" in body["features"]
 
 
@@ -310,3 +310,73 @@ def test_generic_chamfer_question_is_not_treated_as_explicit_chamfer():
 def test_binary_like_n1_is_not_treated_as_fit_tolerance():
     from app.main import extract_tolerance_tokens
     assert 'n1' not in [item.lower() for item in extract_tolerance_tokens('stream n1 internal data')]
+
+
+
+def test_stale_openai_file_reference_is_detected():
+    from app.main import is_stale_openai_reference_error
+
+    class FakeNotFoundError(Exception):
+        status_code = 404
+
+    error = FakeNotFoundError(
+        "Error code: 404 - Files [file-old] were not found"
+    )
+    assert is_stale_openai_reference_error(error) is True
+    assert is_stale_openai_reference_error(RuntimeError("network timeout")) is False
+
+
+def test_chat_rebuilds_context_after_deleted_openai_file(monkeypatch):
+    import sys
+    from types import SimpleNamespace
+    from app.main import chat_with_openai
+
+    calls = []
+
+    class FakeNotFoundError(Exception):
+        status_code = 404
+
+    class FakeResponses:
+        def create(self, **kwargs):
+            calls.append(kwargs)
+            if kwargs.get("previous_response_id"):
+                raise FakeNotFoundError(
+                    "Error code: 404 - Files [file-deleted] were not found"
+                )
+            return SimpleNamespace(
+                output_text="Контекст восстановлен без повторной загрузки файла.",
+                id="resp-recovered",
+            )
+
+    class FakeOpenAI:
+        def __init__(self, api_key):
+            self.responses = FakeResponses()
+
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setitem(sys.modules, "openai", SimpleNamespace(OpenAI=FakeOpenAI))
+
+    text, response_id = chat_with_openai(
+        question="Куда применяется IT14/2?",
+        previous_response_id="resp-with-deleted-file",
+        context_text="На чертеже указаны H14, h14 и ±IT14/2.",
+        conversation=[
+            {"role": "user", "content": "Проверь допуски"},
+            {"role": "assistant", "content": "Вижу общие допуски."},
+        ],
+    )
+
+    assert text.startswith("Контекст восстановлен")
+    assert response_id == "resp-recovered"
+    assert len(calls) == 2
+    assert calls[0]["previous_response_id"] == "resp-with-deleted-file"
+    assert "previous_response_id" not in calls[1]
+    rebuilt = calls[1]["input"]
+    assert any("H14, h14" in item.get("content", "") for item in rebuilt)
+    assert rebuilt[-1]["content"] == "Куда применяется IT14/2?"
+
+
+def test_pdf_follow_up_does_not_reuse_deleted_file_chain():
+    from app.main import safe_follow_up_response_id
+
+    assert safe_follow_up_response_id("application/pdf", "resp-pdf") is None
+    assert safe_follow_up_response_id("image/png", "resp-image") == "resp-image"
