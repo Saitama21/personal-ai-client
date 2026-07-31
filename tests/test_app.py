@@ -238,5 +238,75 @@ def test_stock_removal_accepts_shopturn_tool_flow():
 
 def test_health_reports_shopturn_feature():
     body = client.get("/api/health").json()
-    assert body["version"] == "2.2.0-pro"
+    assert body["version"] == "2.3.0-pro"
     assert "shopturn_tool_flow" in body["features"]
+
+
+def test_metric_thread_catalog_and_m8_default_pitch():
+    body = client.get('/api/thread-catalog').json()
+    m8 = next(item for item in body['items'] if item['designation'] == 'M8')
+    assert m8['coarse'] == 1.25
+    assert 1.25 in m8['pitches']
+
+
+def test_thread_inference_uses_coarse_pitch_when_omitted():
+    from app.main import infer_metric_threads
+    inferred = infer_metric_threads('Резьба М8, класс 6H')
+    assert inferred[0]['designation'] == 'M8'
+    assert inferred[0]['pitch'] == 1.25
+    assert inferred[0]['pitch_source'] == 'iso_coarse_default'
+    explicit = infer_metric_threads('M8x1.0')
+    assert explicit[0]['pitch'] == 1.0
+    assert explicit[0]['pitch_source'] == 'explicit'
+
+
+def test_analyze_returns_drawing_intelligence():
+    response = client.post(
+        '/api/analyze',
+        data={'prompt': 'Проверь Ø30 +0.2/0 и резьбу M8'},
+        files={'file': ('drawing.png', make_png(), 'image/png')},
+    )
+    assert response.status_code == 200
+    intel = response.json()['drawing_intelligence']
+    assert any(item['designation'] == 'M8' and item['pitch'] == 1.25 for item in intel['threads'])
+    assert any('+0.2/0' in item.replace(' ', '') for item in intel['tolerances'])
+
+
+def test_stock_removal_accepts_operation_route():
+    import json
+    route = [
+        {'id': '1', 'enabled': True, 'operation': 'face', 'label': 'Face · Торцовка', 'toolT': '1', 'toolD': '1', 'toolName': 'Подрезной', 'speed': '650', 'feed': '0.12', 'depth': '1.0'},
+        {'id': '2', 'enabled': True, 'operation': 'thread_int', 'label': 'Thread ID', 'toolT': '7', 'toolD': '7', 'toolName': 'Резьбовой', 'speed': '220', 'feed': '1.25', 'depth': '0.12', 'thread': {'designation': 'M8', 'pitch': 1.25}},
+        {'id': '3', 'enabled': True, 'operation': 'partoff', 'label': 'Part-off', 'toolT': '5', 'toolD': '5', 'toolName': 'Отрезной', 'speed': '350', 'feed': '0.05', 'depth': '1.0'},
+    ]
+    payload = {
+        'machineProfile': 'tengyue_ck52pty',
+        'operation': 'face',
+        'toolT': '1', 'toolD': '1', 'toolName': 'Подрезной',
+        'speed': '650', 'feed': '0.12', 'depth': '1.0',
+        'machining': 'Face', 'position': 'Face',
+        'x0': '140', 'z0': '0', 'x1': '0', 'z1': '-1',
+        'operations': route,
+        'chamfers': [{'x': 0.5, 'y': 0.5, 'mode': 'chamfer', 'notation': '1×45°'}],
+    }
+    response = client.post(
+        '/api/stock-removal',
+        data={'stock_mode': 'lathe', 'blank_diameter': '140', 'blank_length': '58', 'shopturn_json': json.dumps(payload, ensure_ascii=False)},
+        files={'file': ('route.png', make_png(), 'image/png')},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body['shopturn']['operations']) == 3
+    assert 'Маршрут обработки' in body['response']
+
+
+def test_generic_chamfer_question_is_not_treated_as_explicit_chamfer():
+    from app.main import build_drawing_intelligence
+    intel = build_drawing_intelligence('Проверь фаски и уточни, нужны ли они.')
+    assert intel['chamfers_detected'] == []
+    assert intel['requires_chamfer_decision'] is True
+
+
+def test_binary_like_n1_is_not_treated_as_fit_tolerance():
+    from app.main import extract_tolerance_tokens
+    assert 'n1' not in [item.lower() for item in extract_tolerance_tokens('stream n1 internal data')]

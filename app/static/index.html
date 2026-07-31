@@ -1,8 +1,21 @@
 <!doctype html>
-<html lang="ru">
+<html lang="ru" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1420" id="themeColorMeta" />
+  <meta name="color-scheme" content="light dark" />
+  <script>
+    (() => {
+      try {
+        const mode = localStorage.getItem('personal-ai-theme') || 'auto';
+        const dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const resolved = mode === 'auto' ? (dark ? 'dark' : 'light') : mode;
+        document.documentElement.dataset.theme = resolved;
+        document.documentElement.dataset.themeMode = mode;
+      } catch (_) {}
+    })();
+  </script>
   <title>Personal AI Client PRO</title>
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
@@ -14,21 +27,26 @@
         <div class="rozfood-logo">ROZFOOD</div>
         <div class="brand-copy"><strong>Personal AI Client <span class="pro-badge">PRO</span></strong><span>SLDDRW · Stock Removal · SINUMERIK</span></div>
       </div>
-      <nav>
-        <button class="nav-item active" data-view="analysis">Новый анализ</button>
-        <button class="nav-item" data-view="stock">Stock Removal PRO</button>
-        <button class="nav-item" data-view="projects">Проекты</button>
-        <button class="nav-item" data-view="history">История</button>
-        <button class="nav-item" data-view="settings">Настройки</button>
+      <nav aria-label="Основная навигация">
+        <button class="nav-item active" data-view="analysis"><span class="nav-icon" aria-hidden="true">✦</span><span>Анализ</span></button>
+        <button class="nav-item" data-view="stock"><span class="nav-icon" aria-hidden="true">◎</span><span>Stock Removal</span></button>
+        <button class="nav-item" data-view="projects"><span class="nav-icon" aria-hidden="true">▣</span><span>Проекты</span></button>
+        <button class="nav-item" data-view="history"><span class="nav-icon" aria-hidden="true">◷</span><span>История</span></button>
+        <button class="nav-item" data-view="settings"><span class="nav-icon" aria-hidden="true">⚙</span><span>Настройки</span></button>
       </nav>
       <div class="status-card glass-soft"><span class="status-dot" id="statusDot"></span><div><strong id="statusTitle">Проверка...</strong><small id="statusText">Соединение с сервером</small></div></div>
-      <div class="sidebar-footer">Создатель: Єрошов Іван<br>Версия 2.2 ShopTurn Flow</div>
+      <div class="sidebar-footer">Создатель: Єрошов Іван<br>Версия 2.3 Drawing Intelligence</div>
     </aside>
 
     <main>
       <header class="topbar">
         <div><h1 id="pageTitle">Новый анализ</h1><p id="pageSubtitle">Загрузите изображение, PDF или SLDDRW и задайте вопрос</p></div>
         <div class="topbar-actions">
+          <div class="theme-switch glass-soft" role="group" aria-label="Тема оформления">
+            <button class="theme-choice" data-theme-choice="auto" type="button" title="Автоматически по системе" aria-label="Автоматическая тема">A</button>
+            <button class="theme-choice" data-theme-choice="light" type="button" title="Светлая тема" aria-label="Светлая тема">☀</button>
+            <button class="theme-choice" data-theme-choice="dark" type="button" title="Тёмная тема" aria-label="Тёмная тема">◐</button>
+          </div>
           <div class="project-pill glass-soft"><span>Проект</span><strong id="activeProjectName">Локальный черновик</strong></div>
           <button id="saveProjectBtn" class="ghost-button glass-soft">Сохранить проект</button>
           <div class="file-indicator glass-soft" id="currentFilePill">Файл не выбран</div>
@@ -69,6 +87,50 @@
             <div id="analysisChatProgress" class="chat-progress hidden">Ассистент отвечает...</div>
             <div class="chat-hint">Enter — отправить · Shift+Enter — новая строка</div>
           </div>
+
+          <section id="drawingIntelligencePanel" class="drawing-intelligence glass-soft hidden">
+            <div class="panel-heading compact-heading">
+              <div><span class="eyebrow">КОНТРОЛЬ ЧЕРТЕЖА</span><h3>Допуски, резьбы и фаски</h3></div>
+              <span id="drawingIntelBadge" class="badge">Ожидает анализа</span>
+            </div>
+            <div class="intelligence-grid">
+              <div class="intel-card">
+                <div class="mini-heading">Найденные допуски и требования</div>
+                <div id="toleranceList" class="intel-list"><span class="muted-text">После анализа здесь появятся размерные и геометрические допуски.</span></div>
+              </div>
+              <div class="intel-card">
+                <div class="mini-heading">Распознанные резьбы</div>
+                <div id="detectedThreadList" class="intel-list"><span class="muted-text">Резьбы пока не найдены.</span></div>
+              </div>
+            </div>
+
+            <div class="engineering-control-grid">
+              <section class="intel-card thread-catalog-card">
+                <div class="mini-heading">Каталог метрических резьб</div>
+                <div class="form-grid compact-form">
+                  <label><span>Резьба</span><select id="threadDesignationSelect"></select></label>
+                  <label><span>Шаг, мм</span><select id="threadPitchSelect"></select></label>
+                  <label><span>Тип</span><select id="threadSideSelect"><option value="external">Наружная</option><option value="internal">Внутренняя</option></select></label>
+                  <label><span>Класс допуска</span><input id="threadToleranceInput" placeholder="6g / 6H" /></label>
+                </div>
+                <div class="button-row compact-buttons"><button id="applyDetectedThreadBtn" class="small-button">Взять распознанную</button><button id="addThreadToProjectBtn" class="secondary-button">Добавить резьбу</button></div>
+                <div id="projectThreadList" class="project-thread-list"></div>
+                <p class="control-note">Если на чертеже указано только M8, клиент автоматически принимает крупный шаг 1.25 мм и помечает его как принятый по стандартному ряду.</p>
+              </section>
+
+              <section class="intel-card chamfer-editor-card">
+                <div class="mini-heading">Фаски и снятие остроты</div>
+                <div class="chamfer-controls">
+                  <label><span>Режим</span><select id="chamferModeSelect"><option value="chamfer">Фаска</option><option value="edge_break">Снять остроту</option><option value="none">Не обрабатывать кромку</option></select></label>
+                  <label><span>Обозначение</span><input id="chamferNotationInput" value="1×45°" placeholder="1×45°" /></label>
+                  <button id="undoChamferBtn" class="small-button">Убрать последнюю</button>
+                  <button id="clearChamfersBtn" class="small-button danger-lite">Очистить точки</button>
+                </div>
+                <div class="chamfer-canvas-wrap"><canvas id="chamferCanvas" width="900" height="360"></canvas><div class="canvas-tip">Нажми на кромку мини-чертежа и укажи 1×45°, 2×45° либо «снять остроту»</div></div>
+                <div id="chamferMarkerList" class="chamfer-marker-list"></div>
+              </section>
+            </div>
+          </section>
         </section>
       </section>
 
@@ -79,7 +141,7 @@
             <div class="segmented glass-soft"><button class="segmented-item active" data-mode="lathe">Токарный X/Z</button><button class="segmented-item" data-mode="mill">Фрезерный</button></div>
             <div id="latheFields" class="form-grid"><label><span>Диаметр заготовки, мм</span><input id="blankDiameter" inputmode="decimal" placeholder="140" /></label><label><span>Длина заготовки, мм</span><input id="blankLength" inputmode="decimal" placeholder="58" /></label></div>
             <div id="millFields" class="form-grid hidden"><label><span>Ширина, мм</span><input id="blankWidth" placeholder="180" /></label><label><span>Высота, мм</span><input id="blankHeight" placeholder="120" /></label><label><span>Толщина, мм</span><input id="blankLengthMill" placeholder="12" /></label></div>
-            <div class="form-grid form-grid-wide"><label><span>Ноль детали / база</span><input id="zeroReference" value="Z0 по правому торцу, X0 по оси" /></label><label><span>Первая сторона</span><input id="firstSide" placeholder="Торец А" /></label><label class="full"><span>Примечания</span><textarea id="stockNotes" placeholder="Отверстия уже есть, обработка наружного контура..."></textarea></label></div>
+            <div class="form-grid form-grid-wide"><label><span>Ноль детали / база</span><input id="zeroReference" placeholder="Например: Z0 по правому торцу, X0 по оси" /></label><label><span>Первая сторона</span><input id="firstSide" placeholder="Торец А" /></label><label class="full"><span>Примечания</span><textarea id="stockNotes" placeholder="Отверстия уже есть, обработка наружного контура..."></textarea></label></div>
             <div class="button-row"><button id="stockBtn" class="primary-button" disabled>Сформировать план</button><button id="aiContourBtn" class="secondary-button" disabled>AI-контур X/Z</button></div>
             <div id="stockProgress" class="progress hidden"><span></span><p>Строю план и контур...</p></div>
           </section>
@@ -101,7 +163,7 @@
               <div class="mini-heading">1. Выбор инструмента и операции</div>
               <div class="form-grid shopturn-form-grid">
                 <label><span>Профиль станка</span><select id="machineProfileSelect"><option value="tengyue_ck52pty">Tengyue CK52PT-Y · SINUMERIK 828D</option><option value="custom">Другой станок / ручной профиль</option></select></label>
-                <label><span>Операция ShopTurn</span><select id="shopOperationSelect">
+                <label><span>Операция ShopTurn</span><select id="shopOperationSelect"><option value="">Выберите операцию</option>
                   <option value="face">Face · Торцовка</option>
                   <option value="od_turn">OD Turning · Наружное точение</option>
                   <option value="contour">Stock Removal · Контур X/Z</option>
@@ -170,7 +232,7 @@
                   <div class="console-row" data-shop-field="allowance"><span>UX / UZ</span><strong id="screenAllowance">0.100 / 0.100</strong></div>
                 </div>
               </div>
-              <div class="console-softkeys"><button>T,S,M</button><button>Set WO</button><button>Meas. workp.</button><button>Meas. tool</button><button>Position</button><button class="active">Stock rem.</button><button id="consoleAcceptBtn" class="accept">Accept</button></div>
+              <div class="console-softkeys"><button data-console-step="2">T,S,M</button><button data-console-step="5">Set WO</button><button data-console-step="5">Meas. workp.</button><button data-console-step="2">Meas. tool</button><button data-console-step="6">Position</button><button data-console-step="1" class="active">Stock rem.</button><button id="consoleAcceptBtn" class="accept">Accept</button></div>
             </section>
 
             <section class="shopturn-wizard glass-soft">
@@ -183,6 +245,16 @@
               <div id="wizardAllSteps" class="wizard-step-list"></div>
             </section>
           </div>
+
+          <section class="operation-route glass-soft">
+            <div class="route-head">
+              <div><span class="eyebrow">МАРШРУТ ОБРАБОТКИ</span><h3>Последовательность инструментов и операций</h3></div>
+              <div class="button-row compact-buttons"><button id="addOperationBtn" class="secondary-button">＋ Добавить текущую операцию</button><button id="updateOperationBtn" class="small-button">Обновить активную</button><button id="startRouteBtn" class="small-button">▶ Начать маршрут</button><button id="nextRouteOperationBtn" class="small-button">Следующая операция →</button><button id="validateRouteBtn" class="small-button">Проверить порядок</button><button id="exportRouteBtn" class="small-button">Экспорт маршрута</button></div>
+            </div>
+            <div class="route-summary" id="routeSummary">Операций: 0 · Инструментов: 0</div>
+            <div id="operationRouteList" class="operation-route-list"><div class="route-empty">Добавь торцовку, точение, расточку, резьбу, канавку и отрезку в нужном порядке.</div></div>
+            <div id="routeWarnings" class="route-warnings"></div>
+          </section>
         </section>
 
         <section class="panel result-panel glass">
@@ -210,8 +282,8 @@
           <div class="pro-toolbar glass-soft">
             <div class="toolbar-group"><button id="undoBtn" title="Ctrl/Cmd+Z">↶</button><button id="redoBtn" title="Ctrl/Cmd+Shift+Z">↷</button></div>
             <div class="toolbar-group"><button id="addPointBtn">＋ Точка</button><button id="duplicatePointBtn">Дублировать</button><button id="editPointBtn">Редактировать</button><button id="deletePointBtn" class="danger-lite">Удалить</button></div>
-            <div class="toolbar-group"><button id="reverseContourBtn">Развернуть</button><button id="closeContourBtn">Замкнуть</button><button id="validateContourBtn">Проверить</button></div>
-            <div class="toolbar-group offset-group"><input id="offsetXInput" placeholder="ΔX" inputmode="decimal" /><input id="offsetZInput" placeholder="ΔZ" inputmode="decimal" /><button id="applyOffsetBtn">Сместить</button></div>
+            <div class="toolbar-group"><button id="reverseContourBtn">Развернуть порядок</button><button id="mirrorZBtn">Зеркало Z</button><button id="mirrorXBtn">Зеркало X</button><button id="rotateContourBtn">Повернуть 180°</button><button id="closeContourBtn">Замкнуть</button><button id="validateContourBtn">Проверить</button></div>
+            <div class="toolbar-group offset-group"><input id="offsetXInput" placeholder="ΔX" inputmode="decimal" /><input id="offsetZInput" placeholder="ΔZ" inputmode="decimal" /><button id="applyOffsetBtn">Сместить</button></div><div class="toolbar-group offset-group"><input id="mirrorAxisXInput" value="0" placeholder="Ось X" inputmode="decimal" /><input id="mirrorAxisZInput" value="0" placeholder="Ось Z" inputmode="decimal" /></div>
             <div class="toolbar-group"><button id="importBtn">Импорт</button><button id="exportJsonBtn">JSON</button><button id="exportCsvBtn">CSV</button><button id="exportSinumerikBtn" class="accent-button">SINUMERIK</button><input id="importContourInput" type="file" accept="application/json,text/csv" hidden /></div>
           </div>
 
@@ -240,7 +312,7 @@
           </div>
 
           <div class="contour-bottom-grid">
-            <section class="contour-card glass-soft sinumerik-card"><div class="mini-heading">SINUMERIK 828D → Stock Removal → New Contour</div><div class="sinumerik-layout"><div class="sinumerik-screen"><div class="screen-head">Stock removal</div><div class="screen-item active">New contour</div><div class="screen-item"><span id="sinType">Straight</span></div><div class="screen-item">X <span id="sinX">0.000</span></div><div class="screen-item">Z <span id="sinZ">0.000</span></div><div class="screen-buttons"><button>Accept</button><button>Cancel</button></div></div><div class="instruction-box"><div class="step-badge" id="stepBadge">Шаг 1</div><h3 id="stepTitle">Начальная точка</h3><ol id="stepInstructions" class="step-list"></ol></div></div></section>
+            <section class="contour-card glass-soft sinumerik-card"><div class="mini-heading">SINUMERIK 828D → Stock Removal → New Contour</div><div class="sinumerik-layout"><div class="sinumerik-screen"><div class="screen-head">Stock removal</div><div class="screen-item active">New contour</div><div class="screen-item"><span id="sinType">Straight</span></div><div class="screen-item">X <span id="sinX">0.000</span></div><div class="screen-item">Z <span id="sinZ">0.000</span></div><div class="screen-buttons"><button id="contourAcceptBtn">Accept</button><button id="contourCancelBtn">Cancel</button></div></div><div class="instruction-box"><div class="step-badge" id="stepBadge">Шаг 1</div><h3 id="stepTitle">Начальная точка</h3><ol id="stepInstructions" class="step-list"></ol></div></div></section>
             <section class="contour-card glass-soft"><div class="step-nav"><button id="prevStepBtn">← Назад</button><strong>Текущий элемент</strong><button id="nextStepBtn">Далее →</button></div><div class="graph-wrap mini-graph"><canvas id="miniContourCanvas" width="620" height="300"></canvas></div><div class="current-step-card"><div><span>Тип:</span> <strong id="currentElementType">—</strong></div><div><span>Длина:</span> <strong id="currentElementLength">—</strong></div><div><span>Направление:</span> <strong id="currentElementDirection">—</strong></div></div></section>
             <section class="contour-card glass-soft diagnostics-card"><div class="mini-heading">Диагностика контура</div><div id="validationList" class="validation-list"><div class="validation-empty">Нажми «Проверить»</div></div><div class="legend-stack" id="legendStack"></div></section>
           </div>
@@ -251,7 +323,25 @@
 
       <section id="historyView" class="view"><div class="panel history-panel glass"><div class="panel-heading"><div><span class="eyebrow">ЖУРНАЛ</span><h2>История анализов</h2></div><button id="refreshHistoryBtn" class="small-button">Обновить</button></div><div id="historyList" class="history-list"></div></div></section>
 
-      <section id="settingsView" class="view"><div class="settings-grid"><div class="panel setting-card glass"><span class="eyebrow">Модель</span><h2 id="modelName">—</h2><p>OpenAI-модель сервера.</p></div><div class="panel setting-card glass"><span class="eyebrow">Режим</span><h2 id="modeName">—</h2><p>LIVE или MOCK.</p></div><div class="panel setting-card glass"><span class="eyebrow">Версия</span><h2 id="appVersion">—</h2><p id="supportedFormatsText">Форматы.</p></div><div class="panel setting-card glass"><span class="eyebrow">Горячие клавиши</span><p><code>Ctrl/Cmd+Z</code> отмена<br><code>Ctrl/Cmd+Shift+Z</code> повтор<br><code>Delete</code> удалить точку<br><code>A</code> добавить точку<br><code>S</code> сохранить проект</p></div></div></section>
+      <section id="settingsView" class="view">
+        <div class="settings-grid">
+          <div class="panel setting-card glass"><span class="eyebrow">Модель</span><h2 id="modelName">—</h2><p>OpenAI-модель сервера.</p></div>
+          <div class="panel setting-card glass"><span class="eyebrow">Режим</span><h2 id="modeName">—</h2><p>LIVE или MOCK.</p></div>
+          <div class="panel setting-card glass"><span class="eyebrow">Версия</span><h2 id="appVersion">—</h2><p id="supportedFormatsText">Форматы.</p></div>
+          <div class="panel setting-card glass appearance-card">
+            <span class="eyebrow">Оформление</span><h2 id="themeStatus">Автоматическая</h2>
+            <p>Интерфейс следует системной теме либо использует выбранный режим.</p>
+            <div class="theme-switch settings-theme-switch glass-soft" role="group" aria-label="Выбор темы">
+              <button class="theme-choice" data-theme-choice="auto" type="button">Авто</button>
+              <button class="theme-choice" data-theme-choice="light" type="button">Светлая</button>
+              <button class="theme-choice" data-theme-choice="dark" type="button">Тёмная</button>
+            </div>
+            <div class="contrast-status" id="contrastStatus"><span class="status-dot online"></span><span>Контраст интерфейса проверен</span></div>
+          </div>
+          <div class="panel setting-card glass"><span class="eyebrow">Адаптация</span><h2 id="deviceModeLabel">Автоматически</h2><p id="deviceModeText">Компоновка подстраивается под размер экрана и тип ввода.</p></div>
+          <div class="panel setting-card glass"><span class="eyebrow">Горячие клавиши</span><p><code>Ctrl/Cmd+Z</code> отмена<br><code>Ctrl/Cmd+Shift+Z</code> повтор<br><code>Delete</code> удалить точку<br><code>A</code> добавить точку<br><code>S</code> сохранить проект</p></div>
+        </div>
+      </section>
     </main>
   </div>
 

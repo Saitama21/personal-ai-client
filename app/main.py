@@ -33,12 +33,158 @@ STANDARD_ALLOWED_TYPES = ALLOWED_IMAGE_TYPES | {"application/pdf"}
 SLDDRW_SUFFIXES = {".slddrw"}
 SLDDRW_MEDIA_TYPE = "application/slddrw"
 
-SYSTEM_INSTRUCTIONS = """Ты персональный AI-ассистент для анализа фотографий, документов, технических изображений и PDF.
-Отвечай на русском языке, если пользователь не попросил иначе. Будь конкретным: сначала краткий вывод, затем найденные детали,
-риски или неопределенности, после этого практические действия. Не выдумывай текст или размеры, которых невозможно уверенно увидеть.
-Для опасных технических операций обязательно указывай, что результат нужно проверить специалистом и по исходной документации.
+
+METRIC_THREAD_CATALOG: dict[str, dict[str, Any]] = {
+    "M1": {"diameter": 1.0, "coarse": 0.25, "pitches": [0.2, 0.25]},
+    "M1.2": {"diameter": 1.2, "coarse": 0.25, "pitches": [0.2, 0.25]},
+    "M1.4": {"diameter": 1.4, "coarse": 0.3, "pitches": [0.2, 0.3]},
+    "M1.6": {"diameter": 1.6, "coarse": 0.35, "pitches": [0.2, 0.35]},
+    "M1.8": {"diameter": 1.8, "coarse": 0.35, "pitches": [0.2, 0.35]},
+    "M2": {"diameter": 2.0, "coarse": 0.4, "pitches": [0.25, 0.4]},
+    "M2.2": {"diameter": 2.2, "coarse": 0.45, "pitches": [0.25, 0.45]},
+    "M2.5": {"diameter": 2.5, "coarse": 0.45, "pitches": [0.35, 0.45]},
+    "M3": {"diameter": 3.0, "coarse": 0.5, "pitches": [0.35, 0.5]},
+    "M3.5": {"diameter": 3.5, "coarse": 0.6, "pitches": [0.35, 0.6]},
+    "M4": {"diameter": 4.0, "coarse": 0.7, "pitches": [0.5, 0.7]},
+    "M4.5": {"diameter": 4.5, "coarse": 0.75, "pitches": [0.5, 0.75]},
+    "M5": {"diameter": 5.0, "coarse": 0.8, "pitches": [0.5, 0.8]},
+    "M5.5": {"diameter": 5.5, "coarse": 0.9, "pitches": [0.5, 0.9]},
+    "M6": {"diameter": 6.0, "coarse": 1.0, "pitches": [0.5, 0.75, 1.0]},
+    "M7": {"diameter": 7.0, "coarse": 1.0, "pitches": [0.75, 1.0]},
+    "M8": {"diameter": 8.0, "coarse": 1.25, "pitches": [0.5, 0.75, 1.0, 1.25]},
+    "M9": {"diameter": 9.0, "coarse": 1.25, "pitches": [0.75, 1.0, 1.25]},
+    "M10": {"diameter": 10.0, "coarse": 1.5, "pitches": [0.5, 0.75, 1.0, 1.25, 1.5]},
+    "M11": {"diameter": 11.0, "coarse": 1.5, "pitches": [0.75, 1.0, 1.5]},
+    "M12": {"diameter": 12.0, "coarse": 1.75, "pitches": [0.5, 0.75, 1.0, 1.25, 1.5, 1.75]},
+    "M14": {"diameter": 14.0, "coarse": 2.0, "pitches": [1.0, 1.25, 1.5, 2.0]},
+    "M16": {"diameter": 16.0, "coarse": 2.0, "pitches": [1.0, 1.5, 2.0]},
+    "M18": {"diameter": 18.0, "coarse": 2.5, "pitches": [1.0, 1.5, 2.0, 2.5]},
+    "M20": {"diameter": 20.0, "coarse": 2.5, "pitches": [1.0, 1.5, 2.0, 2.5]},
+    "M22": {"diameter": 22.0, "coarse": 2.5, "pitches": [1.0, 1.5, 2.0, 2.5]},
+    "M24": {"diameter": 24.0, "coarse": 3.0, "pitches": [1.0, 1.5, 2.0, 3.0]},
+    "M27": {"diameter": 27.0, "coarse": 3.0, "pitches": [1.0, 1.5, 2.0, 3.0]},
+    "M30": {"diameter": 30.0, "coarse": 3.5, "pitches": [1.0, 1.5, 2.0, 3.0, 3.5]},
+    "M33": {"diameter": 33.0, "coarse": 3.5, "pitches": [1.5, 2.0, 3.0, 3.5]},
+    "M36": {"diameter": 36.0, "coarse": 4.0, "pitches": [1.5, 2.0, 3.0, 4.0]},
+    "M39": {"diameter": 39.0, "coarse": 4.0, "pitches": [1.5, 2.0, 3.0, 4.0]},
+    "M42": {"diameter": 42.0, "coarse": 4.5, "pitches": [1.5, 2.0, 3.0, 4.0, 4.5]},
+    "M45": {"diameter": 45.0, "coarse": 4.5, "pitches": [1.5, 2.0, 3.0, 4.0, 4.5]},
+    "M48": {"diameter": 48.0, "coarse": 5.0, "pitches": [1.5, 2.0, 3.0, 4.0, 5.0]},
+    "M52": {"diameter": 52.0, "coarse": 5.0, "pitches": [1.5, 2.0, 3.0, 4.0, 5.0]},
+    "M56": {"diameter": 56.0, "coarse": 5.5, "pitches": [2.0, 3.0, 4.0, 5.5]},
+    "M60": {"diameter": 60.0, "coarse": 5.5, "pitches": [2.0, 3.0, 4.0, 5.5]},
+    "M64": {"diameter": 64.0, "coarse": 6.0, "pitches": [2.0, 3.0, 4.0, 6.0]},
+    "M68": {"diameter": 68.0, "coarse": 6.0, "pitches": [2.0, 3.0, 4.0, 6.0]},
+    "M72": {"diameter": 72.0, "coarse": 6.0, "pitches": [2.0, 3.0, 4.0, 6.0]},
+    "M76": {"diameter": 76.0, "coarse": 6.0, "pitches": [2.0, 3.0, 4.0, 6.0]},
+    "M80": {"diameter": 80.0, "coarse": 6.0, "pitches": [2.0, 3.0, 4.0, 6.0]},
+    "M85": {"diameter": 85.0, "coarse": 6.0, "pitches": [2.0, 3.0, 4.0, 6.0]},
+    "M90": {"diameter": 90.0, "coarse": 6.0, "pitches": [2.0, 3.0, 4.0, 6.0]},
+    "M95": {"diameter": 95.0, "coarse": 6.0, "pitches": [2.0, 3.0, 4.0, 6.0]},
+    "M100": {"diameter": 100.0, "coarse": 6.0, "pitches": [2.0, 3.0, 4.0, 6.0]},
+}
+
+SYSTEM_INSTRUCTIONS = """Ты персональный AI-ассистент для анализа фотографий, документов, технических изображений, PDF и машиностроительных чертежей.
+Отвечай на русском языке, если пользователь не попросил иначе. Будь конкретным: сначала краткий вывод, затем найденные детали, риски или неопределенности, после этого практические действия.
+При анализе чертежа обязательно ищи и явно перечисляй: размерные допуски, посадки, геометрические допуски, шероховатость, резьбы, фаски, скругления, технические требования и общие допуски в основной надписи или примечаниях.
+Если метрическая резьба указана только как M8 без шага, не задавай вопрос о стандартном шаге: используй стандартный крупный шаг M8×1.25 и пометь его как автоматически принятый. Аналогично применяй крупный стандартный шаг для других обозначений M без явного шага.
+Если кромка показана, но фаска не задана, не выдумывай её. Отдельно сообщи, где нужно решение пользователя: фаска заданного размера либо только притупление/снятие остроты.
+Не выдумывай текст или размеры, которых невозможно уверенно увидеть. Для опасных технических операций обязательно указывай, что результат нужно проверить по исходной документации и на реальной стойке/станке.
 """
 
+
+
+def normalize_metric_designation(value: str) -> str:
+    match = re.search(r"[MМ]\s*([0-9]+(?:[.,][0-9]+)?)", value, flags=re.IGNORECASE)
+    if not match:
+        return ""
+    number_text = match.group(1).replace(",", ".")
+    number_value = float(number_text)
+    return f"M{number_value:g}"
+
+
+def infer_metric_threads(text: str) -> list[dict[str, Any]]:
+    found: list[dict[str, Any]] = []
+    seen: set[tuple[str, float]] = set()
+    pattern = re.compile(r"(?<![A-Za-zА-Яа-я0-9])[MМ]\s*([0-9]+(?:[.,][0-9]+)?)(?:\s*[xх×]\s*([0-9]+(?:[.,][0-9]+)?))?(?:\s*[- ]?([0-9]+[HhGg]))?", re.IGNORECASE)
+    for match in pattern.finditer(text or ""):
+        designation = normalize_metric_designation("M" + match.group(1))
+        if not designation:
+            continue
+        spec = METRIC_THREAD_CATALOG.get(designation)
+        explicit_pitch = float(match.group(2).replace(",", ".")) if match.group(2) else None
+        pitch = explicit_pitch if explicit_pitch is not None else (spec or {}).get("coarse")
+        if pitch is None:
+            continue
+        key = (designation, float(pitch))
+        if key in seen:
+            continue
+        seen.add(key)
+        found.append({
+            "designation": designation,
+            "pitch": float(pitch),
+            "pitch_source": "explicit" if explicit_pitch is not None else "iso_coarse_default",
+            "tolerance_class": match.group(3) or "",
+            "display": f"{designation}×{float(pitch):g}",
+        })
+    return found[:30]
+
+
+def extract_tolerance_tokens(text: str) -> list[str]:
+    patterns = [
+        r"(?:Ø|⌀)?\s*\d+(?:[.,]\d+)?\s*\+\s*\d+(?:[.,]\d+)?\s*/\s*-?\s*\d+(?:[.,]\d+)?",
+        r"(?:Ø|⌀)?\s*\d+(?:[.,]\d+)?\s*[±]\s*\d+(?:[.,]\d+)?",
+        r"\b(?:H|h|G|g|JS|js|K|k|N|n|P|p|R|r|S|s)\s*(?:[3-9]|1[0-4])\b",
+        r"\b(?:IT|Ra|Rz)\s*\d+(?:[.,]\d+)?\b",
+        r"(?:плоскост|соосност|перпендикулярност|параллельност|биени|позиционн)[^\n;]{0,80}",
+    ]
+    values: list[str] = []
+    seen: set[str] = set()
+    for pattern in patterns:
+        for match in re.finditer(pattern, text or "", flags=re.IGNORECASE):
+            value = " ".join(match.group(0).split()).strip(" .,:;")
+            key = value.lower()
+            if value and key not in seen:
+                seen.add(key)
+                values.append(value)
+    return values[:40]
+
+
+def build_drawing_intelligence(text: str) -> dict[str, Any]:
+    threads = infer_metric_threads(text)
+    tolerances = extract_tolerance_tokens(text)
+    chamfer_tokens = []
+    for pattern in [
+        r"\b\d+(?:[.,]\d+)?\s*[xх×]\s*\d+(?:[.,]\d+)?\s*°",
+        r"\bC\s*\d+(?:[.,]\d+)?\b",
+        r"фаск[^\n;]{0,24}\d+(?:[.,]\d+)?\s*[xх×]\s*\d+(?:[.,]\d+)?\s*°?",
+    ]:
+        for match in re.finditer(pattern, text or "", flags=re.IGNORECASE):
+            value = " ".join(match.group(0).split()).strip(" .,:;")
+            if value and value.lower() not in {x.lower() for x in chamfer_tokens}:
+                chamfer_tokens.append(value)
+    return {
+        "threads": threads,
+        "tolerances": tolerances,
+        "chamfers_detected": chamfer_tokens[:20],
+        "requires_chamfer_decision": not bool(chamfer_tokens),
+        "notes": [
+            "Шаг резьбы без явного указания принимается по стандартному крупному ряду и помечается как предположение.",
+            "Неуказанные фаски не создаются автоматически: оператор отмечает их на мини-чертёже.",
+        ],
+    }
+
+
+def augment_drawing_prompt(prompt: str) -> str:
+    return prompt.strip() + """
+
+Обязательная проверка чертежа перед ответом:
+- найди все локальные и общие допуски, посадки, геометрические допуски, шероховатость и технические требования;
+- отдельно перечисли резьбы. Если написано только M без шага, прими стандартный крупный шаг и прямо укажи, что он принят автоматически;
+- перечисли все явно заданные фаски и скругления;
+- если фаска не задана, не спрашивай общий вопрос. Укажи конкретные кромки, для которых оператор должен выбрать «фаска» или «снять остроту»;
+- не задавай вопрос о данных, которые однозначно следуют из стандартного обозначения.
+"""
 
 
 def detect_media_type(file: UploadFile) -> str:
@@ -230,7 +376,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="Personal AI Client", version="2.2.0-pro", lifespan=lifespan)
+app = FastAPI(title="Personal AI Client", version="2.3.0-pro", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -427,7 +573,7 @@ def analyze_with_openai(
     from openai import OpenAI
 
     client = OpenAI(api_key=api_key)
-    user_text = prompt.strip()
+    user_text = augment_drawing_prompt(prompt)
     if crop:
         user_text += "\n\nПользователь специально выделил область. Сосредоточь анализ прежде всего на ней."
 
@@ -519,11 +665,47 @@ def parse_shopturn_payload(raw: str | None) -> tuple[dict[str, Any], str]:
             cleaned[key] = value
         elif value is not None:
             cleaned[key] = str(value)[:160]
+
+    operations_raw = data.get("operations")
+    operations: list[dict[str, Any]] = []
+    if isinstance(operations_raw, list):
+        for item in operations_raw[:40]:
+            if not isinstance(item, dict):
+                continue
+            operations.append({
+                "id": str(item.get("id") or "")[:80],
+                "enabled": bool(item.get("enabled", True)),
+                "operation": str(item.get("operation") or "")[:80],
+                "label": str(item.get("label") or "")[:160],
+                "toolT": str(item.get("toolT") or "")[:20],
+                "toolD": str(item.get("toolD") or "")[:20],
+                "toolName": str(item.get("toolName") or "")[:160],
+                "speed": str(item.get("speed") or "")[:40],
+                "feed": str(item.get("feed") or "")[:40],
+                "depth": str(item.get("depth") or "")[:40],
+                "thread": item.get("thread") if isinstance(item.get("thread"), dict) else {},
+            })
+    cleaned["operations"] = operations
+    cleaned["threadSelection"] = data.get("threadSelection") if isinstance(data.get("threadSelection"), dict) else {}
+    cleaned["chamfers"] = data.get("chamfers") if isinstance(data.get("chamfers"), list) else []
     machine = (
         "Tengyue CK52PT-Y / Siemens SINUMERIK 828D ShopTurn"
         if cleaned.get("machineProfile") == "tengyue_ck52pty"
         else cleaned.get("machineProfile", "не указан")
     )
+    route_lines = []
+    for index, item in enumerate(cleaned.get("operations", []), start=1):
+        if not item.get("enabled", True):
+            continue
+        thread = item.get("thread") or {}
+        thread_text = f"; резьба {thread.get('designation', '')}×{thread.get('pitch', '')}" if thread else ""
+        route_lines.append(
+            f"{index}. {item.get('label') or item.get('operation') or 'Операция'} · "
+            f"T{item.get('toolT', '?')} D{item.get('toolD', '?')} · {item.get('toolName', '—')} · "
+            f"S={item.get('speed', '—')} F={item.get('feed', '—')} D={item.get('depth', '—')}{thread_text}"
+        )
+    route_summary = "\n".join(route_lines) if route_lines else "Маршрут операций не сформирован."
+    chamfer_summary = "; ".join(str(x.get("notation") or "") for x in cleaned.get("chamfers", []) if isinstance(x, dict)) or "не отмечены"
     summary = "\n".join([
         f"Станок: {machine}.",
         f"Операция: {cleaned.get('operation', 'не указана')}; Machining={cleaned.get('machining', '—')}; Pos.={cleaned.get('position', '—')}.",
@@ -546,6 +728,8 @@ def parse_shopturn_payload(raw: str | None) -> tuple[dict[str, Any], str]:
             f"FS1={cleaned.get('fs1', '0')}; FS2={cleaned.get('fs2', '0')}; "
             f"FS3={cleaned.get('fs3', '0')}; UX={cleaned.get('ux', '0')}; UZ={cleaned.get('uz', '0')}"
         ),
+        f"Маршрут обработки:\n{route_summary}",
+        f"Отмеченные фаски/кромки: {chamfer_summary}",
     ])
     return cleaned, summary
 
@@ -941,8 +1125,20 @@ def health() -> dict[str, Any]:
         "api_key_configured": bool(os.getenv("OPENAI_API_KEY")),
         "max_file_mb": MAX_FILE_MB,
         "supported_types": ["JPG", "PNG", "WEBP", "PDF", "SLDDRW"],
-        "version": "2.2.0-pro",
-        "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52pty_profile"],
+        "version": "2.3.0-pro",
+        "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52pty_profile", "drawing_intelligence", "tolerance_detection", "metric_thread_catalog", "chamfer_marker", "multi_operation_route", "contour_mirroring"],
+    }
+
+
+@app.get("/api/thread-catalog")
+def thread_catalog() -> dict[str, Any]:
+    return {
+        "standard": "ISO metric",
+        "items": [
+            {"designation": key, **value}
+            for key, value in sorted(METRIC_THREAD_CATALOG.items(), key=lambda item: item[1]["diameter"])
+        ],
+        "note": "Фактическая возможность обработки зависит от установочной схемы, патрона, державки, пластины и машинных ограничений.",
     }
 
 
@@ -1083,6 +1279,10 @@ async def analyze(
         content=response_text,
         openai_response_id=openai_response_id,
     )
+    intelligence_source = prompt + "\n" + response_text
+    if media_type == SLDDRW_MEDIA_TYPE:
+        intelligence_source += "\n" + "\n".join(extract_slddrw_text_hints(raw))
+    drawing_intelligence = build_drawing_intelligence(intelligence_source)
     return {
         "id": analysis_id,
         "response": response_text,
@@ -1090,6 +1290,7 @@ async def analyze(
         "model": MODEL,
         "mock": MOCK_MODE,
         "crop": crop,
+        "drawing_intelligence": drawing_intelligence,
     }
 
 
