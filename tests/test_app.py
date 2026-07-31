@@ -238,7 +238,7 @@ def test_stock_removal_accepts_shopturn_tool_flow():
 
 def test_health_reports_shopturn_feature():
     body = client.get("/api/health").json()
-    assert body["version"] == "2.3.2-pro"
+    assert body["version"] == "2.3.3-pro"
     assert "shopturn_tool_flow" in body["features"]
 
 
@@ -382,3 +382,26 @@ def test_tolerance_token_extraction_keeps_H14_and_h14_separate():
     assert 'H14' in tokens
     assert 'h14' in tokens
     assert '±IT14/2' in tokens
+
+
+def test_stock_removal_accepts_hybrid_mode_and_multi_options():
+    response = client.post(
+        "/api/stock-removal",
+        data={
+            "stock_mode": "hybrid",
+            "blank_diameter": "140",
+            "blank_length": "58",
+            "blank_width": "180",
+            "blank_height": "120",
+            "blank_mill_length": "12",
+            "zero_reference": "X0 по оси детали; Z0 по правому торцу",
+            "first_side": "Торец A; Обработка с двух сторон",
+            "notes": "Комбинированная обработка",
+        },
+        files={"file": ("part.png", make_png(), "image/png")},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert "Токарный X/Z + фрезерный" in body["response"]
+    assert "X0 по оси детали; Z0 по правому торцу" in body["response"]
+    assert "Торец A; Обработка с двух сторон" in body["response"]

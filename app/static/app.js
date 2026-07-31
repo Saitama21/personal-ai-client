@@ -42,6 +42,61 @@ state.chamferTransform = null;
 
 const $ = id => document.getElementById(id);
 
+const STOCK_MODE_VALUES = new Set(['lathe', 'mill', 'hybrid']);
+const ZERO_REFERENCE_OPTIONS = [
+  'X0 по оси детали',
+  'Z0 по правому торцу',
+  'Z0 по левому торцу',
+  'Рабочее смещение G54 подтверждено',
+];
+const FIRST_SIDE_OPTIONS = [
+  'Торец A',
+  'Торец B',
+  'Обработка с двух сторон',
+  'Требуется переворот заготовки',
+  'Наружный контур',
+  'Внутренний контур',
+];
+
+function splitOptionValue(value) {
+  return String(value || '').split(';').map(x => x.trim()).filter(Boolean);
+}
+
+function syncStockModeUi(mode = state.stockMode) {
+  state.stockMode = STOCK_MODE_VALUES.has(mode) ? mode : 'lathe';
+  document.querySelectorAll('input[name="stockMode"]').forEach(input => {
+    input.checked = input.value === state.stockMode;
+    input.closest('.choice-card')?.classList.toggle('selected', input.checked);
+  });
+  $('latheFields').classList.toggle('hidden', state.stockMode === 'mill');
+  $('millFields').classList.toggle('hidden', state.stockMode === 'lathe');
+}
+
+function syncStockOptionValues() {
+  const zeroValues = [...document.querySelectorAll('[data-zero-value]:checked')].map(input => input.dataset.zeroValue);
+  const sideValues = [...document.querySelectorAll('[data-side-value]:checked')].map(input => input.dataset.sideValue);
+  const zeroCustom = $('zeroReferenceCustom').value.trim();
+  const sideCustom = $('firstSideCustom').value.trim();
+  if (zeroCustom) zeroValues.push(zeroCustom);
+  if (sideCustom) sideValues.push(sideCustom);
+  $('zeroReference').value = zeroValues.join('; ');
+  $('firstSide').value = sideValues.join('; ');
+  document.querySelectorAll('.checkbox-choice').forEach(label => {
+    const input = label.querySelector('input[type="checkbox"]');
+    label.classList.toggle('selected', !!input?.checked);
+  });
+}
+
+function applyStockOptionValues(zeroReference = '', firstSide = '') {
+  const zeroParts = splitOptionValue(zeroReference);
+  const sideParts = splitOptionValue(firstSide);
+  document.querySelectorAll('[data-zero-value]').forEach(input => { input.checked = zeroParts.includes(input.dataset.zeroValue); });
+  document.querySelectorAll('[data-side-value]').forEach(input => { input.checked = sideParts.includes(input.dataset.sideValue); });
+  $('zeroReferenceCustom').value = zeroParts.filter(x => !ZERO_REFERENCE_OPTIONS.includes(x)).join('; ');
+  $('firstSideCustom').value = sideParts.filter(x => !FIRST_SIDE_OPTIONS.includes(x)).join('; ');
+  syncStockOptionValues();
+}
+
 const THEME_STORAGE_KEY = 'personal-ai-theme';
 const systemDarkMedia = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
 
@@ -292,12 +347,35 @@ $('analyzeBtn').onclick = async () => {
   catch(e){toast(e.message);} finally{$('progress').classList.add('hidden');syncFileUi();}
 };
 
-document.querySelectorAll('.segmented-item').forEach(b=>b.onclick=()=>{state.stockMode=b.dataset.mode;document.querySelectorAll('.segmented-item').forEach(x=>x.classList.toggle('active',x===b));$('latheFields').classList.toggle('hidden',state.stockMode!=='lathe');$('millFields').classList.toggle('hidden',state.stockMode!=='mill');scheduleAutosave();});
-['blankDiameter','blankLength','blankWidth','blankHeight','blankLengthMill','zeroReference','firstSide','stockNotes'].forEach(id=>$(id).addEventListener('input',()=>{renderEditor();scheduleAutosave();}));
+document.querySelectorAll('input[name="stockMode"]').forEach(input => input.addEventListener('change', () => {
+  if (!input.checked) return;
+  syncStockModeUi(input.value);
+  renderEditor();
+  scheduleAutosave();
+}));
+document.querySelectorAll('[data-zero-value], [data-side-value]').forEach(input => input.addEventListener('change', () => {
+  syncStockOptionValues();
+  scheduleAutosave();
+}));
+['zeroReferenceCustom','firstSideCustom'].forEach(id => $(id).addEventListener('input', () => {
+  syncStockOptionValues();
+  scheduleAutosave();
+}));
+['blankDiameter','blankLength','blankWidth','blankHeight','blankLengthMill','stockNotes'].forEach(id=>$(id).addEventListener('input',()=>{renderEditor();scheduleAutosave();}));
+syncStockModeUi();
+syncStockOptionValues();
 
 $('stockBtn').onclick = async () => {
   if(!state.file)return; $('stockBtn').disabled=true;$('stockProgress').classList.remove('hidden');const f=new FormData();f.append('file',state.file);f.append('stock_mode',state.stockMode);
-  if(state.stockMode==='lathe'){f.append('blank_diameter',$('blankDiameter').value);f.append('blank_length',$('blankLength').value);}else{f.append('blank_width',$('blankWidth').value);f.append('blank_height',$('blankHeight').value);f.append('blank_length',$('blankLengthMill').value);} f.append('zero_reference',$('zeroReference').value);f.append('first_side',$('firstSide').value);f.append('notes',$('stockNotes').value);f.append('shopturn_json',JSON.stringify(collectShopTurnPayload()));f.append('project_json',JSON.stringify(collectProjectData()));
+  if(state.stockMode==='lathe'){
+    f.append('blank_diameter',$('blankDiameter').value);f.append('blank_length',$('blankLength').value);
+  }else if(state.stockMode==='mill'){
+    f.append('blank_width',$('blankWidth').value);f.append('blank_height',$('blankHeight').value);f.append('blank_length',$('blankLengthMill').value);
+  }else{
+    f.append('blank_diameter',$('blankDiameter').value);f.append('blank_length',$('blankLength').value);
+    f.append('blank_width',$('blankWidth').value);f.append('blank_height',$('blankHeight').value);f.append('blank_mill_length',$('blankLengthMill').value);
+  }
+  syncStockOptionValues(); f.append('zero_reference',$('zeroReference').value);f.append('first_side',$('firstSide').value);f.append('notes',$('stockNotes').value);f.append('shopturn_json',JSON.stringify(collectShopTurnPayload()));f.append('project_json',JSON.stringify(collectProjectData()));
   try{const r=await fetch('/api/stock-removal',{method:'POST',body:f});const d=await r.json();if(!r.ok)throw new Error(d.detail||'Ошибка');$('stockResultEmpty').classList.add('hidden');$('stockResultContent').classList.remove('hidden');$('stockResultContent').innerHTML=renderText(d.response);$('stockResultMeta').textContent=`${d.model}${d.mock?' · MOCK':''} · #${d.id}`;startChat('stock',d);toast('План сформирован');}catch(e){toast(e.message);}finally{$('stockProgress').classList.add('hidden');syncFileUi();}
 };
 $('aiContourBtn').onclick = async () => {
@@ -389,8 +467,8 @@ $('importBtn').onclick=()=>$('importContourInput').click();$('importContourInput
 
 function collectEditorSettings(){return{xMode:state.xMode,process:state.process,z0:state.z0,closed:state.closed,snap:state.snap,snapStep:state.snapStep,showBlank:state.showBlank,showLabels:state.showLabels,showDimensions:state.showDimensions};}
 function applyEditorSettings(s={}){Object.assign(state,{xMode:s.xMode||'diameter',process:s.process||'outer',z0:s.z0||'right',closed:!!s.closed,snap:s.snap!==false,snapStep:number(s.snapStep,.1),showBlank:s.showBlank!==false,showLabels:s.showLabels!==false,showDimensions:!!s.showDimensions});$('xModeSelect').value=state.xMode;$('processSelect').value=state.process;$('z0Select').value=state.z0;$('snapToggle').checked=state.snap;$('snapStepInput').value=state.snapStep;$('blankOverlayToggle').checked=state.showBlank;$('labelsToggle').checked=state.showLabels;$('dimensionsToggle').checked=state.showDimensions;$('closeContourBtn').textContent=state.closed?'Разомкнуть':'Замкнуть';}
-function collectProjectData(){return{contourPoints:state.contourPoints,editor:collectEditorSettings(),shopturn:collectShopTurnData(),operationRoute:state.operationRoute,projectThreads:state.projectThreads,chamfers:state.chamfers,drawingIntel:state.drawingIntel,stockMode:state.stockMode,blank:{diameter:$('blankDiameter').value,length:$('blankLength').value,width:$('blankWidth').value,height:$('blankHeight').value,millLength:$('blankLengthMill').value},zeroReference:$('zeroReference').value,firstSide:$('firstSide').value,notes:$('stockNotes').value,fileName:state.file?.name||state.restoredFileName||null,updatedAt:Date.now()};}
-function applyProjectData(d={}){state.restoredFileName=d.fileName||null;state.contourPoints=Array.isArray(d.contourPoints)?clone(d.contourPoints):[];applyEditorSettings(d.editor||{});state.stockMode=d.stockMode||'lathe';document.querySelectorAll('.segmented-item').forEach(b=>b.classList.toggle('active',b.dataset.mode===state.stockMode));$('latheFields').classList.toggle('hidden',state.stockMode!=='lathe');$('millFields').classList.toggle('hidden',state.stockMode!=='mill');const b=d.blank||{};$('blankDiameter').value=b.diameter||'';$('blankLength').value=b.length||'';$('blankWidth').value=b.width||'';$('blankHeight').value=b.height||'';$('blankLengthMill').value=b.millLength||'';$('zeroReference').value=d.zeroReference||'';$('firstSide').value=d.firstSide||'';$('stockNotes').value=d.notes||'';applyShopTurnData(d.shopturn||{});state.operationRoute=Array.isArray(d.operationRoute)?clone(d.operationRoute):[];state.selectedOperationCodes=[];state.projectThreads=Array.isArray(d.projectThreads)?clone(d.projectThreads):[];state.chamfers=Array.isArray(d.chamfers)?clone(d.chamfers):[];state.drawingIntel=d.drawingIntel||{tolerances:[],tolerance_interpretations:[],threads:[],chamfers_detected:[],requires_chamfer_decision:true,notes:[]};if((state.drawingIntel.tolerances?.length||state.drawingIntel.threads?.length||state.chamfers.length||state.projectThreads.length))$('drawingIntelligencePanel').classList.remove('hidden');state.selectedIndex=0;state.activeRouteIndex=-1;state.validation=[];renderDrawingIntelligence();renderProjectThreads();renderChamferEditor();renderOperationRoute();renderOperationMultiPicker();renderEditor();syncFileUi();}
+function collectProjectData(){syncStockOptionValues();return{contourPoints:state.contourPoints,editor:collectEditorSettings(),shopturn:collectShopTurnData(),operationRoute:state.operationRoute,projectThreads:state.projectThreads,chamfers:state.chamfers,drawingIntel:state.drawingIntel,stockMode:state.stockMode,blank:{diameter:$('blankDiameter').value,length:$('blankLength').value,width:$('blankWidth').value,height:$('blankHeight').value,millLength:$('blankLengthMill').value},zeroReference:$('zeroReference').value,firstSide:$('firstSide').value,stockOptions:{zero:[...document.querySelectorAll('[data-zero-value]:checked')].map(x=>x.dataset.zeroValue),sides:[...document.querySelectorAll('[data-side-value]:checked')].map(x=>x.dataset.sideValue),zeroCustom:$('zeroReferenceCustom').value,sideCustom:$('firstSideCustom').value},notes:$('stockNotes').value,fileName:state.file?.name||state.restoredFileName||null,updatedAt:Date.now()};}
+function applyProjectData(d={}){state.restoredFileName=d.fileName||null;state.contourPoints=Array.isArray(d.contourPoints)?clone(d.contourPoints):[];applyEditorSettings(d.editor||{});state.stockMode=STOCK_MODE_VALUES.has(d.stockMode)?d.stockMode:'lathe';syncStockModeUi(state.stockMode);const b=d.blank||{};$('blankDiameter').value=b.diameter||'';$('blankLength').value=b.length||'';$('blankWidth').value=b.width||'';$('blankHeight').value=b.height||'';$('blankLengthMill').value=b.millLength||'';applyStockOptionValues(d.zeroReference||'',d.firstSide||'');$('stockNotes').value=d.notes||'';applyShopTurnData(d.shopturn||{});state.operationRoute=Array.isArray(d.operationRoute)?clone(d.operationRoute):[];state.selectedOperationCodes=[];state.projectThreads=Array.isArray(d.projectThreads)?clone(d.projectThreads):[];state.chamfers=Array.isArray(d.chamfers)?clone(d.chamfers):[];state.drawingIntel=d.drawingIntel||{tolerances:[],tolerance_interpretations:[],threads:[],chamfers_detected:[],requires_chamfer_decision:true,notes:[]};if((state.drawingIntel.tolerances?.length||state.drawingIntel.threads?.length||state.chamfers.length||state.projectThreads.length))$('drawingIntelligencePanel').classList.remove('hidden');state.selectedIndex=0;state.activeRouteIndex=-1;state.validation=[];renderDrawingIntelligence();renderProjectThreads();renderChamferEditor();renderOperationRoute();renderOperationMultiPicker();renderEditor();syncFileUi();}
 function scheduleAutosave(){clearTimeout(state.autosaveTimer);clearTimeout(state.serverSaveTimer);$('autosaveState').textContent='Сохранение...';state.autosaveTimer=setTimeout(()=>{localStorage.setItem('personal-ai-pro-draft',JSON.stringify(collectProjectData()));$('autosaveState').textContent=state.currentProjectId?'Локально сохранено · синхронизация...':'Автосохранено локально';},450);if(state.currentProjectId){state.serverSaveTimer=setTimeout(async()=>{try{const r=await fetch(`/api/projects/${state.currentProjectId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:state.currentProjectName,data:collectProjectData()})});if(r.ok)$('autosaveState').textContent='Синхронизировано с Railway Volume';else $('autosaveState').textContent='Локально сохранено · ошибка синхронизации';}catch{$('autosaveState').textContent='Локально сохранено · сервер недоступен';}},1400);}}
 function loadLocalDraft(){try{const d=JSON.parse(localStorage.getItem('personal-ai-pro-draft')||'null');if(d)applyProjectData(d);}catch{}}
 
@@ -399,7 +477,9 @@ $('saveProjectBtn').onclick=()=>saveProject(false);$('createProjectBtn').onclick
 function resetWorkspaceForNewProject(){
   state.currentProjectId=null;state.currentProjectName='Локальный черновик';state.file=null;state.restoredFileName=null;state.image=null;state.crop=null;state.contourPoints=[];state.selectedIndex=0;state.undoStack=[];state.redoStack=[];state.validation=[];state.operationRoute=[];state.selectedOperationCodes=[];state.activeRouteIndex=-1;state.projectThreads=[];state.chamfers=[];state.drawingIntel={tolerances:[],tolerance_interpretations:[],threads:[],chamfers_detected:[],requires_chamfer_decision:true,notes:[]};
   fileInput.value='';dropZone.classList.remove('hidden');previewArea.classList.add('hidden');pdfPreview.src='';
-  ['promptInput','blankDiameter','blankLength','blankWidth','blankHeight','blankLengthMill','zeroReference','firstSide','stockNotes','offsetXInput','offsetZInput'].forEach(id=>{if($(id))$(id).value='';});
+  ['promptInput','blankDiameter','blankLength','blankWidth','blankHeight','blankLengthMill','zeroReference','firstSide','zeroReferenceCustom','firstSideCustom','stockNotes','offsetXInput','offsetZInput'].forEach(id=>{if($(id))$(id).value='';});
+  document.querySelectorAll('[data-zero-value], [data-side-value]').forEach(input=>{input.checked=false;input.closest('.choice-card')?.classList.remove('selected');});
+  state.stockMode='lathe';syncStockModeUi('lathe');syncStockOptionValues();
   ['confirmDrawing','confirmBlank','confirmZero','confirmTool'].forEach(id=>{if($(id))$(id).checked=false;});
   SHOP_INPUT_IDS.forEach(id=>{const el=$(id);if(!el)return;if(el.type==='checkbox')el.checked=false;else if(el.tagName==='SELECT')el.selectedIndex=0;else el.value='';});
   state.shopturn.wizardStep=0;populateToolPresets('');resetChat('analysis',true);resetChat('stock',true);

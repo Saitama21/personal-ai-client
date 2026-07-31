@@ -35,7 +35,7 @@
         <button class="nav-item" data-view="settings"><span class="nav-icon" aria-hidden="true">⚙</span><span>Настройки</span></button>
       </nav>
       <div class="status-card glass-soft"><span class="status-dot" id="statusDot"></span><div><strong id="statusTitle">Проверка...</strong><small id="statusText">Соединение с сервером</small></div></div>
-      <div class="sidebar-footer">Создатель: Єрошов Іван<br>Версия 2.3.2 Tolerance Rules</div>
+      <div class="sidebar-footer">Создатель: Єрошов Іван<br>Версия 2.3.3 Radio + Checkbox Logic</div>
     </aside>
 
     <main>
@@ -138,10 +138,50 @@
         <div class="workspace-grid stock-grid">
           <section class="panel glass stock-form-panel">
             <div class="panel-heading"><div><span class="eyebrow">ПАРАМЕТРЫ</span><h2>Stock Removal</h2></div><span class="badge" id="stockFileBadge">Нет файла</span></div>
-            <div class="segmented glass-soft"><button class="segmented-item active" data-mode="lathe">Токарный X/Z</button><button class="segmented-item" data-mode="mill">Фрезерный</button></div>
+            <fieldset class="stock-choice-section processing-mode-section">
+              <legend>Режим обработки <span>один вариант</span></legend>
+              <div class="radio-card-grid" id="stockModeRadioGroup">
+                <label class="choice-card radio-choice"><input type="radio" name="stockMode" value="lathe" checked /><span class="choice-indicator"></span><span><strong>Токарный X/Z</strong><small>Наружное и внутреннее точение, торцовка, резьба, канавка</small></span></label>
+                <label class="choice-card radio-choice"><input type="radio" name="stockMode" value="mill" /><span class="choice-indicator"></span><span><strong>Фрезерный</strong><small>Плоскости, уступы, карманы и отверстия</small></span></label>
+                <label class="choice-card radio-choice"><input type="radio" name="stockMode" value="hybrid" /><span class="choice-indicator"></span><span><strong>Токарный + фрезерный</strong><small>Комбинированная обработка на CK52PT-Y с приводным инструментом</small></span></label>
+              </div>
+            </fieldset>
+
             <div id="latheFields" class="form-grid"><label><span>Диаметр заготовки, мм</span><input id="blankDiameter" inputmode="decimal" placeholder="140" /></label><label><span>Длина заготовки, мм</span><input id="blankLength" inputmode="decimal" placeholder="58" /></label></div>
-            <div id="millFields" class="form-grid hidden"><label><span>Ширина, мм</span><input id="blankWidth" placeholder="180" /></label><label><span>Высота, мм</span><input id="blankHeight" placeholder="120" /></label><label><span>Толщина, мм</span><input id="blankLengthMill" placeholder="12" /></label></div>
-            <div class="form-grid form-grid-wide"><label><span>Ноль детали / база</span><input id="zeroReference" placeholder="Например: Z0 по правому торцу, X0 по оси" /></label><label><span>Первая сторона</span><input id="firstSide" placeholder="Торец А" /></label><label class="full"><span>Примечания</span><textarea id="stockNotes" placeholder="Отверстия уже есть, обработка наружного контура..."></textarea></label></div>
+            <div id="millFields" class="form-grid hidden"><label><span>Ширина, мм</span><input id="blankWidth" inputmode="decimal" placeholder="180" /></label><label><span>Высота, мм</span><input id="blankHeight" inputmode="decimal" placeholder="120" /></label><label><span>Толщина, мм</span><input id="blankLengthMill" inputmode="decimal" placeholder="12" /></label></div>
+
+            <fieldset class="stock-choice-section extra-options-section">
+              <legend>Дополнительные параметры <span>можно выбрать несколько</span></legend>
+              <div class="stock-options-grid">
+                <section class="checkbox-group-card">
+                  <div class="checkbox-group-title"><strong>Ноль детали / база</strong><small>Отметь все базы, которые используются в установе</small></div>
+                  <div class="checkbox-choice-grid" id="zeroReferenceChoices">
+                    <label class="choice-card checkbox-choice"><input type="checkbox" data-zero-value="X0 по оси детали" /><span class="choice-indicator"></span><span><strong>X0 по оси</strong><small>Диаметральный ноль детали</small></span></label>
+                    <label class="choice-card checkbox-choice"><input type="checkbox" data-zero-value="Z0 по правому торцу" /><span class="choice-indicator"></span><span><strong>Z0 справа</strong><small>Ноль по правому торцу</small></span></label>
+                    <label class="choice-card checkbox-choice"><input type="checkbox" data-zero-value="Z0 по левому торцу" /><span class="choice-indicator"></span><span><strong>Z0 слева</strong><small>Ноль по левому торцу</small></span></label>
+                    <label class="choice-card checkbox-choice"><input type="checkbox" data-zero-value="Рабочее смещение G54 подтверждено" /><span class="choice-indicator"></span><span><strong>G54 задан</strong><small>Рабочая система координат проверена</small></span></label>
+                  </div>
+                  <label class="custom-choice-input"><span>Другая база</span><input id="zeroReferenceCustom" placeholder="Например: Z0 по бурту, X0 по отверстию" /></label>
+                </section>
+
+                <section class="checkbox-group-card">
+                  <div class="checkbox-group-title"><strong>Стороны и условия обработки</strong><small>Можно отметить несколько этапов установки</small></div>
+                  <div class="checkbox-choice-grid" id="firstSideChoices">
+                    <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Торец A" /><span class="choice-indicator"></span><span><strong>Торец A</strong><small>Начать обработку с первой стороны</small></span></label>
+                    <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Торец B" /><span class="choice-indicator"></span><span><strong>Торец B</strong><small>Обработка второй стороны</small></span></label>
+                    <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Обработка с двух сторон" /><span class="choice-indicator"></span><span><strong>Две стороны</strong><small>Предусмотрены обе установки</small></span></label>
+                    <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Требуется переворот заготовки" /><span class="choice-indicator"></span><span><strong>Переворот</strong><small>Межоперационная переустановка</small></span></label>
+                    <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Наружный контур" /><span class="choice-indicator"></span><span><strong>Наружный контур</strong><small>Наружные диаметры и торцы</small></span></label>
+                    <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Внутренний контур" /><span class="choice-indicator"></span><span><strong>Внутренний контур</strong><small>Расточка, отверстия и внутренняя резьба</small></span></label>
+                  </div>
+                  <label class="custom-choice-input"><span>Другое условие</span><input id="firstSideCustom" placeholder="Например: отверстия уже выполнены лазером" /></label>
+                </section>
+              </div>
+              <input id="zeroReference" type="hidden" />
+              <input id="firstSide" type="hidden" />
+            </fieldset>
+
+            <div class="form-grid form-grid-wide"><label class="full"><span>Примечания</span><textarea id="stockNotes" placeholder="Отверстия уже есть, обработка наружного контура..."></textarea></label></div>
             <div class="button-row"><button id="stockBtn" class="primary-button" disabled>Сформировать план</button><button id="aiContourBtn" class="secondary-button" disabled>AI-контур X/Z</button></div>
             <div id="stockProgress" class="progress hidden"><span></span><p>Строю план и контур...</p></div>
           </section>

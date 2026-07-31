@@ -430,7 +430,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="Personal AI Client", version="2.3.2-pro", lifespan=lifespan)
+app = FastAPI(title="Personal AI Client", version="2.3.3-pro", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -816,7 +816,11 @@ def parse_shopturn_payload(raw: str | None) -> tuple[dict[str, Any], str]:
 
 
 def create_stock_removal_prompt(*, stock_mode: str, blank_summary: str, zero_reference: str, first_side: str, notes: str, tool_summary: str = "") -> str:
-    mode_text = "токарная обработка X/Z" if stock_mode == "lathe" else "фрезерная обработка"
+    mode_text = {
+        "lathe": "токарная обработка X/Z",
+        "mill": "фрезерная обработка",
+        "hybrid": "комбинированная токарно-фрезерная обработка X/Z с приводным инструментом",
+    }.get(stock_mode, "обработка")
     return f"""Ты CNC-assistant. На основе чертежа и параметров заготовки составь заготовительный план Stock Removal.
 Режим: {mode_text}.
 Параметры заготовки: {blank_summary}.
@@ -831,8 +835,8 @@ def create_stock_removal_prompt(*, stock_mode: str, blank_summary: str, zero_ref
 2. Извлечённые размеры детали, которые видны уверенно.
 3. Что ещё нужно уточнить.
 4. Предлагаемый план Stock Removal по шагам.
-5. Если режим токарный: таблица координат X/Z для ориентировочного контура. X указывай в диаметрах.
-6. Если режим фрезерный: список поверхностей/карманов/уступов и съёма материала.
+5. Если режим токарный или комбинированный: таблица координат X/Z для ориентировочного токарного контура. X указывай в диаметрах.
+6. Если режим фрезерный или комбинированный: список поверхностей, карманов, уступов, отверстий и съёма материала приводным инструментом.
 7. Отдельно блок 'Инструмент и ShopTurn 828D': T/D, выбранный инструмент, F/S, поля X0/Z0/X1/Z1, FS1–FS3, D, UX и UZ.
 8. Отдельно блок 'Важно проверить'.
 
@@ -857,18 +861,27 @@ def build_stock_removal_mock(filename: str, media_type: str, stock_mode: str, bl
         "Проконтролировать отверстие и сопряжения.",
         "Оставить чистовой припуск под финальный проход.",
     ]
+    lathe_table = "| Точка | X | Z | Комментарий |\n|---|---:|---:|---|\n| P1 | Ø140 | 0 | Старт по заготовке |\n| P2 | Ø130 | -5 | Наружный диаметр |\n| P3 | Ø92 | -20 | Первая ступень |\n| P4 | Ø70 | -40 | Вторая ступень |\n| P5 | Ø30 | -55 | Отверстие/конечная зона |"
+    mill_list = "- Снять плоскость до базовой высоты\n- Обработать центральную ступень\n- Обработать периферию, карманы и отверстия по подтверждённому контуру"
     if stock_mode == "lathe":
-        coord_table = "| Точка | X | Z | Комментарий |\n|---|---:|---:|---|\n| P1 | Ø140 | 0 | Старт по заготовке |\n| P2 | Ø130 | -5 | Наружный диаметр |\n| P3 | Ø92 | -20 | Первая ступень |\n| P4 | Ø70 | -40 | Вторая ступень |\n| P5 | Ø30 | -55 | Отверстие/конечная зона |"
+        coord_table = lathe_table
+    elif stock_mode == "mill":
+        coord_table = mill_list
     else:
-        coord_table = "- Снять плоскость до базовой высоты\n- Обработать центральную ступень\n- Обработать периферию и карманы по подтверждённому контуру"
+        coord_table = f"#### Токарная часть\n{lathe_table}\n\n#### Фрезерная часть\n{mill_list}"
     extra = "Да" if preview else "Нет"
     extracted_text = "\n".join(f"- {item}" for item in extracted)
     plan_text = "\n".join(f"{i+1}. {item}" for i, item in enumerate(plan))
+    mode_label = {
+        "lathe": "Токарный X/Z",
+        "mill": "Фрезерный",
+        "hybrid": "Токарный X/Z + фрезерный",
+    }.get(stock_mode, stock_mode)
     return f"""## Stock Removal · тестовый режим
 
 **Файл:** {filename} ({file_kind})  
 **Встроенное превью для SLDDRW:** {extra}  
-**Режим:** {'Токарный X/Z' if stock_mode == 'lathe' else 'Фрезерный'}  
+**Режим:** {mode_label}  
 **Заготовка:** {blank_summary}  
 **Ноль детали:** {zero_reference or 'не указан'}  
 **Первая сторона:** {first_side or 'не указана'}
@@ -1206,8 +1219,8 @@ def health() -> dict[str, Any]:
         "api_key_configured": bool(os.getenv("OPENAI_API_KEY")),
         "max_file_mb": MAX_FILE_MB,
         "supported_types": ["JPG", "PNG", "WEBP", "PDF", "SLDDRW"],
-        "version": "2.3.2-pro",
-        "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52pty_profile", "drawing_intelligence", "tolerance_detection", "metric_thread_catalog", "chamfer_marker", "multi_operation_route", "contour_mirroring", "history_project_restore", "mobile_history", "multi_operation_picker", "general_tolerance_h14_rule"],
+        "version": "2.3.3-pro",
+        "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52pty_profile", "drawing_intelligence", "tolerance_detection", "metric_thread_catalog", "chamfer_marker", "multi_operation_route", "contour_mirroring", "history_project_restore", "mobile_history", "multi_operation_picker", "general_tolerance_h14_rule", "stock_mode_radio", "multi_checkbox_setup", "hybrid_turn_mill_mode"],
     }
 
 
@@ -1404,6 +1417,7 @@ async def stock_removal(
     blank_length: str | None = Form(None),
     blank_width: str | None = Form(None),
     blank_height: str | None = Form(None),
+    blank_mill_length: str | None = Form(None),
     zero_reference: str | None = Form(None),
     first_side: str | None = Form(None),
     notes: str | None = Form(None),
@@ -1413,7 +1427,7 @@ async def stock_removal(
     media_type = detect_media_type(file)
     if media_type not in STANDARD_ALLOWED_TYPES | {SLDDRW_MEDIA_TYPE}:
         raise HTTPException(status_code=415, detail="Поддерживаются JPG, PNG, WEBP, PDF и SLDDRW")
-    if stock_mode not in {"lathe", "mill"}:
+    if stock_mode not in {"lathe", "mill", "hybrid"}:
         raise HTTPException(status_code=400, detail="Некорректный режим обработки")
 
     raw = await file.read()
@@ -1424,8 +1438,13 @@ async def stock_removal(
 
     if stock_mode == "lathe":
         blank_summary = f"Ø{blank_diameter or '?'} × {blank_length or '?'} мм"
-    else:
+    elif stock_mode == "mill":
         blank_summary = f"{blank_width or '?'} × {blank_height or '?'} × {blank_length or '?'} мм"
+    else:
+        blank_summary = (
+            f"токарная заготовка Ø{blank_diameter or '?'} × {blank_length or '?'} мм; "
+            f"фрезерная область {blank_width or '?'} × {blank_height or '?'} × {blank_mill_length or '?'} мм"
+        )
 
     shopturn_data, tool_summary = parse_shopturn_payload(shopturn_json)
     project_snapshot = parse_history_project_snapshot(project_json)
