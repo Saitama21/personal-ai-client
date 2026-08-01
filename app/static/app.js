@@ -380,9 +380,47 @@ imageCanvas.onpointerup=()=>{ if(!state.dragging)return; state.dragging=false; i
 $('selectAllBtn').onclick=()=>{state.crop={x:0,y:0,width:1,height:1};$('clearSelectionBtn').disabled=false;$('selectionInfo').textContent='Выбрано всё';drawImageCanvas();};
 $('clearSelectionBtn').onclick=()=>{state.crop=null;$('clearSelectionBtn').disabled=true;$('selectionInfo').textContent='Область не выбрана';drawImageCanvas();};
 
+
+function pickAnalysisValue(text, patterns, fallback='Не определено') {
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match && match[1]) return match[1].trim().replace(/[.;,]+$/,'');
+  }
+  return fallback;
+}
+function renderTabletAnalysisSummary(response, intelligence={}) {
+  const root=document.getElementById('tabletAnalysisSummary');
+  const cards=document.getElementById('tabletAnalysisCards');
+  const checks=document.getElementById('tabletAnalysisChecks');
+  const full=document.getElementById('tabletAnalysisFullText');
+  if(!root||!cards||!checks||!full)return;
+  const text=String(response||'');
+  const data={
+    material:pickAnalysisValue(text,[/Материал(?: детали)?[:\s-]+([^\n]+)/i,/AISI\s*\d+/i], intelligence.material||'Не определён'),
+    geometry:pickAnalysisValue(text,[/Общая длина[:\s-]+([^\n]+)/i,/Размеры?[^\n]*[:\s-]+([^\n]+)/i], 'См. полный анализ'),
+    thread:pickAnalysisValue(text,[/Резьба[:\s-]+([^\n]+)/i,/\b(M\d+(?:[x×]\d+(?:[.,]\d+)?)?)/i], 'Не найдена'),
+    chamfer:pickAnalysisValue(text,[/Фаск[аи][^:\n]*[:\s-]+([^\n]+)/i,/([0-9]+(?:[.,][0-9]+)?\s*[x×]\s*[0-9]+°)/i], 'Не найдена'),
+    tolerance:pickAnalysisValue(text,[/Допуски?[^:\n]*[:\s-]+([^\n]+)/i,/\b(H14|h14|±IT14\/2)\b/i], 'Не заданы')
+  };
+  const items=[['◈','Материал',data.material],['⌁','Геометрия',data.geometry],['⟳','Резьба',data.thread],['◇','Фаска',data.chamfer],['±','Допуски',data.tolerance]];
+  cards.innerHTML=items.map(([icon,label,value])=>`<article class="tablet-analysis-card"><div class="icon">${icon}</div><div><span>${label}</span><strong>${escapeHtml(value)}</strong></div><em>✓</em></article>`).join('');
+  const counts={
+    sizes:(intelligence.dimensions||intelligence.sizes||[]).length||((text.match(/(?:Ø|\bR\d|\b\d+(?:[.,]\d+)?\s*мм)/gi)||[]).length),
+    tolerances:(intelligence.tolerances||[]).length||((text.match(/(?:H14|h14|IT14|±\s*\d)/g)||[]).length),
+    threads:(intelligence.threads||[]).length||((text.match(/\bM\d+(?:[x×]\d+(?:[.,]\d+)?)?/gi)||[]).length),
+    chamfers:(intelligence.chamfers||[]).length||((text.match(/\d+(?:[.,]\d+)?\s*[x×]\s*\d+°/g)||[]).length)
+  };
+  const checkItems=[['Материал найден',data.material!=='Не определён'?'готово':'проверь'],['Размеры извлечены',counts.sizes?String(counts.sizes):'проверь'],['Допуски распознаны',counts.tolerances?String(counts.tolerances):'нет'],['Резьбы распознаны',counts.threads?String(counts.threads):'нет'],['Фаски распознаны',counts.chamfers?String(counts.chamfers):'нет']];
+  checks.innerHTML=checkItems.map(([label,value])=>`<li><i>✓</i><span>${label}</span><b>${escapeHtml(value)}</b></li>`).join('');
+  full.innerHTML=renderText(text);
+  root.classList.remove('hidden');
+  root.closest('.result-panel')?.classList.add('has-tablet-summary');
+}
+function clearTabletAnalysisSummary(){document.getElementById('tabletAnalysisSummary')?.classList.add('hidden');document.querySelector('.result-panel')?.classList.remove('has-tablet-summary');}
+
 $('analyzeBtn').onclick = async () => {
   if (!state.file) return; $('analyzeBtn').disabled=true; $('progress').classList.remove('hidden'); const form=new FormData(); form.append('file',state.file); form.append('prompt',$('promptInput').value.trim()); form.append('project_json',JSON.stringify(collectProjectData())); const ext=state.file.name.split('.').pop().toLowerCase(); if(state.crop && state.file.type!=='application/pdf' && ext!=='slddrw') form.append('crop_json',JSON.stringify(state.crop));
-  try { const r=await fetch('/api/analyze',{method:'POST',body:form}); const d=await r.json(); if(!r.ok) throw new Error(d.detail||'Ошибка'); $('resultEmpty').classList.add('hidden'); $('resultContent').classList.remove('hidden'); $('resultContent').innerHTML=renderText(d.response); $('resultMeta').textContent=`${d.model}${d.mock?' · MOCK':''} · #${d.id}`; startChat('analysis',d); applyDrawingIntelligence(d.drawing_intelligence||{}); toast('Анализ готов'); }
+  try { const r=await fetch('/api/analyze',{method:'POST',body:form}); const d=await r.json(); if(!r.ok) throw new Error(d.detail||'Ошибка'); $('resultEmpty').classList.add('hidden'); $('resultContent').classList.remove('hidden'); $('resultContent').innerHTML=renderText(d.response); $('resultMeta').textContent=`${d.model}${d.mock?' · MOCK':''} · #${d.id}`; startChat('analysis',d); applyDrawingIntelligence(d.drawing_intelligence||{}); renderTabletAnalysisSummary(d.response,d.drawing_intelligence||{}); toast('Анализ готов'); }
   catch(e){toast(e.message);} finally{$('progress').classList.add('hidden');syncFileUi();}
 };
 
@@ -532,7 +570,7 @@ function resetWorkspaceForNewProject(options={}){
   ['confirmDrawing','confirmBlank','confirmZero','confirmTool'].forEach(id=>{if($(id))$(id).checked=false;});
   SHOP_INPUT_IDS.forEach(id=>{const el=$(id);if(!el)return;if(el.type==='checkbox')el.checked=false;else if(el.tagName==='SELECT')el.selectedIndex=0;else el.value='';});
   state.shopturn.wizardStep=0;populateToolPresets('');resetChat('analysis',true);resetChat('stock',true);
-  $('resultContent').classList.add('hidden');$('resultEmpty').classList.remove('hidden');$('resultMeta').textContent='';$('stockResultContent').classList.add('hidden');$('stockResultEmpty').classList.remove('hidden');$('stockResultMeta').textContent='';$('drawingIntelligencePanel').classList.add('hidden');
+  $('resultContent').classList.add('hidden');$('resultEmpty').classList.remove('hidden');clearTabletAnalysisSummary();$('resultMeta').textContent='';$('stockResultContent').classList.add('hidden');$('stockResultEmpty').classList.remove('hidden');$('stockResultMeta').textContent='';$('drawingIntelligencePanel').classList.add('hidden');
   localStorage.removeItem('personal-ai-pro-draft');updateProjectUi();syncFileUi();if($('threadSearchInput'))$('threadSearchInput').value=state.threadLibraryUi.search||'';renderDrawingIntelligence();renderThreadLibrary();renderProjectThreads();renderChamferEditor();renderOperationRoute();renderOperationMultiPicker();renderEditor();renderShopTurn();if(autosave)scheduleAutosave();else $('autosaveState').textContent='Новая чистая сессия';
 }
 function hasWorkspaceData(){
@@ -1034,7 +1072,7 @@ function applyMachineProfile(profile, showToast=true){
 function initShopTurn(){populateToolPresets('face');applyToolPreset('face',true);autoFillCycleFromContour(false);SHOP_INPUT_IDS.forEach(id=>$(id)?.addEventListener('input',()=>{renderShopTurn();scheduleAutosave();}));$('machineProfileSelect').addEventListener('change',()=>{applyMachineProfile($('machineProfileSelect').value,true);renderShopTurn();scheduleAutosave();});$('shopOperationSelect').addEventListener('change',()=>{applyOperationDefaults(true);renderShopTurn();scheduleAutosave();});$('toolPresetSelect').addEventListener('change',()=>applyToolPreset($('toolPresetSelect').value,true));$('applyToolPresetBtn').onclick=()=>applyToolPreset($('toolPresetSelect').value,true);$('autoFillShopturnBtn').onclick=()=>autoFillCycleFromContour(true);$('saveCustomToolBtn').onclick=()=>{const d=collectShopTurnData();if(!d.toolName)return toast('Введи название инструмента');const custom=customToolPresets();custom.push({...d,label:`T${d.toolT} · ${d.toolName}`,operation:d.operation});localStorage.setItem('personal-ai-custom-tools',JSON.stringify(custom));populateToolPresets(`custom:${custom.length-1}`);toast('Инструмент сохранён в локальную библиотеку');};$('wizardPrevBtn').onclick=()=>{state.shopturn.wizardStep=Math.max(0,state.shopturn.wizardStep-1);renderShopTurnWizard();};$('wizardNextBtn').onclick=()=>{const max=buildShopTurnSteps().length-1;if(state.shopturn.wizardStep<max)state.shopturn.wizardStep++;else toast('Мастер ввода завершён. Выполни Graphic view и симуляцию.');renderShopTurnWizard();scheduleAutosave();};$('consoleAcceptBtn').onclick=()=>$('wizardNextBtn').click();document.querySelectorAll('[data-console-step]').forEach(btn=>btn.onclick=()=>{state.shopturn.wizardStep=Math.max(0,Math.min(Number(btn.dataset.consoleStep)||0,buildShopTurnSteps().length-1));document.querySelectorAll('[data-console-step]').forEach(x=>x.classList.toggle('active',x===btn));renderShopTurnWizard();scheduleAutosave();toast(`Открыт шаг: ${buildShopTurnSteps()[state.shopturn.wizardStep].title}`);});$('wizardCopyBtn').onclick=async()=>{const s=buildShopTurnSteps()[state.shopturn.wizardStep];const txt=`${s.title}\n${s.path.join(' → ')}\n${s.values.map(([k,v])=>`${k}: ${v}`).join('\n')}\n${s.instruction.replace(/<[^>]*>/g,'')}`;try{await navigator.clipboard.writeText(txt);toast('Данные шага скопированы');}catch{toast('Не удалось скопировать');}};renderShopTurn();}
 
 async function fetchHistoryDetail(id){const r=await fetch(`/api/history/${id}`);const d=await r.json();if(!r.ok)throw new Error(d.detail||'Не удалось открыть запись');return d;}
-function showHistoryResult(item){const isStock=String(item.prompt||'').startsWith('Stock Removal |');if(isStock){setView('stock');$('stockResultEmpty').classList.add('hidden');$('stockResultContent').classList.remove('hidden');$('stockResultContent').innerHTML=renderText(item.response||'');$('stockResultMeta').textContent=`${item.model}${item.mock?' · MOCK':''} · #${item.id}`;startChat('stock',{id:item.id,response:item.response,response_id:item.openai_response_id,model:item.model,mock:item.mock,loadHistory:true});}else{setView('analysis');$('promptInput').value=item.prompt||'';$('resultEmpty').classList.add('hidden');$('resultContent').classList.remove('hidden');$('resultContent').innerHTML=renderText(item.response||'');$('resultMeta').textContent=`${item.model}${item.mock?' · MOCK':''} · #${item.id}`;startChat('analysis',{id:item.id,response:item.response,response_id:item.openai_response_id,model:item.model,mock:item.mock,loadHistory:true});}}
+function showHistoryResult(item){const isStock=String(item.prompt||'').startsWith('Stock Removal |');if(isStock){setView('stock');$('stockResultEmpty').classList.add('hidden');$('stockResultContent').classList.remove('hidden');$('stockResultContent').innerHTML=renderText(item.response||'');$('stockResultMeta').textContent=`${item.model}${item.mock?' · MOCK':''} · #${item.id}`;startChat('stock',{id:item.id,response:item.response,response_id:item.openai_response_id,model:item.model,mock:item.mock,loadHistory:true});}else{setView('analysis');$('promptInput').value=item.prompt||'';$('resultEmpty').classList.add('hidden');$('resultContent').classList.remove('hidden');$('resultContent').innerHTML=renderText(item.response||'');renderTabletAnalysisSummary(item.response||'',item.drawing_intelligence||{});$('resultMeta').textContent=`${item.model}${item.mock?' · MOCK':''} · #${item.id}`;startChat('analysis',{id:item.id,response:item.response,response_id:item.openai_response_id,model:item.model,mock:item.mock,loadHistory:true});}}
 async function openHistoryEntry(id){try{const item=await fetchHistoryDetail(id);showHistoryResult(item);}catch(e){toast(e.message);}}
 async function loadHistoryProject(id){try{const item=await fetchHistoryDetail(id);resetWorkspaceForNewProject();if(item.project)applyProjectData(item.project);state.restoredFileName=item.filename||item.project?.fileName||null;state.currentProjectName=`Из истории · ${item.filename||`запись ${id}`}`;updateProjectUi();showHistoryResult(item);syncFileUi();scheduleAutosave();toast(item.has_project?'Проект восстановлен из истории':'Результат восстановлен. Исходный файл выбери заново.');}catch(e){toast(e.message);}}
 async function loadHistory(){const list=$('historyList');list.innerHTML='<div class="result-empty"><span>Загрузка...</span></div>';try{const r=await fetch('/api/history'),items=await r.json();if(!r.ok)throw new Error('Не удалось загрузить историю');if(!items.length){list.innerHTML='<div class="result-empty"><strong>История пуста</strong></div>';return;}list.innerHTML=items.map(i=>`<article class="history-item"><div class="history-copy"><div class="history-title-row"><h3 title="${escapeHtml(i.filename)}">${escapeHtml(i.filename)}</h3>${i.mock?'<span class="history-tag">MOCK</span>':''}${i.has_project?'<span class="history-tag project-tag">ПРОЕКТ</span>':''}</div><p title="${escapeHtml(i.prompt)}">${escapeHtml(i.prompt)}</p><small>${new Date(i.created_at*1000).toLocaleString('ru-RU')} · ${escapeHtml(i.model||'')}</small></div><div class="history-actions"><button data-open-history="${i.id}" class="small-button">Открыть</button><button data-load-history="${i.id}" class="secondary-button">Загрузить проект</button><button data-del="${i.id}" class="danger-lite" aria-label="Удалить запись">×</button></div></article>`).join('');list.querySelectorAll('[data-open-history]').forEach(b=>b.onclick=()=>openHistoryEntry(Number(b.dataset.openHistory)));list.querySelectorAll('[data-load-history]').forEach(b=>b.onclick=()=>loadHistoryProject(Number(b.dataset.loadHistory)));list.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{if(!confirm('Удалить запись из истории?'))return;await fetch(`/api/history/${b.dataset.del}`,{method:'DELETE'});loadHistory();});}catch(e){list.innerHTML=`<div class="result-empty"><strong>${escapeHtml(e.message)}</strong></div>`;}}
@@ -1102,7 +1140,7 @@ window.CNC3D_getData = function CNC3D_getData() {
 };
 
 
-// v2.7.0 Tablet Edition foundation
+// v2.7.1 Tablet Edition analysis cards
 (() => {
   const steps=['analysis','ai','verify','tolerances','contour','tools','plan','simulation','export'];
   const labels=['Загрузка','AI-анализ','Проверка','Допуски','Контур','Инструмент','План','Симуляция','Экспорт'];
@@ -1116,5 +1154,5 @@ window.CNC3D_getData = function CNC3D_getData() {
     const [view,id]=map[step]||[]; const nav=document.querySelector(`.nav-item[data-view="${view}"]`); if(nav)nav.click(); setTimeout(()=>{const el=q(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},120);
   }
   function sync(){if(!isTablet())return; if(q('tabletProjectName'))q('tabletProjectName').textContent=q('activeProjectName')?.textContent||'Локальный черновик'; if(q('tabletFileState'))q('tabletFileState').textContent=q('currentFilePill')?.textContent||'Не выбран';}
-  window.addEventListener('resize',applyTablet); document.addEventListener('DOMContentLoaded',()=>{applyTablet();document.querySelectorAll('.tablet-step').forEach((b,i)=>b.addEventListener('click',()=>activate(i)));q('tabletBackBtn')?.addEventListener('click',()=>activate(current-1));q('tabletNextBtn')?.addEventListener('click',()=>activate(current+1));q('tabletSaveBtn')?.addEventListener('click',()=>q('saveProjectBtn')?.click());q('tabletInspectorToggle')?.addEventListener('click',()=>document.body.classList.toggle('tablet-inspector-collapsed'));new MutationObserver(sync).observe(document.body,{subtree:true,childList:true,characterData:true});activate(0,false);});
+  window.addEventListener('resize',applyTablet); document.addEventListener('DOMContentLoaded',()=>{applyTablet();document.querySelectorAll('.tablet-step').forEach((b,i)=>b.addEventListener('click',()=>activate(i)));q('tabletBackBtn')?.addEventListener('click',()=>activate(current-1));q('tabletNextBtn')?.addEventListener('click',()=>activate(current+1));q('tabletSaveBtn')?.addEventListener('click',()=>q('saveProjectBtn')?.click());q('tabletGoVerifyBtn')?.addEventListener('click',()=>activate(2));q('tabletInspectorToggle')?.addEventListener('click',()=>document.body.classList.toggle('tablet-inspector-collapsed'));new MutationObserver(sync).observe(document.body,{subtree:true,childList:true,characterData:true});activate(0,false);});
 })();
