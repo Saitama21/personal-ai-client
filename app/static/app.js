@@ -43,6 +43,9 @@ state.operationRoute = [];
 state.selectedOperationCodes = [];
 state.activeRouteIndex = -1;
 state.chamferTransform = null;
+state.chamferView = { zoom: 1, panX: 0, panY: 0, minZoom: 1, maxZoom: 16 };
+state.chamferGesture = { pointers: new Map(), dragging: false, moved: false, startX: 0, startY: 0, originPanX: 0, originPanY: 0, pinchDistance: 0, pinchZoom: 1 };
+state.chamferFullscreen = { open:false, mode:'point', snapshot:null, home:null };
 
 const $ = id => document.getElementById(id);
 
@@ -800,11 +803,29 @@ $('threadToleranceInput').oninput=()=>renderThreadDetails();
 $('applyAllDetectedThreadsBtn').onclick=()=>{let added=0;for(let i=0;i<(state.drawingIntel.threads||[]).length;i++){const x=state.drawingIntel.threads[i];if(x.enabled===false)continue;selectDetectedThread(i);const t=selectedThread();if(t.designation&&!state.projectThreads.some(p=>p.id===t.id&&p.side===t.side)){state.projectThreads.push(t);added++;}}renderProjectThreads();scheduleAutosave();toast(`Добавлено распознанных резьб: ${added}`);};
 document.querySelectorAll('[data-collapse-target]').forEach(button=>button.onclick=()=>{const target=$(button.dataset.collapseTarget);if(!target)return;target.classList.toggle('collapsed');button.textContent=target.classList.contains('collapsed')?'⌄':'⌃';});
 
+function clampChamferView(){
+  const v=state.chamferView;v.zoom=Math.max(v.minZoom,Math.min(v.maxZoom,v.zoom));
+  const w=chamferCanvas?.width||900,h=chamferCanvas?.height||360;
+  const maxX=(w*(v.zoom-1))/2+80,maxY=(h*(v.zoom-1))/2+80;
+  v.panX=Math.max(-maxX,Math.min(maxX,v.panX));v.panY=Math.max(-maxY,Math.min(maxY,v.panY));
+}
+function chamferViewPoint(x,y){const v=state.chamferView,w=chamferCanvas.width,h=chamferCanvas.height;return{x:(x-w/2)*v.zoom+w/2+v.panX,y:(y-h/2)*v.zoom+h/2+v.panY};}
+function chamferInversePoint(x,y){const v=state.chamferView,w=chamferCanvas.width,h=chamferCanvas.height;return{x:(x-w/2-v.panX)/v.zoom+w/2,y:(y-h/2-v.panY)/v.zoom+h/2};}
+function setChamferZoom(nextZoom,focusX=chamferCanvas.width/2,focusY=chamferCanvas.height/2){
+  const before=chamferInversePoint(focusX,focusY),v=state.chamferView;v.zoom=nextZoom;clampChamferView();
+  const after=chamferViewPoint(before.x,before.y);v.panX+=focusX-after.x;v.panY+=focusY-after.y;clampChamferView();renderChamferEditor();
+}
+function resetChamferView(){state.chamferView.zoom=1;state.chamferView.panX=0;state.chamferView.panY=0;renderChamferEditor();}
+function updateChamferZoomUi(){
+  const label=$('chamferZoomLabel'),slider=$('chamferZoomRange');if(label)label.textContent=`${Math.round(state.chamferView.zoom*100)}%`;if($('chamferFsZoomLabel'))$('chamferFsZoomLabel').textContent=`${Math.round(state.chamferView.zoom*100)}%`;if(slider)slider.value=String(Math.min(8,state.chamferView.zoom));
+}
 function drawChamferBase(){
-  if(!chamferCanvas)return;const w=chamferCanvas.width,h=chamferCanvas.height;chamferCtx.clearRect(0,0,w,h);chamferCtx.fillStyle='rgba(5,18,31,.72)';chamferCtx.fillRect(0,0,w,h);state.chamferTransform={type:'canvas'};
-  if(state.image){const scale=Math.min((w-28)/state.image.naturalWidth,(h-28)/state.image.naturalHeight),dw=state.image.naturalWidth*scale,dh=state.image.naturalHeight*scale,dx=(w-dw)/2,dy=(h-dh)/2;chamferCtx.drawImage(state.image,dx,dy,dw,dh);state.chamferTransform={type:'image',dx,dy,dw,dh};}
-  else if(state.contourPoints.length){const zs=state.contourPoints.map(p=>p.z),xs=state.contourPoints.map(p=>p.x),minZ=Math.min(...zs),maxZ=Math.max(...zs),minX=Math.min(...xs),maxX=Math.max(...xs),scale=Math.min((w-80)/Math.max(1,maxZ-minZ),(h-70)/Math.max(1,maxX-minX)),toPx=p=>({x:40+(p.z-minZ)*scale,y:h-35-(p.x-minX)*scale});chamferCtx.strokeStyle='#71c7ff';chamferCtx.lineWidth=4;chamferCtx.beginPath();state.contourPoints.forEach((p,i)=>{const q=toPx(p);i?chamferCtx.lineTo(q.x,q.y):chamferCtx.moveTo(q.x,q.y);});chamferCtx.stroke();state.chamferTransform={type:'contour',toPx};}
+  if(!chamferCanvas)return;const w=chamferCanvas.width,h=chamferCanvas.height;clampChamferView();chamferCtx.clearRect(0,0,w,h);chamferCtx.fillStyle='rgba(5,18,31,.72)';chamferCtx.fillRect(0,0,w,h);state.chamferTransform={type:'canvas'};
+  chamferCtx.save();chamferCtx.translate(w/2+state.chamferView.panX,h/2+state.chamferView.panY);chamferCtx.scale(state.chamferView.zoom,state.chamferView.zoom);chamferCtx.translate(-w/2,-h/2);
+  if(state.image){const scale=Math.min((w-28)/state.image.naturalWidth,(h-28)/state.image.naturalHeight),dw=state.image.naturalWidth*scale,dh=state.image.naturalHeight*scale,dx=(w-dw)/2,dy=(h-dh)/2;chamferCtx.drawImage(state.image,dx,dy,dw,dh);const toPx=p=>chamferViewPoint(p.x,p.y);state.chamferTransform={type:'image',dx,dy,dw,dh,toPx};}
+  else if(state.contourPoints.length){const zs=state.contourPoints.map(p=>p.z),xs=state.contourPoints.map(p=>p.x),minZ=Math.min(...zs),maxZ=Math.max(...zs),minX=Math.min(...xs),maxX=Math.max(...xs),scale=Math.min((w-80)/Math.max(1,maxZ-minZ),(h-70)/Math.max(1,maxX-minX)),baseToPx=p=>({x:40+(p.z-minZ)*scale,y:h-35-(p.x-minX)*scale}),toPx=p=>chamferViewPoint(baseToPx(p).x,baseToPx(p).y);chamferCtx.strokeStyle='#71c7ff';chamferCtx.lineWidth=4/state.chamferView.zoom;chamferCtx.beginPath();state.contourPoints.forEach((p,i)=>{const q=baseToPx(p);i?chamferCtx.lineTo(q.x,q.y):chamferCtx.moveTo(q.x,q.y);});chamferCtx.stroke();state.chamferTransform={type:'contour',toPx,baseToPx};}
   else{chamferCtx.fillStyle='rgba(224,236,250,.72)';chamferCtx.font='bold 18px Inter';chamferCtx.textAlign='center';chamferCtx.fillText('Загрузи чертёж или создай контур',w/2,h/2);chamferCtx.textAlign='start';}
+  chamferCtx.restore();updateChamferZoomUi();
 }
 function renderChamferEditor(){
   if(!chamferCanvas)return;
@@ -816,7 +837,7 @@ function renderChamferEditor(){
   $('selectAllChamfersCheckbox').indeterminate=active>0&&active<state.chamfers.length;
   $('chamferMarkerList').classList.toggle('is-master-disabled',!state.chamfersEnabled);
   state.chamfers.forEach((m,i)=>{
-    const x=m.x*chamferCanvas.width,y=m.y*chamferCanvas.height;
+    const baseX=m.x*chamferCanvas.width,baseY=m.y*chamferCanvas.height,{x,y}=chamferViewPoint(baseX,baseY);
     chamferCtx.save();
     chamferCtx.globalAlpha=(state.chamfersEnabled&&m.enabled!==false)?1:.35;
     chamferCtx.fillStyle=m.mode==='none'?'#ff6b6b':m.mode==='edge_break'?'#ffd166':'#63e6be';
@@ -826,8 +847,15 @@ function renderChamferEditor(){
   $('chamferMarkerList').innerHTML=state.chamfers.length?state.chamfers.map((m,i)=>`<div class="chamfer-marker ${m.enabled===false?'is-disabled':''}"><label class="rule-check"><input type="checkbox" data-toggle-chamfer="${i}" ${m.enabled===false?'':'checked'}><span></span></label><span><i>${i+1}</i>${m.mode==='edge_break'?'Снять остроту':m.mode==='none'?'Без обработки':escapeHtml(m.notation)}${m.contourIndex!==null&&m.contourIndex!==undefined?` · точка X/Z №${m.contourIndex+1}`:''}</span><button data-remove-chamfer="${i}">×</button></div>`).join(''):'<div class="muted-text">Точки фасок не поставлены.</div>';
   document.querySelectorAll('[data-remove-chamfer]').forEach(b=>b.onclick=()=>{state.chamfers.splice(Number(b.dataset.removeChamfer),1);renderDrawingIntelligence();scheduleAutosave();});
   document.querySelectorAll('[data-toggle-chamfer]').forEach(input=>input.onchange=()=>{state.chamfers[Number(input.dataset.toggleChamfer)].enabled=input.checked;renderDrawingIntelligence();scheduleAutosave();});
+  if(state.chamferFullscreen?.open)updateChamferFullscreenUi();
 }
-chamferCanvas.onclick=e=>{const r=chamferCanvas.getBoundingClientRect(),px=(e.clientX-r.left)*chamferCanvas.width/r.width,py=(e.clientY-r.top)*chamferCanvas.height/r.height,x=px/chamferCanvas.width,y=py/chamferCanvas.height,mode=$('chamferModeSelect').value,notation=chamferNotationFromInputs();let contourIndex=null;if(state.chamferTransform?.type==='contour'&&state.contourPoints.length){let best=Infinity;state.contourPoints.forEach((p,i)=>{const q=state.chamferTransform.toPx(p),d=Math.hypot(q.x-px,q.y-py);if(d<best){best=d;contourIndex=i;}});if(best>55)contourIndex=null;}state.chamfers.push({x:Math.max(0,Math.min(1,x)),y:Math.max(0,Math.min(1,y)),mode,notation,contourIndex,enabled:true});if(contourIndex!==null&&contourIndex>0&&mode==='chamfer'){pushUndo();state.contourPoints[contourIndex].type='chamfer';state.contourPoints[contourIndex].rv=notation;state.contourPoints[contourIndex].direction='угол';}setChamferInputsFromNotation(notation);renderChamferEditor();renderEditor();scheduleAutosave();};
+function chamferEventPoint(e){const r=chamferCanvas.getBoundingClientRect();return{x:(e.clientX-r.left)*chamferCanvas.width/r.width,y:(e.clientY-r.top)*chamferCanvas.height/r.height};}
+function addChamferAtScreenPoint(px,py){const base=chamferInversePoint(px,py),x=base.x/chamferCanvas.width,y=base.y/chamferCanvas.height,mode=$('chamferModeSelect').value,notation=chamferNotationFromInputs();let contourIndex=null;if(state.chamferTransform?.type==='contour'&&state.contourPoints.length){let best=Infinity;state.contourPoints.forEach((p,i)=>{const q=state.chamferTransform.toPx(p),d=Math.hypot(q.x-px,q.y-py);if(d<best){best=d;contourIndex=i;}});if(best>Math.max(28,55/state.chamferView.zoom))contourIndex=null;}state.chamfers.push({x:Math.max(0,Math.min(1,x)),y:Math.max(0,Math.min(1,y)),mode,notation,contourIndex,enabled:true});if(contourIndex!==null&&contourIndex>0&&mode==='chamfer'){pushUndo();state.contourPoints[contourIndex].type='chamfer';state.contourPoints[contourIndex].rv=notation;state.contourPoints[contourIndex].direction='угол';}setChamferInputsFromNotation(notation);renderChamferEditor();renderEditor();scheduleAutosave();}
+chamferCanvas.addEventListener('pointerdown',e=>{chamferCanvas.setPointerCapture?.(e.pointerId);const p=chamferEventPoint(e),g=state.chamferGesture;g.pointers.set(e.pointerId,p);g.moved=false;if(g.pointers.size===1){g.dragging=state.chamferFullscreen.mode==='pan'||!state.chamferFullscreen.open;g.startX=p.x;g.startY=p.y;g.originPanX=state.chamferView.panX;g.originPanY=state.chamferView.panY;}else if(g.pointers.size===2){const pts=[...g.pointers.values()];g.pinchDistance=Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y);g.pinchZoom=state.chamferView.zoom;}e.preventDefault();});
+chamferCanvas.addEventListener('pointermove',e=>{const g=state.chamferGesture;if(!g.pointers.has(e.pointerId))return;const p=chamferEventPoint(e);g.pointers.set(e.pointerId,p);if(g.pointers.size===2){const pts=[...g.pointers.values()],dist=Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y),cx=(pts[0].x+pts[1].x)/2,cy=(pts[0].y+pts[1].y)/2;if(g.pinchDistance>0)setChamferZoom(g.pinchZoom*dist/g.pinchDistance,cx,cy);g.moved=true;}else if(g.dragging&&g.pointers.size===1){const dx=p.x-g.startX,dy=p.y-g.startY;if(Math.hypot(dx,dy)>5)g.moved=true;if(g.moved){state.chamferView.panX=g.originPanX+dx;state.chamferView.panY=g.originPanY+dy;clampChamferView();renderChamferEditor();}}e.preventDefault();});
+function finishChamferPointer(e){const g=state.chamferGesture,p=chamferEventPoint(e),wasSingle=g.pointers.size===1&&!g.moved;g.pointers.delete(e.pointerId);if(!g.pointers.size){g.dragging=false;if(wasSingle&&(!state.chamferFullscreen.open||state.chamferFullscreen.mode!=='pan'))addChamferAtScreenPoint(p.x,p.y);}else if(g.pointers.size===1){const only=[...g.pointers.values()][0];g.startX=only.x;g.startY=only.y;g.originPanX=state.chamferView.panX;g.originPanY=state.chamferView.panY;}e.preventDefault();}
+chamferCanvas.addEventListener('pointerup',finishChamferPointer);chamferCanvas.addEventListener('pointercancel',e=>{state.chamferGesture.pointers.delete(e.pointerId);state.chamferGesture.dragging=false;});
+chamferCanvas.addEventListener('wheel',e=>{const p=chamferEventPoint(e),factor=e.deltaY<0?1.18:1/1.18;setChamferZoom(state.chamferView.zoom*factor,p.x,p.y);e.preventDefault();},{passive:false});
 $('undoChamferBtn').onclick=()=>{state.chamfers.pop();renderDrawingIntelligence();scheduleAutosave();};
 $('clearChamfersBtn').onclick=()=>{state.chamfers=[];renderDrawingIntelligence();scheduleAutosave();};
 $('addChamferFromControlsBtn').onclick=()=>{const mode=$('chamferModeSelect').value,notation=chamferNotationFromInputs();state.chamfers.push({x:.5,y:.5,mode,notation,contourIndex:null,enabled:true});renderDrawingIntelligence();scheduleAutosave();toast(mode==='chamfer'?`Фаска ${notation} добавлена`:'Правило кромки добавлено');};
@@ -836,6 +864,48 @@ $('selectAllChamfersCheckbox').onchange=e=>{state.chamfers.forEach(x=>x.enabled=
 $('chamferSizeInput').onchange=()=>chamferNotationFromInputs();
 $('chamferAngleInput').onchange=()=>chamferNotationFromInputs();
 $('chamferModeSelect').onchange=syncChamferNotationControls;
+$('chamferZoomInBtn').onclick=()=>setChamferZoom(state.chamferView.zoom*1.35);
+$('chamferZoomOutBtn').onclick=()=>setChamferZoom(state.chamferView.zoom/1.35);
+$('chamferZoomResetBtn').onclick=resetChamferView;
+$('chamferZoomRange').oninput=e=>setChamferZoom(Number(e.target.value));
+
+function updateChamferFullscreenUi(){
+  const fs=state.chamferFullscreen;
+  document.querySelectorAll('[data-chamfer-mode]').forEach(b=>b.classList.toggle('active',b.dataset.chamferMode===fs.mode));
+  const count=$('chamferFsCount');if(count)count.textContent=`Точек: ${state.chamfers.length}`;
+  updateChamferZoomUi();
+}
+function openChamferFullscreen(){
+  const modal=$('chamferFullscreenModal'),slot=$('chamferFullscreenCanvasSlot'),home=$('chamferCanvasHome');if(!modal||!slot||!home)return;
+  state.chamferFullscreen.snapshot={chamfers:clone(state.chamfers),view:clone(state.chamferView)};
+  state.chamferFullscreen.home=home;state.chamferFullscreen.open=true;state.chamferFullscreen.mode='point';
+  slot.appendChild(chamferCanvas);modal.classList.remove('hidden');document.body.classList.add('modal-open');
+  requestAnimationFrame(()=>{resizeChamferFullscreenCanvas();renderChamferEditor();updateChamferFullscreenUi();});
+}
+function resizeChamferFullscreenCanvas(){
+  if(!state.chamferFullscreen.open)return;const slot=$('chamferFullscreenCanvasSlot');if(!slot)return;
+  const r=slot.getBoundingClientRect(),ratio=Math.min(2,window.devicePixelRatio||1);chamferCanvas.width=Math.max(900,Math.round(r.width*ratio));chamferCanvas.height=Math.max(620,Math.round(r.height*ratio));renderChamferEditor();
+}
+function closeChamferFullscreen(save){
+  const fs=state.chamferFullscreen;if(!fs.open)return;
+  if(!save&&fs.snapshot){state.chamfers=clone(fs.snapshot.chamfers);state.chamferView=clone(fs.snapshot.view);}
+  fs.home.appendChild(chamferCanvas);chamferCanvas.width=900;chamferCanvas.height=540;fs.open=false;fs.snapshot=null;
+  $('chamferFullscreenModal').classList.add('hidden');document.body.classList.remove('modal-open');renderDrawingIntelligence();scheduleAutosave();
+}
+$('openChamferFullscreenBtn').onclick=openChamferFullscreen;
+$('cancelChamferFullscreenTop').onclick=()=>closeChamferFullscreen(false);
+$('cancelChamferFullscreenBtn').onclick=()=>closeChamferFullscreen(false);
+$('doneChamferFullscreenBtn').onclick=()=>{closeChamferFullscreen(true);toast(`Сохранено точек: ${state.chamfers.length}`);};
+$('undoChamferFullscreenBtn').onclick=()=>{state.chamfers.pop();renderDrawingIntelligence();updateChamferFullscreenUi();};
+$('clearChamferFullscreenBtn').onclick=()=>{state.chamfers=[];renderDrawingIntelligence();updateChamferFullscreenUi();};
+$('chamferFsZoomIn').onclick=()=>setChamferZoom(state.chamferView.zoom*1.35);
+$('chamferFsZoomOut').onclick=()=>setChamferZoom(state.chamferView.zoom/1.35);
+$('chamferFsFit').onclick=resetChamferView;
+$('chamferFullscreenHelp').onclick=()=>toast('Точка/Кромка: короткое касание. Рука: перетаскивание. Два пальца: масштаб.');
+document.querySelectorAll('[data-chamfer-mode]').forEach(b=>b.onclick=()=>{state.chamferFullscreen.mode=b.dataset.chamferMode;updateChamferFullscreenUi();});
+chamferCanvas.addEventListener('pointermove',e=>{if(!state.chamferFullscreen.open)return;const p=chamferEventPoint(e),base=chamferInversePoint(p.x,p.y);$('chamferFsCoordinates').textContent=`X: ${base.x.toFixed(0)} · Y: ${base.y.toFixed(0)}`;},{passive:true});
+window.addEventListener('resize',()=>{if(state.chamferFullscreen.open)resizeChamferFullscreenCanvas();});
+
 setChamferInputsFromNotation('1×45°');
 syncChamferNotationControls();
 

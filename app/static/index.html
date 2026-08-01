@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#0b1420" id="themeColorMeta" />
   <meta name="color-scheme" content="light dark" />
-  <meta name="app-build" content="2.6.1-railway-cache-fix" />
+  <meta name="app-build" content="2.6.3-fullscreen-edge-editor" />
   <script>
     (() => {
       try {
@@ -18,7 +18,7 @@
     })();
   </script>
   <title>Personal AI Client PRO</title>
-  <link rel="stylesheet" href="/static/styles.css?v=2.6.1-railway-cache-fix" />
+  <link rel="stylesheet" href="/static/styles.css?v=2.6.3-fullscreen-edge-editor" />
 </head>
 <body>
   <div class="background-orb orb-a"></div><div class="background-orb orb-b"></div><div class="background-orb orb-c"></div>
@@ -42,13 +42,13 @@
         <button class="nav-item" data-view="settings"><span class="nav-icon" aria-hidden="true">⚙</span><span>Настройки</span></button>
       </nav>
       <div class="status-card glass-soft"><span class="status-dot" id="statusDot"></span><div><strong id="statusTitle">Проверка...</strong><small id="statusText">Соединение с сервером</small></div></div>
-      <div class="sidebar-footer creator-glass"><span class="creator-label">Создатель</span><strong>Єрошов Іван</strong><small>Версия 2.6.1 Physical 3D</small></div>
+      <div class="sidebar-footer creator-glass"><span class="creator-label">Создатель</span><strong>Єрошов Іван</strong><small>Версия 2.6.3 Physical 3D</small></div>
     </aside>
 
     <main>
       <section class="mobile-creator-strip glass" aria-label="Создатель и версия">
         <div class="mobile-creator-copy"><span>Создатель</span><strong>Єрошов Іван</strong></div>
-        <div class="mobile-version-badge">v2.6.1</div>
+        <div class="mobile-version-badge">v2.6.3</div>
       </section>
       <header class="topbar">
         <div><h1 id="pageTitle">Новый анализ</h1><p id="pageSubtitle">Загрузите изображение, PDF или SLDDRW и задайте вопрос</p></div>
@@ -196,7 +196,7 @@
                   <div id="chamferMarkerList" class="chamfer-marker-list"></div>
                   <details class="chamfer-canvas-details">
                     <summary>Мини-чертёж и выбор кромки</summary>
-                    <div class="chamfer-canvas-wrap"><canvas id="chamferCanvas" width="900" height="360"></canvas><div class="canvas-tip">Нажми на кромку мини-чертежа: введи размер в мм, затем угол в градусах, либо выбери «снять остроту»</div></div>
+                    <div class="chamfer-view-toolbar" aria-label="Масштаб мини-чертежа"><button id="chamferZoomOutBtn" type="button" aria-label="Уменьшить">−</button><input id="chamferZoomRange" type="range" min="1" max="8" step="0.1" value="1" aria-label="Масштаб"><button id="chamferZoomInBtn" type="button" aria-label="Увеличить">＋</button><span id="chamferZoomLabel">100%</span><button id="chamferZoomResetBtn" type="button">По размеру</button><button id="openChamferFullscreenBtn" type="button" class="chamfer-open-fullscreen">⛶ Увеличить</button></div><div id="chamferCanvasHome" class="chamfer-canvas-wrap"><canvas id="chamferCanvas" width="900" height="540"></canvas><div class="canvas-tip">Коснись кромки — поставить точку. Потяни одним пальцем — двигать чертёж. Разведи два пальца — изменить масштаб.</div></div>
                   </details>
                 </section>
               </div>
@@ -569,10 +569,42 @@
     </main>
   </div>
 
+
+  <div id="chamferFullscreenModal" class="chamfer-fullscreen-modal hidden" role="dialog" aria-modal="true" aria-labelledby="chamferFullscreenTitle">
+    <div class="chamfer-fullscreen-shell">
+      <header class="chamfer-fullscreen-head">
+        <button id="cancelChamferFullscreenTop" type="button" class="icon-close" aria-label="Закрыть">×</button>
+        <div><span class="eyebrow">РЕДАКТОР КРОМОК</span><h2 id="chamferFullscreenTitle">Выбор кромки на чертеже</h2></div>
+        <button id="chamferFullscreenHelp" type="button" class="icon-help" aria-label="Подсказка">?</button>
+      </header>
+      <div class="chamfer-fullscreen-tools">
+        <button id="chamferFsZoomOut" type="button">−</button><strong id="chamferFsZoomLabel">100%</strong><button id="chamferFsZoomIn" type="button">＋</button>
+        <button id="chamferFsFit" type="button">⛶ По размеру</button>
+      </div>
+      <div class="chamfer-mode-switch" role="group" aria-label="Режим редактора">
+        <button type="button" data-chamfer-mode="point" class="active">⌖ <span>Точка</span><small>поставить</small></button>
+        <button type="button" data-chamfer-mode="pan">✋ <span>Рука</span><small>переместить</small></button>
+        <button type="button" data-chamfer-mode="edge">╱ <span>Кромка</span><small>выбрать</small></button>
+      </div>
+      <div id="chamferFullscreenCanvasSlot" class="chamfer-fullscreen-canvas-slot"></div>
+      <div class="chamfer-fullscreen-status">
+        <span id="chamferFsCoordinates">X: — · Y: —</span>
+        <span id="chamferFsCount">Точек: 0</span>
+      </div>
+      <footer class="chamfer-fullscreen-actions">
+        <button id="cancelChamferFullscreenBtn" type="button">Отмена</button>
+        <button id="undoChamferFullscreenBtn" type="button" class="warning">Убрать последнюю</button>
+        <button id="clearChamferFullscreenBtn" type="button" class="danger-lite">Очистить всё</button>
+        <button id="doneChamferFullscreenBtn" type="button" class="primary-button">Готово</button>
+      </footer>
+      <div class="chamfer-gesture-hint">Один палец — действие выбранного режима · Два пальца — масштаб</div>
+    </div>
+  </div>
+
   <div id="pointModal" class="modal hidden"><div class="modal-backdrop" data-close-modal></div><div class="modal-card glass"><div class="modal-head"><h2 id="pointModalTitle">Точка контура</h2><button data-close-modal>×</button></div><div class="modal-grid"><label>X, мм<input id="pointXInput" inputmode="decimal" /></label><label>Z, мм<input id="pointZInput" inputmode="decimal" /></label><label>Тип<select id="pointTypeSelect"><option value="lineX">Прямая по X</option><option value="lineZ">Прямая по Z</option><option value="arcCW">Дуга CW</option><option value="arcCCW">Дуга CCW</option><option value="chamfer">Фаска</option></select></label><label>R / угол<input id="pointRvInput" placeholder="R5 или 2×45°" /></label><label>Направление<input id="pointDirectionInput" placeholder="по X / по Z / CW" /></label><label>Вставить после<select id="pointInsertSelect"></select></label></div><div class="modal-actions"><button data-close-modal>Отмена</button><button id="savePointModalBtn" class="primary-button">Сохранить</button></div></div></div>
   <div id="toast" class="toast"></div>
   <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.min.js"></script>
-  <script src="/static/app.js?v=2.6.1-railway-cache-fix"></script>
-  <script src="/static/simulation3d.js?v=2.6.1-railway-cache-fix"></script>
+  <script src="/static/app.js?v=2.6.3-fullscreen-edge-editor"></script>
+  <script src="/static/simulation3d.js?v=2.6.3-fullscreen-edge-editor"></script>
 </body>
 </html>

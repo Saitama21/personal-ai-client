@@ -86,3 +86,21 @@ python -m py_compile app/main.py app/thread_library.py
 - CSS and JavaScript URLs include a release version query.
 - `/api/health` exposes the app version and Railway commit marker.
 - Every response includes `X-App-Version` and `X-Deploy-Commit`.
+
+
+## 2.6.2 Mini drawing zoom and pan
+
+- Масштаб мини-чертежа 100–800%.
+- Перемещение одним пальцем, мышью или трекпадом.
+- Pinch-to-zoom двумя пальцами на iPhone/iPad.
+- Масштабирование колесом мыши/трекпадом относительно указателя.
+- Точки фасок сохраняют правильную позицию при увеличении и перемещении.
+- Версионные URL статики обновлены для Railway/Safari.
+
+
+## v2.6.3 Fullscreen Edge Editor
+- Полноэкранный редактор мини-чертежа.
+- Режимы точки, перемещения и выбора кромки.
+- Масштаб до 1600%, pinch-to-zoom и панорамирование.
+- Отмена, очистка, удаление последней точки и подтверждение кнопкой «Готово».
+- При отмене восстанавливается состояние до открытия редактора.
