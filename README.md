@@ -1,8 +1,8 @@
-# Personal AI Client PRO v2.4.5 — Engineering Rules & Thread Library
+# Personal AI Client PRO v2.4.6 — Engineering Rules & Thread Library
 
 Инженерный клиент для анализа JPG/PNG/WEBP/PDF/SLDDRW, подготовки контура, Stock Removal и переноса данных в SINUMERIK 828D.
 
-## Что добавлено в v2.4.5
+## Что добавлено в v2.4.6
 
 ### Управление правилами и допусками
 
@@ -73,4 +73,4 @@ node --check app/static/app.js
 python -m py_compile app/main.py app/thread_library.py
 ```
 
-Версия API: `2.4.5-pro`.
+Версия API: `2.4.6-pro`.

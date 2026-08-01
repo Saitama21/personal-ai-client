@@ -46,6 +46,54 @@ state.chamferTransform = null;
 
 const $ = id => document.getElementById(id);
 
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+async function apiRequest(url, options = {}, { timeoutMs = 120000, retries = 1 } = {}) {
+  let lastError = null;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(url, {
+        credentials: 'same-origin',
+        cache: 'no-store',
+        ...options,
+        signal: controller.signal,
+      });
+      const raw = await response.text();
+      let data = {};
+      if (raw) {
+        try { data = JSON.parse(raw); }
+        catch { data = { detail: raw.slice(0, 500) }; }
+      }
+      if (!response.ok) {
+        const detail = data.detail || data.error || `HTTP ${response.status} ${response.statusText}`;
+        const error = new Error(detail);
+        error.status = response.status;
+        throw error;
+      }
+      return data;
+    } catch (error) {
+      lastError = error;
+      const networkFailure = error?.name === 'TypeError' || /load failed|failed to fetch|network/i.test(String(error?.message || ''));
+      const retryableStatus = Number(error?.status) >= 500;
+      if (attempt < retries && (networkFailure || retryableStatus)) {
+        await sleep(700 * (attempt + 1));
+        continue;
+      }
+      if (error?.name === 'AbortError') {
+        throw new Error('Сервер не ответил за 120 секунд. Повторите отправку.');
+      }
+      if (networkFailure) {
+        throw new Error('Связь с сервером Railway прервана. Проверьте интернет и повторите отправку.');
+      }
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  throw lastError || new Error('Неизвестная ошибка соединения');
+}
+
 const STOCK_MODE_VALUES = new Set(['lathe', 'mill', 'hybrid']);
 const ZERO_REFERENCE_OPTIONS = [
   'X0 по оси детали',
@@ -224,7 +272,35 @@ function loadChatImage(mode,file){if(!file)return;if(!['image/jpeg','image/png',
 function beginChatCrop(mode,e){const ids=chatIds(mode),a=state.chat[mode]?.attachment;if(!a)return;e.preventDefault();a.selecting=true;a.start=chatCanvasPosition(e,$(ids.canvas));}
 function moveChatCrop(mode,e){const ids=chatIds(mode),a=state.chat[mode]?.attachment;if(!a?.selecting)return;e.preventDefault();const c=$(ids.canvas),p=chatCanvasPosition(e,c),x=Math.min(a.start.x,p.x),y=Math.min(a.start.y,p.y),w=Math.abs(p.x-a.start.x),h=Math.abs(p.y-a.start.y);a.crop={x:x/c.width,y:y/c.height,width:w/c.width,height:h/c.height};drawChatAttachment(mode);}
 function endChatCrop(mode){const a=state.chat[mode]?.attachment;if(!a?.selecting)return;a.selecting=false;if(!a.crop||a.crop.width*a.image.naturalWidth<8||a.crop.height*a.image.naturalHeight<8)a.crop=null;drawChatAttachment(mode);updateChatImageStatus(mode);}
-async function sendChat(mode){const ids=chatIds(mode),chat=state.chat[mode],a=chat.attachment,typed=$(ids.input).value.trim(),question=typed||(a?'Проанализируй приложенное изображение или выделенную область и уточни предыдущий ответ.':'');if(!question)return;const prior=chat.messages.slice(-16).map(({role,content})=>({role,content})),preview=a?chatAttachmentPreview(mode):null,crop=a?.crop?{...a.crop}:null;chat.messages.push({role:'user',content:question,imageUrl:preview,crop});$(ids.input).value='';$(ids.send).disabled=true;$(ids.progress).classList.remove('hidden');renderChat(mode);try{let response;if(a){const f=new FormData();f.append('file',a.file);f.append('question',question);f.append('previous_response_id','');f.append('analysis_id',chat.analysisId||'');f.append('context_text',`${chat.context}\n\n${buildEngineeringContext()}`);f.append('conversation_json',JSON.stringify(prior));if(a.crop)f.append('crop_json',JSON.stringify(a.crop));response=await fetch('/api/chat-image',{method:'POST',body:f});}else{response=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question,previous_response_id:null,analysis_id:chat.analysisId,context_text:`${chat.context}\n\n${buildEngineeringContext()}`,conversation:prior})});}const data=await response.json();if(!response.ok)throw new Error(data.detail||'Ошибка диалога');chat.responseId=null;chat.messages.push({role:'assistant',content:data.response});if(a)clearChatAttachment(mode);renderChat(mode);scheduleAutosave();}catch(error){chat.messages.push({role:'assistant',content:`Ошибка: ${error.message}`});renderChat(mode);toast(error.message);}finally{$(ids.send).disabled=false;$(ids.progress).classList.add('hidden');$(ids.input).focus();}}
+async function sendChat(mode){
+  const ids=chatIds(mode),chat=state.chat[mode],a=chat.attachment,typed=$(ids.input).value.trim(),question=typed||(a?'Проанализируй приложенное изображение или выделенную область и уточни предыдущий ответ.':'');
+  if(!question)return;
+  const prior=chat.messages.slice(-16).map(({role,content})=>({role,content})),preview=a?chatAttachmentPreview(mode):null,crop=a?.crop?{...a.crop}:null;
+  chat.messages.push({role:'user',content:question,imageUrl:preview,crop});
+  $(ids.input).value='';$(ids.send).disabled=true;$(ids.progress).textContent='Отправка запроса…';$(ids.progress).classList.remove('hidden');renderChat(mode);
+  try{
+    let data;
+    $(ids.progress).textContent='Ассистент анализирует данные…';
+    if(a){
+      const f=new FormData();
+      f.append('file',a.file);f.append('question',question);f.append('previous_response_id','');f.append('analysis_id',chat.analysisId||'');
+      f.append('context_text',`${chat.context}\n\n${buildEngineeringContext()}`);f.append('conversation_json',JSON.stringify(prior));
+      if(a.crop)f.append('crop_json',JSON.stringify(a.crop));
+      data=await apiRequest('/api/chat-image',{method:'POST',body:f},{timeoutMs:120000,retries:1});
+    }else{
+      data=await apiRequest('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question,previous_response_id:null,analysis_id:chat.analysisId,context_text:`${chat.context}\n\n${buildEngineeringContext()}`,conversation:prior})},{timeoutMs:120000,retries:1});
+    }
+    if(!data?.response)throw new Error('Сервер вернул ответ без текста');
+    chat.responseId=data.response_id||null;chat.messages.push({role:'assistant',content:data.response});
+    if(a)clearChatAttachment(mode);renderChat(mode);scheduleAutosave();
+  }catch(error){
+    const message=error?.message||'Неизвестная ошибка';
+    chat.messages.push({role:'assistant',content:`Не удалось получить ответ: ${message}`});renderChat(mode);toast(message);
+  }finally{
+    $(ids.send).disabled=false;$(ids.progress).classList.add('hidden');$(ids.progress).textContent='Ассистент отвечает...';$(ids.input).focus();
+  }
+}
+
 function clearChat(mode){const chat=state.chat[mode];chat.messages=[];chat.responseId=null;clearChatAttachment(mode);renderChat(mode);}
 ['analysis','stock'].forEach(mode=>{const ids=chatIds(mode),canvas=$(ids.canvas);$(ids.send).onclick=()=>sendChat(mode);$(ids.clear).onclick=()=>clearChat(mode);$(ids.file).addEventListener('change',e=>loadChatImage(mode,e.target.files[0]));$(ids.useAll).onclick=()=>useWholeChatImage(mode);$(ids.resetCrop).onclick=()=>resetChatCrop(mode);$(ids.clearImage).onclick=()=>clearChatAttachment(mode);canvas.addEventListener('pointerdown',e=>beginChatCrop(mode,e));canvas.addEventListener('pointermove',e=>moveChatCrop(mode,e));window.addEventListener('pointerup',()=>endChatCrop(mode));$(ids.input).addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat(mode);}});});
 
