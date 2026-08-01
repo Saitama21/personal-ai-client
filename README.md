@@ -1,4 +1,4 @@
-# Personal AI Client PRO v2.7.6 Tablet UX
+# Personal AI Client PRO v2.7.8 iPad Upload Fix
 
 # Personal AI Client PRO v2.6.0 — Structured Machining Operations
 

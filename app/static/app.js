@@ -368,7 +368,30 @@ function updateProjectUi() { $('activeProjectName').textContent = state.currentP
 
 ['dragenter','dragover'].forEach(t => dropZone.addEventListener(t,e => { e.preventDefault(); dropZone.classList.add('dragover'); }));
 ['dragleave','drop'].forEach(t => dropZone.addEventListener(t,e => { e.preventDefault(); dropZone.classList.remove('dragover'); }));
-dropZone.ondrop = e => handleFile(e.dataTransfer.files[0]); fileInput.onchange = () => handleFile(fileInput.files[0]);
+dropZone.ondrop = e => handleFile(e.dataTransfer.files[0]);
+function openMainFilePicker(e) {
+  e?.preventDefault?.();
+  e?.stopPropagation?.();
+  try {
+    if (typeof fileInput.showPicker === 'function') fileInput.showPicker();
+    else fileInput.click();
+  } catch (_) {
+    fileInput.click();
+  }
+}
+document.getElementById('chooseFileBtn')?.addEventListener('click', openMainFilePicker);
+dropZone.addEventListener('click', e => {
+  if (e.target?.closest?.('#chooseFileBtn')) return;
+  openMainFilePicker(e);
+});
+dropZone.addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ' ') openMainFilePicker(e);
+});
+fileInput.onchange = () => {
+  const selected = fileInput.files?.[0];
+  if (!selected) return toast('Файл не выбран');
+  handleFile(selected);
+};
 $('promptInput').oninput = syncFileUi;
 document.querySelectorAll('.quick-prompts button').forEach(b => b.onclick = () => { $('promptInput').value = b.dataset.prompt; syncFileUi(); });
 
@@ -390,6 +413,9 @@ async function handleFile(file) {
     const img = new Image(); img.onload = () => { state.image = img; resizeImageCanvas(); drawImageCanvas(); renderChamferEditor(); }; img.src = URL.createObjectURL(file);
   }
   syncFileUi(); renderChamferEditor(); scheduleAutosave();
+  toast(`Файл загружен: ${file.name}`);
+  if (window.__tabletWorkflowMarkFileReady) window.__tabletWorkflowMarkFileReady(file.name);
+  if (window.__tabletWorkflowActivate) setTimeout(() => window.__tabletWorkflowActivate(1, true), 180);
 }
 function resizeImageCanvas() { if (!state.image) return; const ratio = Math.min(1,(previewArea.clientWidth || 900)/state.image.naturalWidth); imageCanvas.width = Math.round(state.image.naturalWidth*ratio); imageCanvas.height = Math.round(state.image.naturalHeight*ratio); }
 function drawImageCanvas() { if (!state.image) return; imageCtx.clearRect(0,0,imageCanvas.width,imageCanvas.height); imageCtx.drawImage(state.image,0,0,imageCanvas.width,imageCanvas.height); if (state.crop) { const x=state.crop.x*imageCanvas.width,y=state.crop.y*imageCanvas.height,w=state.crop.width*imageCanvas.width,h=state.crop.height*imageCanvas.height; imageCtx.save(); imageCtx.fillStyle='rgba(0,0,0,.48)'; imageCtx.fillRect(0,0,imageCanvas.width,imageCanvas.height); imageCtx.clearRect(x,y,w,h); imageCtx.drawImage(state.image,state.crop.x*state.image.naturalWidth,state.crop.y*state.image.naturalHeight,state.crop.width*state.image.naturalWidth,state.crop.height*state.image.naturalHeight,x,y,w,h); imageCtx.strokeStyle='#82eaff'; imageCtx.lineWidth=2; imageCtx.setLineDash([8,5]); imageCtx.strokeRect(x,y,w,h); imageCtx.restore(); } }
@@ -1174,5 +1200,14 @@ window.CNC3D_getData = function CNC3D_getData() {
     const [view,id]=map[step]||[]; const nav=document.querySelector(`.nav-item[data-view="${view}"]`); if(nav)nav.click(); setTimeout(()=>{const el=q(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},120);
   }
   function sync(){if(!isTablet())return; if(q('tabletProjectName'))q('tabletProjectName').textContent=q('activeProjectName')?.textContent||'Локальный черновик'; if(q('tabletFileState'))q('tabletFileState').textContent=q('currentFilePill')?.textContent||'Не выбран';}
-  window.__tabletWorkflowActivate=(i,scroll=true)=>activate(i,scroll); window.addEventListener('resize',applyTablet); document.addEventListener('DOMContentLoaded',()=>{applyTablet();document.querySelectorAll('.tablet-step').forEach((b,i)=>b.addEventListener('click',()=>activate(i)));q('tabletBackBtn')?.addEventListener('click',()=>activate(current-1));q('tabletNextBtn')?.addEventListener('click',()=>activate(current+1));q('tabletSaveBtn')?.addEventListener('click',()=>q('saveProjectBtn')?.click());q('tabletGoVerifyBtn')?.addEventListener('click',()=>activate(2));q('tabletInspectorToggle')?.addEventListener('click',()=>document.body.classList.toggle('tablet-inspector-collapsed'));new MutationObserver(sync).observe(document.body,{subtree:true,childList:true,characterData:true});activate(0,false);});
+  window.__tabletWorkflowActivate=(i,scroll=true)=>activate(i,scroll);
+  window.__tabletWorkflowMarkFileReady=(name)=>{
+    document.querySelector('.tablet-step[data-step="analysis"]')?.classList.add('done');
+    if(q('tabletFileState')) q('tabletFileState').textContent=name||'Файл выбран';
+    if(q('tabletNextBtn')) q('tabletNextBtn').disabled=false;
+  };
+  window.addEventListener('resize',applyTablet); document.addEventListener('DOMContentLoaded',()=>{applyTablet();document.querySelectorAll('.tablet-step').forEach((b,i)=>b.addEventListener('click',()=>activate(i)));q('tabletBackBtn')?.addEventListener('click',()=>activate(current-1));q('tabletNextBtn')?.addEventListener('click',()=>{
+    if(current===0 && !state.file){ toast('Сначала выберите файл чертежа'); openMainFilePicker(); return; }
+    activate(current+1);
+  });q('tabletSaveBtn')?.addEventListener('click',()=>q('saveProjectBtn')?.click());q('tabletGoVerifyBtn')?.addEventListener('click',()=>activate(2));q('tabletInspectorToggle')?.addEventListener('click',()=>document.body.classList.toggle('tablet-inspector-collapsed'));new MutationObserver(sync).observe(document.body,{subtree:true,childList:true,characterData:true});activate(0,false);});
 })();
