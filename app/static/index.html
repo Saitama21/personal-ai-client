@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#0b1420" id="themeColorMeta" />
   <meta name="color-scheme" content="light dark" />
-  <meta name="app-build" content="2.6.4-clean-project-state" />
+  <meta name="app-build" content="2.6.6-floating-sidebar" />
   <script>
     (() => {
       try {
@@ -18,7 +18,7 @@
     })();
   </script>
   <title>Personal AI Client PRO</title>
-  <link rel="stylesheet" href="/static/styles.css?v=2.6.4-clean-project-state" />
+  <link rel="stylesheet" href="/static/styles.css?v=2.6.6-floating-sidebar" />
 </head>
 <body>
   <div class="background-orb orb-a"></div><div class="background-orb orb-b"></div><div class="background-orb orb-c"></div>
@@ -42,13 +42,14 @@
         <button class="nav-item" data-view="settings"><span class="nav-icon" aria-hidden="true">⚙</span><span>Настройки</span></button>
       </nav>
       <div class="status-card glass-soft"><span class="status-dot" id="statusDot"></span><div><strong id="statusTitle">Проверка...</strong><small id="statusText">Соединение с сервером</small></div></div>
-      <div class="sidebar-footer creator-glass"><span class="creator-label">Создатель</span><strong>Єрошов Іван</strong><small>Версия 2.6.5 Real WebGL</small></div>
+      <div class="sidebar-footer creator-glass"><span class="creator-label">Создатель</span><strong>Єрошов Іван</strong><small>Версия 2.6.6 Floating Sidebar</small></div>
+      <button id="sidebarCollapseBtn" class="sidebar-collapse-button" type="button" aria-expanded="true" title="Свернуть боковую панель"><span aria-hidden="true">‹</span><span class="sidebar-collapse-label">Свернуть панель</span></button>
     </aside>
 
     <main>
       <section class="mobile-creator-strip glass" aria-label="Создатель и версия">
         <div class="mobile-creator-copy"><span>Создатель</span><strong>Єрошов Іван</strong></div>
-        <div class="mobile-version-badge">v2.6.4</div>
+        <div class="mobile-version-badge">v2.6.6</div>
       </section>
       <header class="topbar">
         <div><h1 id="pageTitle">Новый анализ</h1><p id="pageSubtitle">Загрузите изображение, PDF или SLDDRW и задайте вопрос</p></div>
@@ -603,7 +604,7 @@
 
   <div id="pointModal" class="modal hidden"><div class="modal-backdrop" data-close-modal></div><div class="modal-card glass"><div class="modal-head"><h2 id="pointModalTitle">Точка контура</h2><button data-close-modal>×</button></div><div class="modal-grid"><label>X, мм<input id="pointXInput" inputmode="decimal" /></label><label>Z, мм<input id="pointZInput" inputmode="decimal" /></label><label>Тип<select id="pointTypeSelect"><option value="lineX">Прямая по X</option><option value="lineZ">Прямая по Z</option><option value="arcCW">Дуга CW</option><option value="arcCCW">Дуга CCW</option><option value="chamfer">Фаска</option></select></label><label>R / угол<input id="pointRvInput" placeholder="R5 или 2×45°" /></label><label>Направление<input id="pointDirectionInput" placeholder="по X / по Z / CW" /></label><label>Вставить после<select id="pointInsertSelect"></select></label></div><div class="modal-actions"><button data-close-modal>Отмена</button><button id="savePointModalBtn" class="primary-button">Сохранить</button></div></div></div>
   <div id="toast" class="toast"></div>
-  <script src="/static/app.js?v=2.6.5-real-webgl"></script>
+  <script src="/static/app.js?v=2.6.6-floating-sidebar"></script>
   <script type="module">
     const badge = document.getElementById("simEngineBadge");
     const fallback = document.getElementById("simFallback");
@@ -611,7 +612,7 @@
       const THREE = await import("https://cdnjs.cloudflare.com/ajax/libs/three.js/0.168.0/three.module.min.js");
       window.THREE = THREE;
       window.dispatchEvent(new Event("three-ready"));
-      await import("/static/simulation3d.js?v=2.6.5-real-webgl");
+      await import("/static/simulation3d.js?v=2.6.6-floating-sidebar");
     } catch (error) {
       console.error("Three.js load failed", error);
       if (badge) badge.textContent = "3D-движок не загружен";

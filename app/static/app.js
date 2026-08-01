@@ -1045,6 +1045,28 @@ $('newAnalysisBtn').onclick=()=>{state.file=null;state.restoredFileName=null;sta
 document.addEventListener('keydown',e=>{const tag=document.activeElement?.tagName;if(['INPUT','TEXTAREA','SELECT'].includes(tag))return;const mod=e.ctrlKey||e.metaKey;if(mod&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();}else if(e.key==='Delete'){e.preventDefault();$('deletePointBtn').click();}else if(e.key.toLowerCase()==='a'){e.preventDefault();openPointModal('add');}else if(e.key.toLowerCase()==='s'){e.preventDefault();saveProject(false);}else if(e.key==='ArrowLeft'){state.selectedIndex=Math.max(0,state.selectedIndex-1);renderEditor();}else if(e.key==='ArrowRight'){state.selectedIndex=Math.min(state.contourPoints.length-1,state.selectedIndex+1);renderEditor();}});
 window.addEventListener('resize',()=>{updateDeviceModeLabel();if(state.image){resizeImageCanvas();drawImageCanvas();}renderEditor();renderChamferEditor();});
 
+
+
+function initFloatingSidebar(){
+  const btn=document.getElementById('sidebarCollapseBtn');
+  if(!btn)return;
+  const key='personal-ai-sidebar-collapsed';
+  const apply=(collapsed)=>{
+    document.body.classList.toggle('sidebar-collapsed',collapsed);
+    btn.setAttribute('aria-expanded',String(!collapsed));
+    btn.title=collapsed?'Развернуть боковую панель':'Свернуть боковую панель';
+  };
+  let collapsed=false;
+  try{collapsed=localStorage.getItem(key)==='1';}catch{}
+  apply(collapsed);
+  btn.addEventListener('click',()=>{
+    collapsed=!document.body.classList.contains('sidebar-collapsed');
+    apply(collapsed);
+    try{localStorage.setItem(key,collapsed?'1':'0');}catch{}
+  });
+}
+
+initFloatingSidebar();
 initThemeControls();updateDeviceModeLabel();initShopTurn();initOperationMultiPicker();loadHealth();loadThreadCatalog();
 // Каждый новый запуск начинается с чистой рабочей сессии. Сохранённые проекты и история не удаляются.
 localStorage.removeItem('personal-ai-pro-draft');
