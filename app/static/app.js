@@ -426,6 +426,34 @@ function normalizeChamferNotation(value){
   const m=raw.match(/^(\d+(?:[.,]\d+)?)×(\d+(?:[.,]\d+)?)(?:°)?$/);
   return m?`${m[1].replace(',','.')}×${m[2].replace(',','.')}°`:raw;
 }
+function normalizeChamferNumber(value,fallback){
+  const raw=String(value??'').trim().replace(',','.');
+  const number=Number(raw);
+  return Number.isFinite(number)&&number>0?String(number):String(fallback);
+}
+function setChamferInputsFromNotation(value){
+  const normalized=normalizeChamferNotation(value);
+  const match=normalized.match(/(\d+(?:\.\d+)?)×(\d+(?:\.\d+)?)°?/);
+  const compact=normalized.match(/^C(\d+(?:\.\d+)?)$/i);
+  const size=match?match[1]:compact?compact[1]:'1';
+  const angle=match?match[2]:'45';
+  $('chamferSizeInput').value=size;
+  $('chamferAngleInput').value=angle;
+  return `${size}×${angle}°`;
+}
+function chamferNotationFromInputs(){
+  const size=normalizeChamferNumber($('chamferSizeInput').value,1);
+  const angle=normalizeChamferNumber($('chamferAngleInput').value,45);
+  $('chamferSizeInput').value=size;
+  $('chamferAngleInput').value=angle;
+  return `${size}×${angle}°`;
+}
+function syncChamferNotationControls(){
+  const enabled=$('chamferModeSelect').value==='chamfer';
+  $('chamferSizeInput').disabled=!enabled;
+  $('chamferAngleInput').disabled=!enabled;
+  $('chamferNotationSplit').classList.toggle('is-disabled',!enabled);
+}
 function applyDrawingIntelligence(data={}){
   state.drawingIntel={tolerances:Array.isArray(data.tolerances)?data.tolerances:[],tolerance_interpretations:Array.isArray(data.tolerance_interpretations)?data.tolerance_interpretations:[],threads:Array.isArray(data.threads)?data.threads:[],chamfers_detected:Array.isArray(data.chamfers_detected)?data.chamfers_detected:[],requires_chamfer_decision:data.requires_chamfer_decision!==false,notes:Array.isArray(data.notes)?data.notes:[]};
   $('drawingIntelligencePanel').classList.remove('hidden');renderDrawingIntelligence();scheduleAutosave();
@@ -439,7 +467,7 @@ function renderDrawingIntelligence(){
   $('detectedThreadList').innerHTML=threads.length?threads.map((x,i)=>`<button class="detected-thread" data-thread-index="${i}"><strong>${escapeHtml(x.display||`${x.designation}×${x.pitch}`)}</strong><span>${x.pitch_source==='iso_coarse_default'?'крупный шаг принят автоматически':'шаг указан на чертеже'}</span></button>`).join(''):'<span class="muted-text">Резьбы не распознаны.</span>';
   $('drawingIntelBadge').textContent=`Допуски: ${t.length} · Правила: ${rules.length} · Резьбы: ${threads.length}`;
   document.querySelectorAll('[data-thread-index]').forEach(btn=>btn.onclick=()=>selectDetectedThread(Number(btn.dataset.threadIndex)));
-  if(state.drawingIntel.chamfers_detected?.length&&!state.chamfers.length)$('chamferNotationInput').value=normalizeChamferNotation(state.drawingIntel.chamfers_detected[0]);
+  if(state.drawingIntel.chamfers_detected?.length&&!state.chamfers.length)setChamferInputsFromNotation(state.drawingIntel.chamfers_detected[0]);
 }
 async function loadThreadCatalog(){
   try{const r=await fetch('/api/thread-catalog');const d=await r.json();if(!r.ok)throw new Error();state.threadCatalog=d.items||[];populateThreadCatalog();}catch{state.threadCatalog=[];$('threadDesignationSelect').innerHTML='<option value="M8">M8</option>';$('threadPitchSelect').innerHTML='<option value="1.25">1.25</option>';}
@@ -473,10 +501,14 @@ function renderChamferEditor(){
   $('chamferMarkerList').innerHTML=state.chamfers.length?state.chamfers.map((m,i)=>`<div class="chamfer-marker"><span><i>${i+1}</i>${m.mode==='edge_break'?'Снять остроту':m.mode==='none'?'Без обработки':escapeHtml(m.notation)}${m.contourIndex!==null&&m.contourIndex!==undefined?` · точка X/Z №${m.contourIndex+1}`:''}</span><button data-remove-chamfer="${i}">×</button></div>`).join(''):'<div class="muted-text">Точки фасок не поставлены.</div>';
   document.querySelectorAll('[data-remove-chamfer]').forEach(b=>b.onclick=()=>{state.chamfers.splice(Number(b.dataset.removeChamfer),1);renderChamferEditor();scheduleAutosave();});
 }
-chamferCanvas.onclick=e=>{const r=chamferCanvas.getBoundingClientRect(),px=(e.clientX-r.left)*chamferCanvas.width/r.width,py=(e.clientY-r.top)*chamferCanvas.height/r.height,x=px/chamferCanvas.width,y=py/chamferCanvas.height,mode=$('chamferModeSelect').value,notation=normalizeChamferNotation($('chamferNotationInput').value);let contourIndex=null;if(state.chamferTransform?.type==='contour'&&state.contourPoints.length){let best=Infinity;state.contourPoints.forEach((p,i)=>{const q=state.chamferTransform.toPx(p),d=Math.hypot(q.x-px,q.y-py);if(d<best){best=d;contourIndex=i;}});if(best>55)contourIndex=null;}state.chamfers.push({x:Math.max(0,Math.min(1,x)),y:Math.max(0,Math.min(1,y)),mode,notation,contourIndex});if(contourIndex!==null&&contourIndex>0&&mode==='chamfer'){pushUndo();state.contourPoints[contourIndex].type='chamfer';state.contourPoints[contourIndex].rv=notation;state.contourPoints[contourIndex].direction='угол';} $('chamferNotationInput').value=notation;renderChamferEditor();renderEditor();scheduleAutosave();};
+chamferCanvas.onclick=e=>{const r=chamferCanvas.getBoundingClientRect(),px=(e.clientX-r.left)*chamferCanvas.width/r.width,py=(e.clientY-r.top)*chamferCanvas.height/r.height,x=px/chamferCanvas.width,y=py/chamferCanvas.height,mode=$('chamferModeSelect').value,notation=chamferNotationFromInputs();let contourIndex=null;if(state.chamferTransform?.type==='contour'&&state.contourPoints.length){let best=Infinity;state.contourPoints.forEach((p,i)=>{const q=state.chamferTransform.toPx(p),d=Math.hypot(q.x-px,q.y-py);if(d<best){best=d;contourIndex=i;}});if(best>55)contourIndex=null;}state.chamfers.push({x:Math.max(0,Math.min(1,x)),y:Math.max(0,Math.min(1,y)),mode,notation,contourIndex});if(contourIndex!==null&&contourIndex>0&&mode==='chamfer'){pushUndo();state.contourPoints[contourIndex].type='chamfer';state.contourPoints[contourIndex].rv=notation;state.contourPoints[contourIndex].direction='угол';}setChamferInputsFromNotation(notation);renderChamferEditor();renderEditor();scheduleAutosave();};
 $('undoChamferBtn').onclick=()=>{state.chamfers.pop();renderChamferEditor();scheduleAutosave();};
 $('clearChamfersBtn').onclick=()=>{state.chamfers=[];renderChamferEditor();scheduleAutosave();};
-$('chamferNotationInput').onchange=e=>e.target.value=normalizeChamferNotation(e.target.value);
+$('chamferSizeInput').onchange=()=>chamferNotationFromInputs();
+$('chamferAngleInput').onchange=()=>chamferNotationFromInputs();
+$('chamferModeSelect').onchange=syncChamferNotationControls;
+setChamferInputsFromNotation('1×45°');
+syncChamferNotationControls();
 
 function collectShopTurnPayload(){return{...collectShopTurnData(),operations:state.operationRoute,threadSelection:selectedThread(),chamfers:state.chamfers};}
 function makeOperationSnapshot(){const d=collectShopTurnData(),op=SHOP_OPERATIONS[d.operation]||{label:'Операция не выбрана'};return{...d,id:`op-${Date.now()}-${Math.random().toString(16).slice(2)}`,label:op.label,enabled:true,thread:['thread_ext','thread_int'].includes(d.operation)?selectedThread():{}};}

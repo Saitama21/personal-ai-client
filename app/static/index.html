@@ -41,13 +41,13 @@
         <button class="nav-item" data-view="settings"><span class="nav-icon" aria-hidden="true">⚙</span><span>Настройки</span></button>
       </nav>
       <div class="status-card glass-soft"><span class="status-dot" id="statusDot"></span><div><strong id="statusTitle">Проверка...</strong><small id="statusText">Соединение с сервером</small></div></div>
-      <div class="sidebar-footer creator-glass"><span class="creator-label">Создатель</span><strong>Єрошов Іван</strong><small>Версия 2.4.2 Laptop Logo Fix</small></div>
+      <div class="sidebar-footer creator-glass"><span class="creator-label">Создатель</span><strong>Єрошов Іван</strong><small>Версия 2.4.4 Split Chamfer Input</small></div>
     </aside>
 
     <main>
       <section class="mobile-creator-strip glass" aria-label="Создатель и версия">
         <div class="mobile-creator-copy"><span>Создатель</span><strong>Єрошов Іван</strong></div>
-        <div class="mobile-version-badge">v2.4.2</div>
+        <div class="mobile-version-badge">v2.4.4</div>
       </section>
       <header class="topbar">
         <div><h1 id="pageTitle">Новый анализ</h1><p id="pageSubtitle">Загрузите изображение, PDF или SLDDRW и задайте вопрос</p></div>
@@ -139,12 +139,19 @@
               <section class="intel-card chamfer-editor-card">
                 <div class="mini-heading">Фаски и снятие остроты</div>
                 <div class="chamfer-controls">
-                  <label><span>Режим</span><select id="chamferModeSelect"><option value="chamfer">Фаска</option><option value="edge_break">Снять остроту</option><option value="none">Не обрабатывать кромку</option></select></label>
-                  <label><span>Обозначение</span><input id="chamferNotationInput" value="1×45°" placeholder="1×45°" /></label>
+                  <label class="chamfer-mode-field"><span>Режим</span><select id="chamferModeSelect"><option value="chamfer">Фаска</option><option value="edge_break">Снять остроту</option><option value="none">Не обрабатывать кромку</option></select></label>
+                  <div class="chamfer-notation-field">
+                    <span class="chamfer-control-label">Обозначение</span>
+                    <div id="chamferNotationSplit" class="chamfer-notation-split" aria-label="Размер и угол фаски">
+                      <label class="chamfer-number-field"><input id="chamferSizeInput" value="1" inputmode="decimal" autocomplete="off" aria-label="Размер фаски в миллиметрах" /><small>мм</small></label>
+                      <span class="chamfer-multiply" aria-hidden="true">×</span>
+                      <label class="chamfer-number-field"><input id="chamferAngleInput" value="45" inputmode="decimal" autocomplete="off" aria-label="Угол фаски в градусах" /><small>°</small></label>
+                    </div>
+                  </div>
                   <button id="undoChamferBtn" class="small-button">Убрать последнюю</button>
                   <button id="clearChamfersBtn" class="small-button danger-lite">Очистить точки</button>
                 </div>
-                <div class="chamfer-canvas-wrap"><canvas id="chamferCanvas" width="900" height="360"></canvas><div class="canvas-tip">Нажми на кромку мини-чертежа и укажи 1×45°, 2×45° либо «снять остроту»</div></div>
+                <div class="chamfer-canvas-wrap"><canvas id="chamferCanvas" width="900" height="360"></canvas><div class="canvas-tip">Нажми на кромку мини-чертежа: введи размер в мм, затем угол в градусах, либо выбери «снять остроту»</div></div>
                 <div id="chamferMarkerList" class="chamfer-marker-list"></div>
               </section>
             </div>

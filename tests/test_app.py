@@ -238,7 +238,7 @@ def test_stock_removal_accepts_shopturn_tool_flow():
 
 def test_health_reports_shopturn_feature():
     body = client.get("/api/health").json()
-    assert body["version"] == "2.4.2-pro"
+    assert body["version"] == "2.4.4-pro"
     assert "shopturn_tool_flow" in body["features"]
 
 
@@ -471,3 +471,29 @@ def test_chat_does_not_reuse_previous_response_file_chain(monkeypatch):
     assert response_id == "resp_new"
     assert calls
     assert calls[0]["input"][-1]["content"] == "M8 1.25"
+
+
+def test_light_theme_engineering_panel_has_contrast_tokens():
+    from pathlib import Path
+    css = (Path(__file__).parents[1] / "app" / "static" / "styles.css").read_text(encoding="utf-8")
+    assert "--glass-border: var(--line);" in css
+    assert "--control-bg: var(--button-bg);" in css
+    assert 'html[data-theme="light"] .drawing-intelligence .mini-heading' in css
+    assert "color: #2b4058;" in css
+
+
+def test_split_chamfer_input_is_rendered_and_legacy_field_removed():
+    root = Path(__file__).resolve().parents[1]
+    html = (root / "app" / "static" / "index.html").read_text(encoding="utf-8")
+    script = (root / "app" / "static" / "app.js").read_text(encoding="utf-8")
+    assert 'id="chamferSizeInput"' in html
+    assert 'id="chamferAngleInput"' in html
+    assert 'id="chamferNotationSplit"' in html
+    assert 'chamferNotationInput' not in html
+    assert 'chamferNotationInput' not in script
+    assert 'return `${size}×${angle}°`' in script
+
+
+def test_health_reports_split_chamfer_input_feature():
+    body = client.get("/api/health").json()
+    assert "split_chamfer_input" in body["features"]

@@ -315,7 +315,7 @@ code { color: var(--accent); }
 .info-box span { color: var(--muted); }
 .info-box strong { color: #f6fbff; }
 .sinumerik-card .mini-heading, .hint-card .mini-heading { margin-bottom: 10px; }
-.mini-heading { font-size: 13px; font-weight: 700; color: #eef5ff; letter-spacing: .02em; }
+.mini-heading { font-size: 13px; font-weight: 800; color: var(--muted-strong); letter-spacing: .02em; }
 .sinumerik-grid { display: grid; grid-template-columns: 1fr 180px; gap: 14px; }
 .sinumerik-screen { border-radius: 20px; border: 1px solid rgba(255,255,255,.12); background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03)); padding: 14px; display: grid; gap: 8px; }
 .screen-head { font-weight: 700; color: #d8e6ff; }
@@ -1175,9 +1175,18 @@ html[data-theme="dark"] .primary-button:disabled {
 .chamfer-marker button { border: 0; background: transparent; color: var(--muted); font-size: 18px; }
 .chamfer-marker span { display: flex; align-items: center; gap: 9px; }
 .chamfer-marker i { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-style: normal; font-weight: 800; }
-.chamfer-controls { display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 9px; align-items: end; }
-.chamfer-controls label { display: grid; gap: 6px; }
-.chamfer-controls label span { color: var(--muted); font-size: 12px; }
+.chamfer-controls { display: grid; grid-template-columns: minmax(190px, .8fr) minmax(280px, 1.2fr) auto auto; gap: 9px; align-items: end; }
+.chamfer-controls label,
+.chamfer-notation-field { display: grid; gap: 6px; min-width: 0; }
+.chamfer-controls label span,
+.chamfer-control-label { color: var(--muted); font-size: 12px; }
+.chamfer-notation-split { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; align-items: center; transition: opacity .18s ease, filter .18s ease; }
+.chamfer-notation-split.is-disabled { opacity: .45; filter: saturate(.45); }
+.chamfer-number-field { display: grid !important; grid-template-columns: minmax(0, 1fr) auto; gap: 6px !important; align-items: center; min-width: 0; min-height: 48px; padding: 4px 12px; border: 1px solid var(--glass-border-strong); border-radius: 16px; background: var(--control-bg); box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 7%, transparent); }
+.chamfer-number-field:focus-within { border-color: color-mix(in srgb, var(--accent) 70%, var(--glass-border-strong)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent), inset 0 1px 0 color-mix(in srgb, #fff 9%, transparent); }
+.chamfer-number-field input { width: 100%; min-width: 0; border: 0 !important; outline: 0; padding: 8px 0 !important; background: transparent !important; box-shadow: none !important; color: var(--text); font: inherit; font-size: 18px; }
+.chamfer-number-field small { color: var(--text-secondary); font-size: 13px; font-weight: 700; }
+.chamfer-multiply { color: var(--text); font-size: 24px; font-weight: 800; line-height: 1; }
 .chamfer-canvas-wrap { position: relative; margin-top: 12px; overflow: hidden; border-radius: 20px; border: 1px solid var(--glass-border); background: #07131f; }
 .chamfer-canvas-wrap canvas { display: block; width: 100%; height: auto; min-height: 220px; touch-action: manipulation; cursor: crosshair; }
 
@@ -1228,7 +1237,11 @@ html[data-theme="dark"] .primary-button:disabled {
   .drawing-intelligence { padding: 12px; border-radius: 22px; }
   .intel-card { padding: 12px; border-radius: 18px; }
   .chamfer-controls { grid-template-columns: 1fr 1fr; }
+  .chamfer-mode-field,
+  .chamfer-notation-field { grid-column: 1 / -1; }
   .chamfer-controls button { width: 100%; }
+  .chamfer-notation-split { grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr); }
+  .chamfer-number-field input { font-size: 17px; }
   .route-head .button-row { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
   .route-head .button-row button:first-child { grid-column: 1 / -1; }
   .route-operation { grid-template-columns: 34px minmax(0,1fr); padding: 10px; }
@@ -2238,3 +2251,67 @@ html[data-theme="light"] .sidebar .brand-emblem {
   }
 }
 
+
+/* PRO 2.4.3 — light-theme engineering panel contrast and legacy token bridge */
+:root {
+  --glass-border: var(--line);
+  --glass-border-strong: var(--line-strong);
+  --glass-soft-bg: var(--glass-soft);
+  --panel-bg: var(--glass);
+  --control-bg: var(--button-bg);
+  --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
+  --text-secondary: var(--muted-strong);
+  --pill: var(--accent);
+}
+
+.mini-heading {
+  color: var(--muted-strong);
+  font-weight: 800;
+  opacity: 1;
+}
+
+.drawing-intelligence .panel-heading h3,
+.drawing-intelligence .intel-card,
+.drawing-intelligence .intel-list,
+.drawing-intelligence .tolerance-rule-card,
+.drawing-intelligence .detected-thread {
+  color: var(--text);
+}
+
+html[data-theme="light"] .drawing-intelligence {
+  border-color: var(--line);
+  background: linear-gradient(145deg, rgba(255,255,255,.82), rgba(244,249,255,.70));
+  box-shadow: 0 18px 46px rgba(55,78,109,.10), inset 0 1px 0 rgba(255,255,255,.96);
+}
+
+html[data-theme="light"] .drawing-intelligence .mini-heading {
+  color: #2b4058;
+  text-shadow: none;
+}
+
+html[data-theme="light"] .drawing-intelligence .intel-card {
+  border-color: rgba(41,62,91,.18);
+  background: rgba(255,255,255,.76);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.98), 0 8px 24px rgba(55,78,109,.07);
+}
+
+html[data-theme="light"] .drawing-intelligence .intel-token,
+html[data-theme="light"] .drawing-intelligence .detected-thread,
+html[data-theme="light"] .drawing-intelligence .project-thread,
+html[data-theme="light"] .drawing-intelligence .chamfer-marker {
+  color: var(--text);
+  border-color: rgba(41,62,91,.18);
+  background: rgba(247,250,255,.94);
+}
+
+html[data-theme="light"] .drawing-intelligence .muted-text,
+html[data-theme="light"] .drawing-intelligence .detected-thread span,
+html[data-theme="light"] .drawing-intelligence .control-note,
+html[data-theme="light"] .drawing-intelligence .tolerance-rule-card small {
+  color: var(--muted);
+}
+
+html[data-theme="light"] .drawing-intelligence .tolerance-rule-card {
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--line));
+  background: color-mix(in srgb, var(--accent) 7%, rgba(255,255,255,.95));
+}
