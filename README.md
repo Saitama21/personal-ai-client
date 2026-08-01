@@ -1,3 +1,7 @@
+# v2.4.0 Mobile Pro
+
+Productive mobile layout with floating icon dock and compact controls.
+
 # Personal AI Client PRO 2.3.7 Mobile Dock
 
 ## Новое в 2.3.7

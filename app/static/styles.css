@@ -1732,3 +1732,124 @@ html[data-theme="light"] .creator-glass .creator-label { color: #82e7ff; }
   .nav-item { font-size: 8px; }
   .nav-item[data-view="stock"] span:last-child { font-size: 7.6px; }
 }
+
+/* PRO 2.4.0 — Mobile Pro: productive native-like layout */
+@media (max-width: 700px) {
+  body { padding-bottom: calc(72px + var(--safe-bottom)); }
+  .app-shell { padding: max(6px, var(--safe-top)) max(7px, var(--safe-right)) 5px max(7px, var(--safe-left)); }
+
+  .mobile-brand-strip {
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 46px;
+    margin-bottom: 8px;
+    padding: 6px 8px;
+    border-radius: 17px;
+  }
+  .mobile-brand-logo {
+    height: 34px;
+    width: fit-content;
+    max-width: 100%;
+    gap: 7px;
+    padding: 0 10px 0 7px;
+    border-radius: 12px;
+  }
+  .mobile-brand-mark {
+    width: 23px;
+    height: 23px;
+    display: inline-grid !important;
+    place-items: center;
+    flex: 0 0 23px;
+    border-radius: 8px;
+    color: var(--accent) !important;
+    font-size: 16px !important;
+    letter-spacing: 0 !important;
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  }
+  .mobile-brand-logo span:last-child { font-size: clamp(15px, 4.5vw, 19px); letter-spacing: .145em; }
+  .mobile-creator { display: none !important; }
+  .mobile-version {
+    display: grid;
+    grid-template-columns: auto auto;
+    align-items: baseline;
+    justify-content: end;
+    gap: 0 4px;
+    color: var(--muted);
+    font-size: 7px;
+    font-weight: 800;
+    letter-spacing: .12em;
+    white-space: nowrap;
+  }
+  .mobile-version strong { color: var(--accent); font-size: 7px; }
+  .mobile-version small { grid-column: 1 / -1; justify-self: end; color: var(--muted); font-size: 7px; letter-spacing: .04em; }
+
+  .topbar { gap: 8px; padding: 2px 1px 10px; }
+  h1 { font-size: clamp(27px, 8.2vw, 35px); line-height: 1.02; }
+  .topbar p { margin-top: 6px; font-size: 12px; line-height: 1.35; }
+  .topbar-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .topbar-actions .theme-switch { grid-column: 1 / -1; width: 100%; min-height: 42px; padding: 4px; }
+  .theme-choice { min-height: 32px; }
+  .project-pill { grid-column: 1 / -1; min-height: 46px; padding: 8px 11px; }
+  .project-pill span { font-size: 8px; }
+  .project-pill strong { font-size: 12px; }
+  #saveProjectBtn::before { content: '💾 '; }
+  #newAnalysisBtn::before { content: '⌫ '; }
+  #saveProjectBtn, #newAnalysisBtn { min-height: 42px; padding: 9px 8px; font-size: 12px; }
+  #saveProjectBtn { font-size: 0; }
+  #saveProjectBtn::after { content: 'Сохранить'; font-size: 12px; }
+  #newAnalysisBtn { font-size: 0; }
+  #newAnalysisBtn::after { content: 'Очистить'; font-size: 12px; }
+  .file-indicator { grid-column: 1 / -1; min-height: 42px; padding: 9px 11px; font-size: 12px; }
+
+  .panel { padding: 12px; border-radius: 21px; }
+  .panel-heading { margin-bottom: 10px; }
+  .panel-heading h2 { font-size: 19px; }
+  .eyebrow { font-size: 8px; }
+  .drop-zone { min-height: 190px; }
+  .preview-area { min-height: 210px; }
+
+  .sidebar {
+    left: max(8px, var(--safe-left));
+    right: max(8px, var(--safe-right));
+    bottom: max(6px, var(--safe-bottom));
+    padding: 4px 5px;
+    border-radius: 22px;
+    background: color-mix(in srgb, var(--glass) 86%, transparent);
+    backdrop-filter: blur(24px) saturate(170%);
+    -webkit-backdrop-filter: blur(24px) saturate(170%);
+  }
+  .sidebar nav { gap: 3px; }
+  .nav-item {
+    min-height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border-radius: 16px;
+  }
+  .nav-icon { width: 31px; height: 31px; border-radius: 11px; font-size: 15px; }
+  .nav-item > span:last-child {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0,0,0,0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+  }
+  .nav-item.active .nav-icon { transform: scale(1.06); }
+  .sidebar-footer { display: none !important; }
+  main { padding-bottom: 2px; }
+}
+
+@media (max-width: 390px) {
+  .mobile-brand-strip { grid-template-columns: minmax(0, 1fr) auto; gap: 5px; }
+  .mobile-version { display: none; }
+  .mobile-brand-logo { width: 100%; }
+  .topbar-actions { gap: 5px; }
+  .sidebar { left: 6px; right: 6px; }
+  .nav-item { min-height: 49px; }
+  .nav-icon { width: 29px; height: 29px; }
+}
