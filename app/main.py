@@ -31,7 +31,7 @@ MAX_FILE_MB = int(os.getenv("MAX_FILE_MB", "20"))
 MODEL = os.getenv("OPENAI_MODEL", "gpt-5-mini")
 MOCK_MODE = os.getenv("MOCK_MODE", "false").lower() in {"1", "true", "yes"}
 KEEP_OPENAI_FILES = os.getenv("KEEP_OPENAI_FILES", "false").lower() in {"1", "true", "yes"}
-APP_VERSION = os.getenv("APP_VERSION", "2.7.8-ipad-upload-fix")
+APP_VERSION = os.getenv("APP_VERSION", "2.7.9 Native iPad Upload")
 DEPLOY_COMMIT = os.getenv("RAILWAY_GIT_COMMIT_SHA", os.getenv("GIT_COMMIT", "local"))
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
