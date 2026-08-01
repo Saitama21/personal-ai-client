@@ -197,28 +197,36 @@ function initThemeControls() {
 }
 
 function detectDeviceLayout() {
-  const ua = navigator.userAgent || '';
-  const platform = navigator.platform || '';
-  const touchPoints = navigator.maxTouchPoints || 0;
-  const isIPad = /iPad/.test(ua) || (platform === 'MacIntel' && touchPoints > 1);
-  const isIPhone = /iPhone|iPod/.test(ua);
-  const shortestSide = Math.min(screen.width || innerWidth, screen.height || innerHeight);
-  const touchTablet = !isIPhone && touchPoints > 1 && shortestSide >= 700 && shortestSide <= 1100;
-  if (isIPhone || window.innerWidth <= 700) return 'phone';
-  if (isIPad || touchTablet) return 'tablet';
+  const viewportWidth = Math.round(
+    window.visualViewport?.width || document.documentElement.clientWidth || window.innerWidth || 0
+  );
+  if (viewportWidth < 768) return 'phone';
+  if (viewportWidth < 1200) return 'tablet';
   return 'desktop';
 }
 
 function applyDeviceLayout() {
   const layout = detectDeviceLayout();
-  document.documentElement.dataset.deviceLayout = layout;
-  document.documentElement.classList.remove('layout-phone','layout-tablet','layout-desktop');
-  document.documentElement.classList.add(`layout-${layout}`);
+  const root = document.documentElement;
+  root.dataset.deviceLayout = layout;
+  root.classList.remove('layout-phone', 'layout-tablet', 'layout-desktop');
+  root.classList.add(`layout-${layout}`);
   document.body?.classList.toggle('tablet-edition', layout === 'tablet');
   document.body?.classList.toggle('phone-edition', layout === 'phone');
   document.body?.classList.toggle('desktop-edition', layout === 'desktop');
   window.__DEVICE_LAYOUT__ = layout;
   return layout;
+}
+
+let deviceLayoutFrame = 0;
+function scheduleDeviceLayout() {
+  cancelAnimationFrame(deviceLayoutFrame);
+  deviceLayoutFrame = requestAnimationFrame(() => {
+    const before = window.__DEVICE_LAYOUT__;
+    const after = applyDeviceLayout();
+    updateDeviceModeLabel();
+    if (before && before !== after) window.dispatchEvent(new CustomEvent('device-layout-change', { detail: { layout: after } }));
+  });
 }
 
 function updateDeviceModeLabel() {
@@ -1181,3 +1189,9 @@ window.CNC3D_getData = function CNC3D_getData() {
   function sync(){if(!isTablet())return; if(q('tabletProjectName'))q('tabletProjectName').textContent=q('activeProjectName')?.textContent||'Локальный черновик'; if(q('tabletFileState'))q('tabletFileState').textContent=q('currentFilePill')?.textContent||'Не выбран';}
   window.__tabletWorkflowActivate=(i,scroll=true)=>activate(i,scroll); window.addEventListener('resize',applyTablet); document.addEventListener('DOMContentLoaded',()=>{applyTablet();document.querySelectorAll('.tablet-step').forEach((b,i)=>b.addEventListener('click',()=>activate(i)));q('tabletBackBtn')?.addEventListener('click',()=>activate(current-1));q('tabletNextBtn')?.addEventListener('click',()=>{ if(current===0 && !state.file){ toast('Сначала выберите файл'); try{ fileInput.focus(); }catch(_){} return; } activate(current+1); });q('tabletSaveBtn')?.addEventListener('click',()=>q('saveProjectBtn')?.click());q('tabletGoVerifyBtn')?.addEventListener('click',()=>activate(2));q('tabletInspectorToggle')?.addEventListener('click',()=>document.body.classList.toggle('tablet-inspector-collapsed'));new MutationObserver(sync).observe(document.body,{subtree:true,childList:true,characterData:true});activate(0,false);});
 })();
+
+// Unified responsive layout: reacts to viewport, split view and orientation changes.
+window.addEventListener('resize', scheduleDeviceLayout, { passive: true });
+window.addEventListener('orientationchange', scheduleDeviceLayout, { passive: true });
+window.visualViewport?.addEventListener('resize', scheduleDeviceLayout, { passive: true });
+document.addEventListener('DOMContentLoaded', scheduleDeviceLayout, { once: true });
