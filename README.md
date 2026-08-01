@@ -1,4 +1,4 @@
-# v2.4.0 Mobile Pro
+# v2.4.1 Floating Top Navigation
 
 Productive mobile layout with floating icon dock and compact controls.
 
@@ -15,7 +15,7 @@ Productive mobile layout with floating icon dock and compact controls.
 - при явном открытии проекта или восстановлении из истории имя исходного файла сохраняется как справочная метка;
 - логотип **ROZFOOD** помещён в отдельную Liquid Glass-капсулу;
 - блок **«Создатель: Єрошов Іван»** оформлен как прозрачная тёмная Liquid Glass-подпись;
-- версия API: `2.3.7-pro`;
+- версия API: `2.4.1-pro`;
 - фото в чате анализа и Stock Removal;
 - выделение области рамкой;
 - сохранение отправленного фрагмента в истории диалога.
