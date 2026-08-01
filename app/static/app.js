@@ -404,6 +404,49 @@ document.querySelectorAll('[data-zero-value], [data-side-value]').forEach(input 
 syncStockModeUi();
 syncStockOptionValues();
 
+
+const STOCK_PLAN_STAGES = [
+  ['drawing','Анализ чертежа','Проверяю файл, область и исходные данные'],
+  ['geometry','Размеры и геометрия','Сопоставляю размеры заготовки и готовой детали'],
+  ['requirements','Допуски, резьбы и фаски','Разбираю инженерные обозначения и требования'],
+  ['operations','Маршрут обработки','Выстраиваю последовательность операций и установов'],
+  ['tools','Инструменты','Подбираю инструмент под материал и операции'],
+  ['cutting','Режимы резания','Рассчитываю стартовые обороты, подачи и глубины'],
+  ['contour','Контур X/Z и Stock Removal','Подготавливаю геометрию для контура и симуляции'],
+  ['final','Инженерная проверка','Проверяю порядок, ограничения и полноту плана']
+];
+let stockStageTimer=null;
+function resetStockStages(){
+  clearInterval(stockStageTimer); stockStageTimer=null;
+  $('stockStagePanel').classList.remove('hidden');
+  $('stockStageBar').style.width='0%'; $('stockStagePercent').textContent='0%';
+  $('stockStageTitle').textContent='Подготовка'; $('stockStageMessage').textContent='Проверяю введённые данные…';
+  document.querySelectorAll('#stockStageList li').forEach(li=>{li.className='';li.querySelector('b').textContent='Ожидание';});
+}
+function setStockStage(index,status='active'){
+  const safe=Math.max(0,Math.min(index,STOCK_PLAN_STAGES.length-1));
+  document.querySelectorAll('#stockStageList li').forEach((li,i)=>{
+    li.classList.remove('active','done','error');
+    if(i<safe || (i===safe&&status==='done')){li.classList.add('done');li.querySelector('b').textContent='Готово';}
+    else if(i===safe){li.classList.add(status);li.querySelector('b').textContent=status==='error'?'Ошибка':'В работе';}
+    else li.querySelector('b').textContent='Ожидание';
+  });
+  const [,title,message]=STOCK_PLAN_STAGES[safe];
+  $('stockStageTitle').textContent=title; $('stockStageMessage').textContent=message;
+  const pct=status==='done'&&safe===STOCK_PLAN_STAGES.length-1?100:Math.min(96,Math.round((safe+(status==='done'?1:.35))/STOCK_PLAN_STAGES.length*100));
+  $('stockStageBar').style.width=`${pct}%`; $('stockStagePercent').textContent=`${pct}%`;
+}
+function beginStockStages(){
+  resetStockStages(); let i=0; setStockStage(0);
+  const delays=[1400,1500,1500,1800,1500,1500,1700]; let elapsed=0;
+  stockStageTimer=setInterval(()=>{
+    if(i>=STOCK_PLAN_STAGES.length-2){clearInterval(stockStageTimer);stockStageTimer=null;return;}
+    elapsed+=450; if(elapsed>=delays[i]){elapsed=0;i++;setStockStage(i);}
+  },450);
+}
+function completeStockStages(){clearInterval(stockStageTimer);stockStageTimer=null;setStockStage(STOCK_PLAN_STAGES.length-1,'done');$('stockStageTitle').textContent='План готов';$('stockStageMessage').textContent='Все этапы завершены. Проверь маршрут, инструмент и режимы перед запуском.';}
+function failStockStages(message){clearInterval(stockStageTimer);stockStageTimer=null;const active=[...document.querySelectorAll('#stockStageList li')].findIndex(li=>li.classList.contains('active'));setStockStage(active<0?0:active,'error');$('stockStageTitle').textContent='Не удалось завершить этап';$('stockStageMessage').textContent=message||'Проверь данные и повтори формирование плана.';}
+
 $('stockBtn').onclick = async () => {
   const notes = $('stockNotes').value.trim();
   if(!state.file && notes.length < 10){
@@ -412,6 +455,7 @@ $('stockBtn').onclick = async () => {
     return;
   }
   $('stockNotes').classList.remove('field-error');
+  beginStockStages();
   $('stockBtn').disabled=true;$('stockProgress').classList.remove('hidden');const f=new FormData();
   if(state.file) f.append('file',state.file);
   f.append('stock_mode',state.stockMode);
@@ -424,7 +468,7 @@ $('stockBtn').onclick = async () => {
     f.append('blank_width',$('blankWidth').value);f.append('blank_height',$('blankHeight').value);f.append('blank_mill_length',$('blankLengthMill').value);
   }
   syncStockOptionValues(); f.append('zero_reference',$('zeroReference').value);f.append('first_side',$('firstSide').value);f.append('notes',$('stockNotes').value);f.append('shopturn_json',JSON.stringify(collectShopTurnPayload()));f.append('project_json',JSON.stringify(collectProjectData()));
-  try{const r=await fetch('/api/stock-removal',{method:'POST',body:f});const d=await r.json();if(!r.ok)throw new Error(d.detail||'Ошибка');$('stockResultEmpty').classList.add('hidden');$('stockResultContent').classList.remove('hidden');$('stockResultContent').innerHTML=renderText(d.response);$('stockResultMeta').textContent=`${d.model}${d.mock?' · MOCK':''} · ${d.source==='description'?'по описанию':'по чертежу'} · #${d.id}`;startChat('stock',d);toast('План сформирован');}catch(e){toast(e.message);}finally{$('stockProgress').classList.add('hidden');syncFileUi();}
+  try{const r=await fetch('/api/stock-removal',{method:'POST',body:f});const d=await r.json();if(!r.ok)throw new Error(d.detail||'Ошибка');completeStockStages();$('stockResultEmpty').classList.add('hidden');$('stockResultContent').classList.remove('hidden');$('stockResultContent').innerHTML=renderText(d.response);$('stockResultMeta').textContent=`${d.model}${d.mock?' · MOCK':''} · ${d.source==='description'?'по описанию':'по чертежу'} · #${d.id}`;startChat('stock',d);setTimeout(()=>$('stockResultContent')?.closest('.panel')?.scrollIntoView({behavior:'smooth',block:'start'}),450);toast('Все этапы завершены — план сформирован');}catch(e){failStockStages(e.message);toast(e.message);}finally{$('stockProgress').classList.add('hidden');syncFileUi();}
 };
 $('aiContourBtn').onclick = async () => {
   if(!state.file)return; $('stockProgress').classList.remove('hidden');$('aiContourBtn').disabled=true;const f=new FormData();f.append('file',state.file);f.append('blank_diameter',$('blankDiameter').value);f.append('blank_length',$('blankLength').value);f.append('notes',$('stockNotes').value);
