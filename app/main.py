@@ -19,6 +19,8 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from PIL import Image, UnidentifiedImageError
 
+from app.thread_library import THREAD_FAMILIES, build_thread_library
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 STATIC_DIR = BASE_DIR / "app" / "static"
 DATA_DIR = Path(os.getenv("DATA_DIR", BASE_DIR / "data"))
@@ -432,7 +434,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="Personal AI Client", version="2.4.4-pro", lifespan=lifespan)
+app = FastAPI(title="Personal AI Client", version="2.4.5-pro", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -1254,20 +1256,19 @@ def health() -> dict[str, Any]:
         "api_key_configured": bool(os.getenv("OPENAI_API_KEY")),
         "max_file_mb": MAX_FILE_MB,
         "supported_types": ["JPG", "PNG", "WEBP", "PDF", "SLDDRW"],
-        "version": "2.4.4-pro",
-        "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52pty_profile", "drawing_intelligence", "tolerance_detection", "metric_thread_catalog", "chamfer_marker", "multi_operation_route", "contour_mirroring", "history_project_restore", "mobile_history", "multi_operation_picker", "general_tolerance_h14_rule", "stock_mode_radio", "multi_checkbox_setup", "hybrid_turn_mill_mode", "chat_image_upload", "chat_region_selection", "split_chamfer_input"],
+        "version": "2.4.5-pro",
+        "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52pty_profile", "drawing_intelligence", "tolerance_detection", "metric_thread_catalog", "chamfer_marker", "multi_operation_route", "contour_mirroring", "history_project_restore", "mobile_history", "multi_operation_picker", "general_tolerance_h14_rule", "stock_mode_radio", "multi_checkbox_setup", "hybrid_turn_mill_mode", "chat_image_upload", "chat_region_selection", "split_chamfer_input", "toggleable_drawing_rules", "full_thread_library", "thread_library_filters", "engineering_layout_overflow_fix"],
     }
 
 
 @app.get("/api/thread-catalog")
 def thread_catalog() -> dict[str, Any]:
+    items = build_thread_library(METRIC_THREAD_CATALOG)
     return {
-        "standard": "ISO metric",
-        "items": [
-            {"designation": key, **value}
-            for key, value in sorted(METRIC_THREAD_CATALOG.items(), key=lambda item: item[1]["diameter"])
-        ],
-        "note": "Фактическая возможность обработки зависит от установочной схемы, патрона, державки, пластины и машинных ограничений.",
+        "families": THREAD_FAMILIES,
+        "count": len(items),
+        "items": items,
+        "notice": "Каталог содержит стандартные профили и специальные шаблоны. Перед изготовлением проверяйте размер, класс, натяг и калибры по исходному стандарту.",
     }
 
 

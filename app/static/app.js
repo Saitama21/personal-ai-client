@@ -33,8 +33,12 @@ const state = {
 state.shopturn = { wizardStep: 0, customTools: [] };
 state.drawingIntel = { tolerances: [], tolerance_interpretations: [], threads: [], chamfers_detected: [], requires_chamfer_decision: true, notes: [] };
 state.threadCatalog = [];
+state.threadFamilies = [];
+state.threadLibraryUi = { family: 'metric_iso', search: '', diameter: 'all', pitch: 'all', standardOnly: true, selectedId: null };
+state.ruleControl = { enabled: true, active: {} };
 state.projectThreads = [];
 state.chamfers = [];
+state.chamfersEnabled = true;
 state.operationRoute = [];
 state.selectedOperationCodes = [];
 state.activeRouteIndex = -1;
@@ -167,11 +171,31 @@ function fmt(v) { return number(v).toFixed(3); }
 function escapeHtml(v='') { return String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])); }
 function toast(message) { const el = $('toast'); el.textContent = message; el.classList.add('show'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), 3300); }
 function renderText(text) { const s = escapeHtml(text); return s.replace(/^### (.*)$/gm,'<h3>$1</h3>').replace(/^## (.*)$/gm,'<h2>$1</h2>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\n/g,'<br>'); }
+function ruleIdentity(kind, value) {
+  const raw = typeof value === 'string' ? value : (value?.designation || value?.display || JSON.stringify(value));
+  return `${kind}:${String(raw || '').trim().toLowerCase()}`;
+}
+function isRuleActive(kind, value) {
+  const key = ruleIdentity(kind, value);
+  return state.ruleControl.active[key] !== false;
+}
+function activeToleranceContext() {
+  if (!state.ruleControl.enabled) return [];
+  const tokens = (state.drawingIntel.tolerances || []).filter(x => isRuleActive('tolerance', x));
+  const rules = (state.drawingIntel.tolerance_interpretations || []).filter(x => isRuleActive('rule', x)).map(x => x.display);
+  return [...tokens, ...rules];
+}
+function threadDisplay(thread = {}) {
+  if (thread.display) return thread.display;
+  if (thread.designation && /(?:×|\-|\s(?:UNC|UNF|UNEF|UNS|NPT|NPTF)$)/i.test(thread.designation)) return thread.designation;
+  return thread.pitch ? `${thread.designation}×${Number(thread.pitch).toFixed(6).replace(/0+$/,'').replace(/\.$/,'')}` : (thread.designation || 'Резьба');
+}
 function buildEngineeringContext() {
-  const toleranceRules = state.drawingIntel.tolerance_interpretations?.map(x => x.display).join('; ') || '';
-  const tolerances = [state.drawingIntel.tolerances?.join('; '), toleranceRules].filter(Boolean).join('; ') || 'не распознаны';
-  const threads = state.projectThreads.map(t => `${t.designation}×${t.pitch} ${t.side === 'internal' ? 'внутренняя' : 'наружная'} ${t.tolerance || ''}`.trim()).join('; ') || 'не выбраны';
-  const chamfers = state.chamfers.map((c, i) => `${i + 1}: ${c.mode === 'edge_break' ? 'снять остроту' : c.mode === 'none' ? 'не обрабатывать' : c.notation}${c.contourIndex!==null&&c.contourIndex!==undefined?` у точки X/Z №${c.contourIndex+1}`:''}`).join('; ') || 'не отмечены';
+  const activeTolerances = activeToleranceContext();
+  const tolerances = activeTolerances.join('; ') || (state.ruleControl.enabled ? 'не распознаны или отключены' : 'блок правил отключён оператором');
+  const threads = state.projectThreads.filter(t => t.enabled !== false).map(t => `${threadDisplay(t)} ${t.side === 'internal' ? 'внутренняя' : 'наружная'} ${t.tolerance || ''}`.trim()).join('; ') || 'не выбраны';
+  const chamferItems = state.chamfersEnabled ? state.chamfers.filter(c => c.enabled !== false) : [];
+  const chamfers = chamferItems.map((c, i) => `${i + 1}: ${c.mode === 'edge_break' ? 'снять остроту' : c.mode === 'none' ? 'не обрабатывать' : c.notation}${c.contourIndex!==null&&c.contourIndex!==undefined?` у точки X/Z №${c.contourIndex+1}`:''}`).join('; ') || (state.chamfersEnabled ? 'не отмечены' : 'блок фасок отключён оператором');
   const route = state.operationRoute.filter(o => o.enabled !== false).map((o, i) => `${i + 1}. ${o.label || o.operation} T${o.toolT || '?'} D${o.toolD || '?'}`).join('; ') || 'не сформирован';
   return `Инженерный контекст проекта:
 Допуски: ${tolerances}.
@@ -391,21 +415,21 @@ $('xModeSelect').onchange=e=>{state.xMode=e.target.value;renderEditor();schedule
 function download(name,type,content){const blob=new Blob([content],{type}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
 $('exportJsonBtn').onclick=()=>download('contour-xz.json','application/json',JSON.stringify({version:2,settings:collectEditorSettings(),points:state.contourPoints},null,2));
 $('exportCsvBtn').onclick=()=>download('contour-xz.csv','text/csv;charset=utf-8','№;X;Z;Тип;R/Угол;Направление\n'+state.contourPoints.map((p,i)=>`${i+1};${p.x};${p.z};${TYPE_META[p.type].label};${p.rv};${p.direction}`).join('\n'));
-function sinumerikText(){const valid=validateContour(),st=collectShopTurnData(),op=SHOP_OPERATIONS[st.operation]||{label:'Операция не выбрана'},route=state.operationRoute.filter(o=>o.enabled!==false),head=[`PERSONAL AI CLIENT PRO · SHOPTURN FLOW`,`ROZFOOD`,`Станок: ${st.machineProfile==='tengyue_ck52pty'?'Tengyue CK52PT-Y · Siemens SINUMERIK 828D / ShopTurn':'Пользовательский профиль'}`,`Дата: ${new Date().toLocaleString('ru-RU')}`,`Операция: ${op.label}`,`Инструмент: T${st.toolT} D${st.toolD} · ${st.toolName} · ${st.holder} · ${st.insert}`,`Режим: S=${st.speed} · F=${st.feed} · глубина=${st.depth} · СОЖ=${st.coolant?'ON':'OFF'}`,`Цикл: Machining=${st.machining} · Pos=${st.position} · X0=${st.x0} · Z0=${st.z0} · X1=${st.x1}${st.incrementMode==='incremental'?' INC':''} · Z1=${st.z1}${st.incrementMode==='incremental'?' INC':''}`,`FS1=${st.fs1} · FS2=${st.fs2} · FS3=${st.fs3} · UX=${st.ux} · UZ=${st.uz}`,`X: ${state.xMode==='diameter'?'диаметр':'радиус'}`,`Z0: ${state.z0==='right'?'правый торец':'левый торец'}`,`Проверка: ${valid?'ПРОЙДЕНА':'ЕСТЬ ОШИБКИ'}`,'',`Резьбы проекта: ${state.projectThreads.map(t=>`${t.designation}×${t.pitch}`).join(', ')||'нет'}`,`Фаски/кромки: ${state.chamfers.map(c=>c.mode==='chamfer'?c.notation:c.mode==='edge_break'?'снять остроту':'нет').join(', ')||'нет'}`,'', 'МАРШРУТ ОПЕРАЦИЙ:',...route.map((o,i)=>`${i+1}. ${o.label||o.operation} · T${o.toolT||'?'} D${o.toolD||'?'} · ${o.toolName||'—'} · S=${o.speed||'—'} F=${o.feed||'—'}`),'','КОНТУР X/Z:'];const lines=state.contourPoints.map((p,i)=>{const m=TYPE_META[p.type];return `${String(i+1).padStart(3,'0')} | ${m.sin.padEnd(12)} | X=${fmt(p.x)} | Z=${fmt(p.z)} | ${p.rv||'—'} | ${p.direction||'—'}`;});const steps=buildShopTurnSteps().map((s,i)=>`${i+1}. ${s.title}: ${s.instruction.replace(/<[^>]*>/g,'')}`);return [...head,...lines,'','ПОШАГОВЫЙ ВВОД SHOPTURN:',...steps,'','ВНИМАНИЕ: карта ввода, а не готовая NC-программа. Сверить с исходным чертежом, инструментом и фактической заготовкой перед Cycle Start.'].join('\n');}
+function sinumerikText(){const valid=validateContour(),st=collectShopTurnData(),op=SHOP_OPERATIONS[st.operation]||{label:'Операция не выбрана'},route=state.operationRoute.filter(o=>o.enabled!==false),head=[`PERSONAL AI CLIENT PRO · SHOPTURN FLOW`,`ROZFOOD`,`Станок: ${st.machineProfile==='tengyue_ck52pty'?'Tengyue CK52PT-Y · Siemens SINUMERIK 828D / ShopTurn':'Пользовательский профиль'}`,`Дата: ${new Date().toLocaleString('ru-RU')}`,`Операция: ${op.label}`,`Инструмент: T${st.toolT} D${st.toolD} · ${st.toolName} · ${st.holder} · ${st.insert}`,`Режим: S=${st.speed} · F=${st.feed} · глубина=${st.depth} · СОЖ=${st.coolant?'ON':'OFF'}`,`Цикл: Machining=${st.machining} · Pos=${st.position} · X0=${st.x0} · Z0=${st.z0} · X1=${st.x1}${st.incrementMode==='incremental'?' INC':''} · Z1=${st.z1}${st.incrementMode==='incremental'?' INC':''}`,`FS1=${st.fs1} · FS2=${st.fs2} · FS3=${st.fs3} · UX=${st.ux} · UZ=${st.uz}`,`X: ${state.xMode==='diameter'?'диаметр':'радиус'}`,`Z0: ${state.z0==='right'?'правый торец':'левый торец'}`,`Проверка: ${valid?'ПРОЙДЕНА':'ЕСТЬ ОШИБКИ'}`,'',`Резьбы проекта: ${state.projectThreads.filter(t=>t.enabled!==false).map(threadDisplay).join(', ')||'нет'}`,`Фаски/кромки: ${(state.chamfersEnabled?state.chamfers.filter(c=>c.enabled!==false):[]).map(c=>c.mode==='chamfer'?c.notation:c.mode==='edge_break'?'снять остроту':'нет').join(', ')||'нет'}`,'', 'МАРШРУТ ОПЕРАЦИЙ:',...route.map((o,i)=>`${i+1}. ${o.label||o.operation} · T${o.toolT||'?'} D${o.toolD||'?'} · ${o.toolName||'—'} · S=${o.speed||'—'} F=${o.feed||'—'}`),'','КОНТУР X/Z:'];const lines=state.contourPoints.map((p,i)=>{const m=TYPE_META[p.type];return `${String(i+1).padStart(3,'0')} | ${m.sin.padEnd(12)} | X=${fmt(p.x)} | Z=${fmt(p.z)} | ${p.rv||'—'} | ${p.direction||'—'}`;});const steps=buildShopTurnSteps().map((s,i)=>`${i+1}. ${s.title}: ${s.instruction.replace(/<[^>]*>/g,'')}`);return [...head,...lines,'','ПОШАГОВЫЙ ВВОД SHOPTURN:',...steps,'','ВНИМАНИЕ: карта ввода, а не готовая NC-программа. Сверить с исходным чертежом, инструментом и фактической заготовкой перед Cycle Start.'].join('\n');}
 $('exportSinumerikBtn').onclick=()=>{const valid=validateContour();if(!valid&&!confirm('В контуре есть ошибки. Всё равно экспортировать?'))return;download('sinumerik-828d-contour.txt','text/plain;charset=utf-8',sinumerikText());};
 $('importBtn').onclick=()=>$('importContourInput').click();$('importContourInput').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const txt=await f.text();let points;if(f.name.toLowerCase().endsWith('.json')){const d=JSON.parse(txt);points=Array.isArray(d)?d:d.points;if(d.settings)applyEditorSettings(d.settings);}else{const rows=txt.trim().split(/\r?\n/).slice(1);points=rows.map(r=>{const c=r.split(';');return{x:number(c[1]),z:number(c[2]),type:Object.keys(TYPE_META).find(k=>TYPE_META[k].label===c[3])||'lineX',rv:c[4]||'—',direction:c[5]||'—'};});}if(!Array.isArray(points)||points.length<2)throw new Error();pushUndo();state.contourPoints=points.map((p,i)=>({x:number(p.x),z:number(p.z),type:i===0?'start':TYPE_META[p.type]?p.type:'lineX',rv:p.rv||'—',direction:p.direction||'—'}));state.selectedIndex=0;state.validation=[];renderEditor();scheduleAutosave();toast('Контур импортирован');}catch{toast('Не удалось импортировать файл');}e.target.value='';};
 
 function collectEditorSettings(){return{xMode:state.xMode,process:state.process,z0:state.z0,closed:state.closed,snap:state.snap,snapStep:state.snapStep,showBlank:state.showBlank,showLabels:state.showLabels,showDimensions:state.showDimensions};}
 function applyEditorSettings(s={}){Object.assign(state,{xMode:s.xMode||'diameter',process:s.process||'outer',z0:s.z0||'right',closed:!!s.closed,snap:s.snap!==false,snapStep:number(s.snapStep,.1),showBlank:s.showBlank!==false,showLabels:s.showLabels!==false,showDimensions:!!s.showDimensions});$('xModeSelect').value=state.xMode;$('processSelect').value=state.process;$('z0Select').value=state.z0;$('snapToggle').checked=state.snap;$('snapStepInput').value=state.snapStep;$('blankOverlayToggle').checked=state.showBlank;$('labelsToggle').checked=state.showLabels;$('dimensionsToggle').checked=state.showDimensions;$('closeContourBtn').textContent=state.closed?'Разомкнуть':'Замкнуть';}
-function collectProjectData(){syncStockOptionValues();return{contourPoints:state.contourPoints,editor:collectEditorSettings(),shopturn:collectShopTurnData(),operationRoute:state.operationRoute,projectThreads:state.projectThreads,chamfers:state.chamfers,drawingIntel:state.drawingIntel,stockMode:state.stockMode,blank:{diameter:$('blankDiameter').value,length:$('blankLength').value,width:$('blankWidth').value,height:$('blankHeight').value,millLength:$('blankLengthMill').value},zeroReference:$('zeroReference').value,firstSide:$('firstSide').value,stockOptions:{zero:[...document.querySelectorAll('[data-zero-value]:checked')].map(x=>x.dataset.zeroValue),sides:[...document.querySelectorAll('[data-side-value]:checked')].map(x=>x.dataset.sideValue),zeroCustom:$('zeroReferenceCustom').value,sideCustom:$('firstSideCustom').value},notes:$('stockNotes').value,fileName:state.file?.name||state.restoredFileName||null,updatedAt:Date.now()};}
-function applyProjectData(d={}, options={}){const restoreFileLabel=options.restoreFileLabel!==false;state.restoredFileName=restoreFileLabel?(d.fileName||null):null;state.contourPoints=Array.isArray(d.contourPoints)?clone(d.contourPoints):[];applyEditorSettings(d.editor||{});state.stockMode=STOCK_MODE_VALUES.has(d.stockMode)?d.stockMode:'lathe';syncStockModeUi(state.stockMode);const b=d.blank||{};$('blankDiameter').value=b.diameter||'';$('blankLength').value=b.length||'';$('blankWidth').value=b.width||'';$('blankHeight').value=b.height||'';$('blankLengthMill').value=b.millLength||'';applyStockOptionValues(d.zeroReference||'',d.firstSide||'');$('stockNotes').value=d.notes||'';applyShopTurnData(d.shopturn||{});state.operationRoute=Array.isArray(d.operationRoute)?clone(d.operationRoute):[];state.selectedOperationCodes=[];state.projectThreads=Array.isArray(d.projectThreads)?clone(d.projectThreads):[];state.chamfers=Array.isArray(d.chamfers)?clone(d.chamfers):[];state.drawingIntel=d.drawingIntel||{tolerances:[],tolerance_interpretations:[],threads:[],chamfers_detected:[],requires_chamfer_decision:true,notes:[]};if((state.drawingIntel.tolerances?.length||state.drawingIntel.threads?.length||state.chamfers.length||state.projectThreads.length))$('drawingIntelligencePanel').classList.remove('hidden');state.selectedIndex=0;state.activeRouteIndex=-1;state.validation=[];renderDrawingIntelligence();renderProjectThreads();renderChamferEditor();renderOperationRoute();renderOperationMultiPicker();renderEditor();syncFileUi();}
+function collectProjectData(){syncStockOptionValues();return{contourPoints:state.contourPoints,editor:collectEditorSettings(),shopturn:collectShopTurnData(),operationRoute:state.operationRoute,projectThreads:state.projectThreads,chamfers:state.chamfers,chamfersEnabled:state.chamfersEnabled,drawingIntel:state.drawingIntel,ruleControl:state.ruleControl,threadLibraryUi:state.threadLibraryUi,stockMode:state.stockMode,blank:{diameter:$('blankDiameter').value,length:$('blankLength').value,width:$('blankWidth').value,height:$('blankHeight').value,millLength:$('blankLengthMill').value},zeroReference:$('zeroReference').value,firstSide:$('firstSide').value,stockOptions:{zero:[...document.querySelectorAll('[data-zero-value]:checked')].map(x=>x.dataset.zeroValue),sides:[...document.querySelectorAll('[data-side-value]:checked')].map(x=>x.dataset.sideValue),zeroCustom:$('zeroReferenceCustom').value,sideCustom:$('firstSideCustom').value},notes:$('stockNotes').value,fileName:state.file?.name||state.restoredFileName||null,updatedAt:Date.now()};}
+function applyProjectData(d={}, options={}){const restoreFileLabel=options.restoreFileLabel!==false;state.restoredFileName=restoreFileLabel?(d.fileName||null):null;state.contourPoints=Array.isArray(d.contourPoints)?clone(d.contourPoints):[];applyEditorSettings(d.editor||{});state.stockMode=STOCK_MODE_VALUES.has(d.stockMode)?d.stockMode:'lathe';syncStockModeUi(state.stockMode);const b=d.blank||{};$('blankDiameter').value=b.diameter||'';$('blankLength').value=b.length||'';$('blankWidth').value=b.width||'';$('blankHeight').value=b.height||'';$('blankLengthMill').value=b.millLength||'';applyStockOptionValues(d.zeroReference||'',d.firstSide||'');$('stockNotes').value=d.notes||'';applyShopTurnData(d.shopturn||{});state.operationRoute=Array.isArray(d.operationRoute)?clone(d.operationRoute):[];state.selectedOperationCodes=[];state.projectThreads=Array.isArray(d.projectThreads)?clone(d.projectThreads).map(x=>({...x,enabled:x.enabled!==false})):[];state.chamfers=Array.isArray(d.chamfers)?clone(d.chamfers).map(x=>({...x,enabled:x.enabled!==false})):[];state.chamfersEnabled=d.chamfersEnabled!==false;state.ruleControl=d.ruleControl&&typeof d.ruleControl==='object'?{enabled:d.ruleControl.enabled!==false,active:{...(d.ruleControl.active||{})}}:{enabled:true,active:{}};state.threadLibraryUi=d.threadLibraryUi&&typeof d.threadLibraryUi==='object'?{family:d.threadLibraryUi.family||'metric_iso',search:d.threadLibraryUi.search||'',diameter:d.threadLibraryUi.diameter||'all',pitch:d.threadLibraryUi.pitch||'all',standardOnly:d.threadLibraryUi.standardOnly!==false,selectedId:d.threadLibraryUi.selectedId||null}:{family:'metric_iso',search:'',diameter:'all',pitch:'all',standardOnly:true,selectedId:null};state.drawingIntel=d.drawingIntel||{tolerances:[],tolerance_interpretations:[],threads:[],chamfers_detected:[],requires_chamfer_decision:true,notes:[]};state.drawingIntel.threads=(state.drawingIntel.threads||[]).map(x=>({...x,enabled:x.enabled!==false}));if((state.drawingIntel.tolerances?.length||state.drawingIntel.threads?.length||state.chamfers.length||state.projectThreads.length))$('drawingIntelligencePanel').classList.remove('hidden');state.selectedIndex=0;state.activeRouteIndex=-1;state.validation=[];if($('threadSearchInput'))$('threadSearchInput').value=state.threadLibraryUi.search||'';renderDrawingIntelligence();renderThreadLibrary();renderProjectThreads();renderChamferEditor();renderOperationRoute();renderOperationMultiPicker();renderEditor();syncFileUi();}
 function scheduleAutosave(){clearTimeout(state.autosaveTimer);clearTimeout(state.serverSaveTimer);$('autosaveState').textContent='Сохранение...';state.autosaveTimer=setTimeout(()=>{localStorage.setItem('personal-ai-pro-draft',JSON.stringify(collectProjectData()));$('autosaveState').textContent=state.currentProjectId?'Локально сохранено · синхронизация...':'Автосохранено локально';},450);if(state.currentProjectId){state.serverSaveTimer=setTimeout(async()=>{try{const r=await fetch(`/api/projects/${state.currentProjectId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:state.currentProjectName,data:collectProjectData()})});if(r.ok)$('autosaveState').textContent='Синхронизировано с Railway Volume';else $('autosaveState').textContent='Локально сохранено · ошибка синхронизации';}catch{$('autosaveState').textContent='Локально сохранено · сервер недоступен';}},1400);}}
 function loadLocalDraft(){try{const d=JSON.parse(localStorage.getItem('personal-ai-pro-draft')||'null');if(d)applyProjectData(d,{restoreFileLabel:false});}catch{}}
 
 async function saveProject(forceCreate=false){const generated=`Проект ${new Date().toLocaleDateString('ru-RU')} ${new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}`;const name=state.currentProjectName==='Локальный черновик'?($('projectNameInput').value.trim()||generated):state.currentProjectName;if(!name.trim())return;const payload={name:name.trim(),data:collectProjectData()};try{const method=state.currentProjectId&&!forceCreate?'PUT':'POST',url=state.currentProjectId&&!forceCreate?`/api/projects/${state.currentProjectId}`:'/api/projects';const r=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const d=await r.json();if(!r.ok)throw new Error(d.detail||'Ошибка сохранения');state.currentProjectId=d.id;state.currentProjectName=d.name;updateProjectUi();$('autosaveState').textContent='Сохранено на Railway Volume';toast('Проект сохранён');}catch(e){toast(e.message);}}
 $('saveProjectBtn').onclick=()=>saveProject(false);$('createProjectBtn').onclick=async()=>{const name=$('projectNameInput').value.trim()||`Проект ${new Date().toLocaleString('ru-RU')}`;resetWorkspaceForNewProject();state.currentProjectName=name;updateProjectUi();await saveProject(true);};
 function resetWorkspaceForNewProject(){
-  state.currentProjectId=null;state.currentProjectName='Локальный черновик';state.file=null;state.restoredFileName=null;state.image=null;state.crop=null;state.contourPoints=[];state.selectedIndex=0;state.undoStack=[];state.redoStack=[];state.validation=[];state.operationRoute=[];state.selectedOperationCodes=[];state.activeRouteIndex=-1;state.projectThreads=[];state.chamfers=[];state.drawingIntel={tolerances:[],tolerance_interpretations:[],threads:[],chamfers_detected:[],requires_chamfer_decision:true,notes:[]};
+  state.currentProjectId=null;state.currentProjectName='Локальный черновик';state.file=null;state.restoredFileName=null;state.image=null;state.crop=null;state.contourPoints=[];state.selectedIndex=0;state.undoStack=[];state.redoStack=[];state.validation=[];state.operationRoute=[];state.selectedOperationCodes=[];state.activeRouteIndex=-1;state.projectThreads=[];state.chamfers=[];state.chamfersEnabled=true;state.ruleControl={enabled:true,active:{}};state.threadLibraryUi={family:'metric_iso',search:'',diameter:'all',pitch:'all',standardOnly:true,selectedId:null};state.drawingIntel={tolerances:[],tolerance_interpretations:[],threads:[],chamfers_detected:[],requires_chamfer_decision:true,notes:[]};
   fileInput.value='';dropZone.classList.remove('hidden');previewArea.classList.add('hidden');pdfPreview.src='';
   ['promptInput','blankDiameter','blankLength','blankWidth','blankHeight','blankLengthMill','zeroReference','firstSide','zeroReferenceCustom','firstSideCustom','stockNotes','offsetXInput','offsetZInput'].forEach(id=>{if($(id))$(id).value='';});
   document.querySelectorAll('[data-zero-value], [data-side-value]').forEach(input=>{input.checked=false;input.closest('.choice-card')?.classList.remove('selected');});
@@ -414,7 +438,7 @@ function resetWorkspaceForNewProject(){
   SHOP_INPUT_IDS.forEach(id=>{const el=$(id);if(!el)return;if(el.type==='checkbox')el.checked=false;else if(el.tagName==='SELECT')el.selectedIndex=0;else el.value='';});
   state.shopturn.wizardStep=0;populateToolPresets('');resetChat('analysis',true);resetChat('stock',true);
   $('resultContent').classList.add('hidden');$('resultEmpty').classList.remove('hidden');$('resultMeta').textContent='';$('stockResultContent').classList.add('hidden');$('stockResultEmpty').classList.remove('hidden');$('stockResultMeta').textContent='';$('drawingIntelligencePanel').classList.add('hidden');
-  localStorage.removeItem('personal-ai-pro-draft');updateProjectUi();syncFileUi();renderDrawingIntelligence();renderProjectThreads();renderChamferEditor();renderOperationRoute();renderOperationMultiPicker();renderEditor();renderShopTurn();scheduleAutosave();
+  localStorage.removeItem('personal-ai-pro-draft');updateProjectUi();syncFileUi();if($('threadSearchInput'))$('threadSearchInput').value=state.threadLibraryUi.search||'';renderDrawingIntelligence();renderThreadLibrary();renderProjectThreads();renderChamferEditor();renderOperationRoute();renderOperationMultiPicker();renderEditor();renderShopTurn();scheduleAutosave();
 }
 $('newProjectBtn').onclick=()=>{resetWorkspaceForNewProject();toast('Новый проект создан. Все рабочие поля очищены, история сохранена.');};
 async function loadProjects(){const list=$('projectsList');list.innerHTML='<div class="result-empty"><span>Загрузка...</span></div>';try{const r=await fetch('/api/projects');const items=await r.json();if(!items.length){list.innerHTML='<div class="result-empty"><strong>Проектов пока нет</strong></div>';return;}list.innerHTML=items.map(p=>`<div class="project-item"><div><h3>${escapeHtml(p.name)}</h3><small>Обновлён ${new Date(p.updated_at*1000).toLocaleString('ru-RU')}</small></div><div><button data-load="${p.id}">Открыть</button><button data-del="${p.id}" class="danger-lite">Удалить</button></div></div>`).join('');list.querySelectorAll('[data-load]').forEach(b=>b.onclick=async()=>{const r=await fetch(`/api/projects/${b.dataset.load}`),d=await r.json();if(!r.ok)return toast(d.detail||'Ошибка');state.currentProjectId=d.id;state.currentProjectName=d.name;applyProjectData(d.data);updateProjectUi();setView('stock');toast('Проект открыт');});list.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{if(!confirm('Удалить проект?'))return;await fetch(`/api/projects/${b.dataset.del}`,{method:'DELETE'});loadProjects();});}catch(e){list.innerHTML=`<div class="result-empty"><strong>${escapeHtml(e.message)}</strong></div>`;}}
@@ -455,40 +479,227 @@ function syncChamferNotationControls(){
   $('chamferNotationSplit').classList.toggle('is-disabled',!enabled);
 }
 function applyDrawingIntelligence(data={}){
-  state.drawingIntel={tolerances:Array.isArray(data.tolerances)?data.tolerances:[],tolerance_interpretations:Array.isArray(data.tolerance_interpretations)?data.tolerance_interpretations:[],threads:Array.isArray(data.threads)?data.threads:[],chamfers_detected:Array.isArray(data.chamfers_detected)?data.chamfers_detected:[],requires_chamfer_decision:data.requires_chamfer_decision!==false,notes:Array.isArray(data.notes)?data.notes:[]};
+  state.drawingIntel={
+    tolerances:Array.isArray(data.tolerances)?data.tolerances:[],
+    tolerance_interpretations:Array.isArray(data.tolerance_interpretations)?data.tolerance_interpretations:[],
+    threads:Array.isArray(data.threads)?data.threads.map(x=>({...x,enabled:x.enabled!==false})):[],
+    chamfers_detected:Array.isArray(data.chamfers_detected)?data.chamfers_detected:[],
+    requires_chamfer_decision:data.requires_chamfer_decision!==false,
+    notes:Array.isArray(data.notes)?data.notes:[]
+  };
+  for(const value of state.drawingIntel.tolerances) if(!(ruleIdentity('tolerance',value) in state.ruleControl.active)) state.ruleControl.active[ruleIdentity('tolerance',value)]=true;
+  for(const value of state.drawingIntel.tolerance_interpretations) if(!(ruleIdentity('rule',value) in state.ruleControl.active)) state.ruleControl.active[ruleIdentity('rule',value)]=true;
   $('drawingIntelligencePanel').classList.remove('hidden');renderDrawingIntelligence();scheduleAutosave();
+}
+function toleranceEntries(){
+  const interpretations=state.drawingIntel.tolerance_interpretations||[];
+  const used=new Set();
+  const normalize=value=>String(value||'').trim().toLowerCase().replace(/\s+/g,'');
+  const tokens=(state.drawingIntel.tolerances||[]).map((value,index)=>{
+    const matchIndex=interpretations.findIndex((rule,i)=>!used.has(i)&&normalize(rule.designation)===normalize(value));
+    const match=matchIndex>=0?interpretations[matchIndex]:null;
+    if(matchIndex>=0)used.add(matchIndex);
+    return {kind:'tolerance',value,index,title:String(value),description:match?.display||'Распознанный допуск или техническое требование',application:match?.application||''};
+  });
+  const rules=interpretations.map((value,index)=>({kind:'rule',value,index,title:value.designation||'Правило',description:value.display||'',application:value.application||''})).filter((_,index)=>!used.has(index));
+  return [...tokens,...rules];
+}
+function renderToleranceManager(){
+  const entries=toleranceEntries();
+  const active=entries.filter(x=>isRuleActive(x.kind,x.value)).length;
+  $('ruleCountLabel').textContent=`Правила: ${active}/${entries.length}`;
+  $('rulesEnabledToggle').checked=state.ruleControl.enabled;
+  $('selectAllRulesCheckbox').checked=!!entries.length&&active===entries.length;
+  $('selectAllRulesCheckbox').indeterminate=active>0&&active<entries.length;
+  $('toleranceList').classList.toggle('is-master-disabled',!state.ruleControl.enabled);
+  $('toleranceList').innerHTML=entries.length?entries.map(entry=>{
+    const key=ruleIdentity(entry.kind,entry.value),enabled=isRuleActive(entry.kind,entry.value);
+    return `<article class="engineering-rule-row ${enabled?'':'is-disabled'}" data-rule-key="${escapeHtml(key)}">
+      <label class="rule-check"><input type="checkbox" data-rule-toggle="${escapeHtml(key)}" ${enabled?'checked':''}><span></span></label>
+      <div class="rule-copy"><strong>${escapeHtml(entry.title)}</strong><span>${escapeHtml(entry.description)}</span>${entry.application?`<small>${escapeHtml(entry.application)}</small>`:''}</div>
+      <span class="rule-status ${enabled?'active':'off'}">${enabled?'Активно':'Отключено'}</span>
+      <button class="rule-more" type="button" title="Переключить" data-rule-more="${escapeHtml(key)}">⋮</button>
+    </article>`;
+  }).join(''):'<span class="muted-text">Явные допуски не распознаны. Проверь основную надпись и технические требования.</span>';
+  document.querySelectorAll('[data-rule-toggle]').forEach(input=>input.onchange=()=>{
+    state.ruleControl.active[input.dataset.ruleToggle]=input.checked;renderDrawingIntelligence();scheduleAutosave();
+  });
+  document.querySelectorAll('[data-rule-more]').forEach(button=>button.onclick=()=>{
+    const key=button.dataset.ruleMore;state.ruleControl.active[key]=state.ruleControl.active[key]===false;renderDrawingIntelligence();scheduleAutosave();
+  });
+}
+function renderDetectedThreads(){
+  const threads=state.drawingIntel.threads||[],active=threads.filter(x=>x.enabled!==false).length;
+  $('detectedThreadCountLabel').textContent=`Правила: ${active}/${threads.length}`;
+  $('detectedThreadList').innerHTML=threads.length?threads.map((x,i)=>`<article class="detected-thread-row ${x.enabled===false?'is-disabled':''}">
+    <label class="rule-check"><input type="checkbox" data-detected-thread-toggle="${i}" ${x.enabled===false?'':'checked'}><span></span></label>
+    <button class="detected-thread" data-thread-index="${i}"><strong>${escapeHtml(x.display||threadDisplay(x))}</strong><span>${x.pitch_source==='iso_coarse_default'?'крупный шаг принят автоматически':'шаг указан на чертеже'}</span></button>
+    <span class="rule-status ${x.enabled===false?'off':'active'}">${x.enabled===false?'Отключено':'Стандартная'}</span>
+    <button class="rule-more" type="button" data-thread-menu="${i}">⋮</button>
+  </article>`).join(''):'<span class="muted-text">Резьбы не распознаны.</span>';
+  document.querySelectorAll('[data-thread-index]').forEach(btn=>btn.onclick=()=>selectDetectedThread(Number(btn.dataset.threadIndex)));
+  document.querySelectorAll('[data-detected-thread-toggle]').forEach(input=>input.onchange=()=>{const thread=threads[Number(input.dataset.detectedThreadToggle)];if(thread){thread.enabled=input.checked;renderDrawingIntelligence();scheduleAutosave();}});
+  document.querySelectorAll('[data-thread-menu]').forEach(button=>button.onclick=()=>{const thread=threads[Number(button.dataset.threadMenu)];if(thread){thread.enabled=thread.enabled===false;renderDrawingIntelligence();scheduleAutosave();}});
 }
 function renderDrawingIntelligence(){
   if(!$('toleranceList'))return;
+  renderToleranceManager();
+  renderDetectedThreads();
   const t=state.drawingIntel.tolerances||[],rules=state.drawingIntel.tolerance_interpretations||[],threads=state.drawingIntel.threads||[];
-  const toleranceTokens=t.map(x=>`<div class="intel-token tolerance-token">${escapeHtml(x)}</div>`).join('');
-  const ruleCards=rules.map(x=>`<div class="tolerance-rule-card"><strong>${escapeHtml(x.designation)}</strong><span>${escapeHtml(x.display)}</span><small>${escapeHtml(x.application||'')}</small></div>`).join('');
-  $('toleranceList').innerHTML=(toleranceTokens+ruleCards)||'<span class="muted-text">Явные допуски не распознаны. Проверь основную надпись и технические требования.</span>';
-  $('detectedThreadList').innerHTML=threads.length?threads.map((x,i)=>`<button class="detected-thread" data-thread-index="${i}"><strong>${escapeHtml(x.display||`${x.designation}×${x.pitch}`)}</strong><span>${x.pitch_source==='iso_coarse_default'?'крупный шаг принят автоматически':'шаг указан на чертеже'}</span></button>`).join(''):'<span class="muted-text">Резьбы не распознаны.</span>';
-  $('drawingIntelBadge').textContent=`Допуски: ${t.length} · Правила: ${rules.length} · Резьбы: ${threads.length}`;
-  document.querySelectorAll('[data-thread-index]').forEach(btn=>btn.onclick=()=>selectDetectedThread(Number(btn.dataset.threadIndex)));
+  const activeRules=toleranceEntries().filter(x=>isRuleActive(x.kind,x.value)).length;
+  const activeThreads=threads.filter(x=>x.enabled!==false).length;
+  $('drawingIntelBadge').textContent=`Допуски: ${activeRules} · Резьбы: ${activeThreads} · Фаски: ${state.chamfers.filter(x=>x.enabled!==false).length}`;
+  $('chamfersEnabledToggle').checked=state.chamfersEnabled;
+  $('chamferRuleCountLabel').textContent=`Правила: ${state.chamfers.filter(x=>x.enabled!==false).length}/${state.chamfers.length}`;
   if(state.drawingIntel.chamfers_detected?.length&&!state.chamfers.length)setChamferInputsFromNotation(state.drawingIntel.chamfers_detected[0]);
+  renderProjectThreads();
+  renderChamferEditor();
+}
+function uniqueSorted(values){return [...new Set(values.filter(v=>v!==null&&v!==undefined&&v!==''))].sort((a,b)=>String(a).localeCompare(String(b),'ru',{numeric:true}));}
+function familyLabel(id){return state.threadFamilies.find(x=>x.id===id)?.label||id;}
+function currentThreadProfile(){return state.threadCatalog.find(x=>x.id===state.threadLibraryUi.selectedId)||null;}
+function threadPitchLabel(profile){if(!profile)return '—';if(profile.tpi)return `${profile.tpi} TPI`;return profile.pitch_mm?`${Number(profile.pitch_mm).toFixed(4).replace(/0+$/,'').replace(/\.$/,'')} мм`:'По стандарту';}
+function profileSearchText(profile){return [profile.designation,profile.family,profile.standard,profile.note,...(profile.aliases||[])].join(' ').toLowerCase();}
+function filteredThreadProfiles(){
+  const ui=state.threadLibraryUi,q=ui.search.trim().toLowerCase();
+  return state.threadCatalog.filter(p=>{
+    if(ui.family&&p.family!==ui.family)return false;
+    if(q&&!profileSearchText(p).includes(q))return false;
+    if(ui.diameter!=='all'&&String(p.diameter_mm)!==ui.diameter)return false;
+    const pitchKey=p.tpi?`tpi:${p.tpi}`:p.pitch_mm!==null&&p.pitch_mm!==undefined?`mm:${p.pitch_mm}`:'none';
+    if(ui.pitch!=='all'&&pitchKey!==ui.pitch)return false;
+    if(ui.standardOnly&&!p.standard_profile)return false;
+    return true;
+  });
+}
+function renderThreadFamilyTabs(){
+  $('threadFamilyTabs').innerHTML=state.threadFamilies.map(f=>`<button type="button" class="thread-family-tab ${state.threadLibraryUi.family===f.id?'active':''}" data-thread-family="${escapeHtml(f.id)}">${escapeHtml(f.label)}</button>`).join('');
+  document.querySelectorAll('[data-thread-family]').forEach(btn=>btn.onclick=()=>{state.threadLibraryUi.family=btn.dataset.threadFamily;state.threadLibraryUi.diameter='all';state.threadLibraryUi.pitch='all';state.threadLibraryUi.selectedId=null;renderThreadLibrary();});
+}
+function renderThreadFilters(){
+  const familyProfiles=state.threadCatalog.filter(p=>p.family===state.threadLibraryUi.family);
+  const diameters=uniqueSorted(familyProfiles.map(p=>p.diameter_mm)).sort((a,b)=>Number(a)-Number(b));
+  const pitches=uniqueSorted(familyProfiles.map(p=>p.tpi?`tpi:${p.tpi}`:p.pitch_mm!==null&&p.pitch_mm!==undefined?`mm:${p.pitch_mm}`:'none'));
+  $('threadDiameterFilter').innerHTML='<option value="all">Любой</option>'+diameters.map(v=>`<option value="${v}" ${String(v)===state.threadLibraryUi.diameter?'selected':''}>${Number(v).toFixed(3).replace(/0+$/,'').replace(/\.$/,'')} мм</option>`).join('');
+  $('threadPitchFilter').innerHTML='<option value="all">Любой</option>'+pitches.map(v=>{
+    const label=v.startsWith('tpi:')?`${v.slice(4)} TPI`:v.startsWith('mm:')?`${Number(v.slice(3)).toFixed(4).replace(/0+$/,'').replace(/\.$/,'')} мм`:'По стандарту';
+    return `<option value="${v}" ${v===state.threadLibraryUi.pitch?'selected':''}>${label}</option>`;
+  }).join('');
+  $('threadStandardOnlyToggle').checked=state.threadLibraryUi.standardOnly;
+}
+function selectThreadProfile(id,render=true){
+  const profile=state.threadCatalog.find(x=>x.id===id);if(!profile)return;
+  state.threadLibraryUi.selectedId=profile.id;
+  if(!$('threadToleranceInput').value.trim())$('threadToleranceInput').value=$('threadSideSelect').value==='internal'?(profile.default_tolerance_internal||''):(profile.default_tolerance_external||'');
+  if(render)renderThreadLibrary();
+}
+function renderThreadDetails(){
+  const p=currentThreadProfile();
+  if(!p){$('threadDetailsPanel').innerHTML='<div class="thread-detail-empty">Выбери профиль резьбы из библиотеки.</div>';return;}
+  $('threadDetailsPanel').innerHTML=`<div class="thread-details-title"><strong>${escapeHtml(p.designation)}</strong><span class="${p.standard_profile?'standard':'template'}">${p.standard_profile?'Стандартная':'Шаблон'}</span></div>
+    <dl class="thread-detail-table">
+      <div><dt>Семейство</dt><dd>${escapeHtml(familyLabel(p.family))}</dd></div>
+      <div><dt>Диаметр</dt><dd>${p.diameter_mm!==null&&p.diameter_mm!==undefined?`${Number(p.diameter_mm).toFixed(3).replace(/0+$/,'').replace(/\.$/,'')} мм`:'Задаётся отдельно'}</dd></div>
+      <div><dt>Шаг</dt><dd>${escapeHtml(threadPitchLabel(p))}</dd></div>
+      <div><dt>Исполнение</dt><dd>${$('threadSideSelect').value==='internal'?'Внутренняя':'Наружная'}</dd></div>
+      <div><dt>Класс допуска</dt><dd>${escapeHtml($('threadToleranceInput').value.trim()||($('threadSideSelect').value==='internal'?p.default_tolerance_internal:p.default_tolerance_external)||'Задать вручную')}</dd></div>
+      <div><dt>Профиль</dt><dd>${escapeHtml(p.profile_angle||'По стандарту')}</dd></div>
+      <div><dt>Стандарт</dt><dd>${escapeHtml(p.standard||'Специальный')}</dd></div>
+      ${p.taper?`<div><dt>Конусность</dt><dd>${escapeHtml(p.taper)}</dd></div>`:''}
+    </dl>
+    <p class="thread-detail-note">${escapeHtml(p.note||'Перед обработкой проверить исходный стандарт и калибр.')}</p>
+    <button id="addThreadToProjectBtn" class="primary-button">＋ Добавить резьбу в проект</button>
+    <button id="applyDetectedThreadBtn" class="small-button">◎ Взять из распознанного</button>`;
+  $('addThreadToProjectBtn').onclick=()=>addSelectedThreadToProject();
+  $('applyDetectedThreadBtn').onclick=()=>selectDetectedThread(0);
+}
+function renderThreadLibrary(){
+  if(!$('threadProfileGrid'))return;
+  renderThreadFamilyTabs();renderThreadFilters();
+  let profiles=filteredThreadProfiles();
+  if(!profiles.length&&state.threadLibraryUi.standardOnly){state.threadLibraryUi.standardOnly=false;renderThreadFilters();profiles=filteredThreadProfiles();}
+  if(!profiles.some(x=>x.id===state.threadLibraryUi.selectedId))state.threadLibraryUi.selectedId=profiles[0]?.id||null;
+  $('threadProfileGrid').innerHTML=profiles.length?profiles.slice(0,240).map(p=>`<button type="button" class="thread-profile-button ${p.id===state.threadLibraryUi.selectedId?'selected':''}" data-thread-profile="${escapeHtml(p.id)}"><span>${escapeHtml(p.designation)}</span>${p.id===state.threadLibraryUi.selectedId?'<b>✓</b>':''}</button>`).join(''):'<div class="thread-no-results">Профили не найдены. Измени фильтры или отключи «Только стандартные».</div>';
+  document.querySelectorAll('[data-thread-profile]').forEach(btn=>btn.onclick=()=>selectThreadProfile(btn.dataset.threadProfile));
+  $('threadCatalogCount').textContent=`Показано ${Math.min(profiles.length,240)} из ${state.threadCatalog.length} профилей${profiles.length>240?' · уточни поиск':''}`;
+  renderThreadDetails();
 }
 async function loadThreadCatalog(){
-  try{const r=await fetch('/api/thread-catalog');const d=await r.json();if(!r.ok)throw new Error();state.threadCatalog=d.items||[];populateThreadCatalog();}catch{state.threadCatalog=[];$('threadDesignationSelect').innerHTML='<option value="M8">M8</option>';$('threadPitchSelect').innerHTML='<option value="1.25">1.25</option>';}
+  try{
+    const r=await fetch('/api/thread-catalog');const d=await r.json();if(!r.ok)throw new Error();
+    state.threadCatalog=d.items||[];state.threadFamilies=d.families||[];
+    const selected=state.threadCatalog.find(p=>p.id===state.threadLibraryUi.selectedId);
+    const familyExists=state.threadFamilies.some(f=>f.id===state.threadLibraryUi.family);
+    if(selected){state.threadLibraryUi.family=selected.family;renderThreadLibrary();}
+    else if(familyExists){renderThreadLibrary();}
+    else populateThreadCatalog('M8');
+  }catch{
+    state.threadFamilies=[{id:'metric_iso',label:'Метрическая ISO (M)'}];
+    state.threadCatalog=[{id:'metric_iso:m8x1.25',family:'metric_iso',designation:'M8×1.25',pitch_mm:1.25,diameter_mm:8,standard:'ISO',standard_profile:true,default_tolerance_external:'6g',default_tolerance_internal:'6H'}];
+    populateThreadCatalog('M8');
+  }
 }
 function populateThreadCatalog(selected='M8'){
-  const sel=$('threadDesignationSelect');if(!sel)return;sel.innerHTML=state.threadCatalog.map(x=>`<option value="${x.designation}" ${x.designation===selected?'selected':''}>${x.designation}</option>`).join('');updateThreadPitchOptions();
+  if(!state.threadCatalog.length)return;
+  const normalized=String(selected||'').replace(/\s/g,'').toLowerCase();
+  const found=state.threadCatalog.find(p=>String(p.designation).replace(/\s/g,'').toLowerCase()===normalized)||state.threadCatalog.find(p=>String(p.designation).replace(/\s/g,'').toLowerCase().startsWith(normalized))||state.threadCatalog.find(p=>p.family==='metric_iso')||state.threadCatalog[0];
+  state.threadLibraryUi.family=found.family;state.threadLibraryUi.selectedId=found.id;renderThreadLibrary();
 }
 function updateThreadPitchOptions(preferred=null){
-  const item=state.threadCatalog.find(x=>x.designation===$('threadDesignationSelect').value)||state.threadCatalog[0];if(!item)return;const pitches=[...new Set(item.pitches||[item.coarse])].sort((a,b)=>a-b);$('threadPitchSelect').innerHTML=pitches.map(p=>`<option value="${p}" ${(preferred??item.coarse)==p?'selected':''}>${p}${p==item.coarse?' · крупный':''}</option>`).join('');
+  if(preferred===null||preferred===undefined)return renderThreadLibrary();
+  const current=currentThreadProfile();if(!current)return;
+  const base=(current.aliases?.[0]||current.designation.split('×')[0]).toLowerCase();
+  const found=state.threadCatalog.find(p=>p.family===current.family&&(p.aliases?.[0]||p.designation.split('×')[0]).toLowerCase()===base&&Math.abs(Number(p.pitch_mm||0)-Number(preferred))<1e-6);
+  if(found)state.threadLibraryUi.selectedId=found.id;renderThreadLibrary();
 }
 function selectDetectedThread(index=0){
-  const thread=state.drawingIntel.threads?.[index];if(!thread)return toast('Распознанная резьба не найдена');populateThreadCatalog(thread.designation);updateThreadPitchOptions(thread.pitch);$('threadToleranceInput').value=thread.tolerance_class||'';toast(`${thread.display} выбрана из распознавания`);
+  const thread=state.drawingIntel.threads?.[index];if(!thread)return toast('Распознанная резьба не найдена');
+  const normalized=String(thread.designation||'').replace(/\s/g,'').toLowerCase();
+  const found=state.threadCatalog.find(p=>String(p.designation).replace(/\s/g,'').toLowerCase().startsWith(normalized)&&(!thread.pitch||Math.abs(Number(p.pitch_mm||0)-Number(thread.pitch))<1e-6))||state.threadCatalog.find(p=>String(p.designation).replace(/\s/g,'').toLowerCase().startsWith(normalized));
+  if(found){state.threadLibraryUi.family=found.family;state.threadLibraryUi.selectedId=found.id;}
+  $('threadToleranceInput').value=thread.tolerance_class||$('threadToleranceInput').value;
+  renderThreadLibrary();toast(`${thread.display||threadDisplay(thread)} выбрана из распознавания`);
 }
-function selectedThread(){return{designation:$('threadDesignationSelect').value,pitch:number($('threadPitchSelect').value),side:$('threadSideSelect').value,tolerance:$('threadToleranceInput').value.trim(),source:'operator'};}
+function selectedThread(){
+  const p=currentThreadProfile();if(!p)return{};
+  return {id:p.id,designation:p.designation,pitch:p.pitch_mm||null,tpi:p.tpi||null,family:p.family,standard:p.standard,profile_angle:p.profile_angle,side:$('threadSideSelect').value,tolerance:$('threadToleranceInput').value.trim(),source:'operator',enabled:true};
+}
 function renderProjectThreads(){
-  if(!$('projectThreadList'))return;$('projectThreadList').innerHTML=state.projectThreads.length?state.projectThreads.map((t,i)=>`<div class="project-thread"><span><strong>${escapeHtml(t.designation)}×${escapeHtml(t.pitch)}</strong> · ${t.side==='internal'?'внутренняя':'наружная'} ${escapeHtml(t.tolerance||'')}</span><button data-remove-thread="${i}">×</button></div>`).join(''):'<div class="muted-text">Резьбы в проект не добавлены.</div>';
+  if(!$('projectThreadList'))return;
+  $('projectThreadList').innerHTML=state.projectThreads.length?`<div class="project-thread-heading">Резьбы проекта</div>`+state.projectThreads.map((t,i)=>`<div class="project-thread ${t.enabled===false?'is-disabled':''}"><label class="rule-check"><input type="checkbox" data-toggle-project-thread="${i}" ${t.enabled===false?'':'checked'}><span></span></label><span><strong>${escapeHtml(threadDisplay(t))}</strong> · ${t.side==='internal'?'внутренняя':'наружная'} ${escapeHtml(t.tolerance||'')}</span><button data-remove-thread="${i}">×</button></div>`).join(''):'<div class="muted-text">Резьбы в проект не добавлены.</div>';
   document.querySelectorAll('[data-remove-thread]').forEach(b=>b.onclick=()=>{state.projectThreads.splice(Number(b.dataset.removeThread),1);renderProjectThreads();scheduleAutosave();});
+  document.querySelectorAll('[data-toggle-project-thread]').forEach(input=>input.onchange=()=>{state.projectThreads[Number(input.dataset.toggleProjectThread)].enabled=input.checked;renderProjectThreads();scheduleAutosave();});
 }
-$('threadDesignationSelect').onchange=()=>updateThreadPitchOptions();
-$('applyDetectedThreadBtn').onclick=()=>selectDetectedThread(0);
-$('addThreadToProjectBtn').onclick=()=>{const t=selectedThread();if(!t.designation||!t.pitch)return toast('Выбери резьбу и шаг');state.projectThreads.push(t);renderProjectThreads();if(['thread_ext','thread_int'].includes($('shopOperationSelect').value)){$('feedInput').value=t.pitch;$('toolInsertInput').value=`${$('shopOperationSelect').value==='thread_int'?'16IR':'16ER'} ${t.pitch} ISO`;renderShopTurn();}scheduleAutosave();toast(`${t.designation}×${t.pitch} добавлена`);};
+function addSelectedThreadToProject(){
+  const t=selectedThread();if(!t.designation)return toast('Выбери резьбу из библиотеки');
+  const duplicate=state.projectThreads.find(x=>x.id===t.id&&x.side===t.side&&x.tolerance===t.tolerance);
+  if(duplicate){duplicate.enabled=true;renderProjectThreads();return toast('Эта резьба уже есть в проекте');}
+  state.projectThreads.push(t);renderProjectThreads();
+  if(['thread_ext','thread_int'].includes($('shopOperationSelect').value)&&t.pitch){$('feedInput').value=t.pitch;$('toolInsertInput').value=`${$('shopOperationSelect').value==='thread_int'?'16IR':'16ER'} ${t.pitch} ISO`;renderShopTurn();}
+  scheduleAutosave();toast(`${threadDisplay(t)} добавлена`);
+}
+
+
+function resetEngineeringFilters(){
+  state.ruleControl.enabled=true;state.ruleControl.active={};
+  for(const entry of toleranceEntries())state.ruleControl.active[ruleIdentity(entry.kind,entry.value)]=true;
+  state.threadLibraryUi={family:'metric_iso',search:'',diameter:'all',pitch:'all',standardOnly:true,selectedId:null};
+  $('threadSearchInput').value='';$('threadToleranceInput').value='';$('threadSideSelect').value='external';
+  state.chamfersEnabled=true;state.chamfers.forEach(x=>x.enabled=true);
+  renderDrawingIntelligence();renderThreadLibrary();scheduleAutosave();toast('Инженерные фильтры сброшены');
+}
+$('rulesEnabledToggle').onchange=e=>{state.ruleControl.enabled=e.target.checked;renderDrawingIntelligence();scheduleAutosave();};
+$('selectAllRulesCheckbox').onchange=e=>{for(const entry of toleranceEntries())state.ruleControl.active[ruleIdentity(entry.kind,entry.value)]=e.target.checked;renderDrawingIntelligence();scheduleAutosave();};
+$('enableAllRulesBtn').onclick=()=>{for(const entry of toleranceEntries())state.ruleControl.active[ruleIdentity(entry.kind,entry.value)]=true;state.ruleControl.enabled=true;renderDrawingIntelligence();scheduleAutosave();};
+$('resetEngineeringFiltersBtn').onclick=resetEngineeringFilters;
+$('threadSearchInput').oninput=e=>{state.threadLibraryUi.search=e.target.value;renderThreadLibrary();};
+$('threadDiameterFilter').onchange=e=>{state.threadLibraryUi.diameter=e.target.value;state.threadLibraryUi.selectedId=null;renderThreadLibrary();};
+$('threadPitchFilter').onchange=e=>{state.threadLibraryUi.pitch=e.target.value;state.threadLibraryUi.selectedId=null;renderThreadLibrary();};
+$('threadStandardOnlyToggle').onchange=e=>{state.threadLibraryUi.standardOnly=e.target.checked;state.threadLibraryUi.selectedId=null;renderThreadLibrary();};
+$('threadSideSelect').onchange=()=>{const p=currentThreadProfile();$('threadToleranceInput').value=$('threadSideSelect').value==='internal'?(p?.default_tolerance_internal||''):(p?.default_tolerance_external||'');renderThreadDetails();};
+$('threadToleranceInput').oninput=()=>renderThreadDetails();
+$('applyAllDetectedThreadsBtn').onclick=()=>{let added=0;for(let i=0;i<(state.drawingIntel.threads||[]).length;i++){const x=state.drawingIntel.threads[i];if(x.enabled===false)continue;selectDetectedThread(i);const t=selectedThread();if(t.designation&&!state.projectThreads.some(p=>p.id===t.id&&p.side===t.side)){state.projectThreads.push(t);added++;}}renderProjectThreads();scheduleAutosave();toast(`Добавлено распознанных резьб: ${added}`);};
+document.querySelectorAll('[data-collapse-target]').forEach(button=>button.onclick=()=>{const target=$(button.dataset.collapseTarget);if(!target)return;target.classList.toggle('collapsed');button.textContent=target.classList.contains('collapsed')?'⌄':'⌃';});
 
 function drawChamferBase(){
   if(!chamferCanvas)return;const w=chamferCanvas.width,h=chamferCanvas.height;chamferCtx.clearRect(0,0,w,h);chamferCtx.fillStyle='rgba(5,18,31,.72)';chamferCtx.fillRect(0,0,w,h);state.chamferTransform={type:'canvas'};
@@ -497,24 +708,43 @@ function drawChamferBase(){
   else{chamferCtx.fillStyle='rgba(224,236,250,.72)';chamferCtx.font='bold 18px Inter';chamferCtx.textAlign='center';chamferCtx.fillText('Загрузи чертёж или создай контур',w/2,h/2);chamferCtx.textAlign='start';}
 }
 function renderChamferEditor(){
-  if(!chamferCanvas)return;drawChamferBase();state.chamfers.forEach((m,i)=>{const x=m.x*chamferCanvas.width,y=m.y*chamferCanvas.height;chamferCtx.fillStyle=m.mode==='none'?'#ff6b6b':m.mode==='edge_break'?'#ffd166':'#63e6be';chamferCtx.beginPath();chamferCtx.arc(x,y,8,0,Math.PI*2);chamferCtx.fill();chamferCtx.strokeStyle='#fff';chamferCtx.lineWidth=2;chamferCtx.stroke();chamferCtx.fillStyle='#fff';chamferCtx.font='bold 13px Inter';chamferCtx.fillText(`${i+1}. ${m.mode==='edge_break'?'снять остроту':m.mode==='none'?'нет':m.notation}`,x+12,y-10);});
-  $('chamferMarkerList').innerHTML=state.chamfers.length?state.chamfers.map((m,i)=>`<div class="chamfer-marker"><span><i>${i+1}</i>${m.mode==='edge_break'?'Снять остроту':m.mode==='none'?'Без обработки':escapeHtml(m.notation)}${m.contourIndex!==null&&m.contourIndex!==undefined?` · точка X/Z №${m.contourIndex+1}`:''}</span><button data-remove-chamfer="${i}">×</button></div>`).join(''):'<div class="muted-text">Точки фасок не поставлены.</div>';
-  document.querySelectorAll('[data-remove-chamfer]').forEach(b=>b.onclick=()=>{state.chamfers.splice(Number(b.dataset.removeChamfer),1);renderChamferEditor();scheduleAutosave();});
+  if(!chamferCanvas)return;
+  drawChamferBase();
+  const active=state.chamfers.filter(x=>x.enabled!==false).length;
+  $('chamferRuleCountLabel').textContent=`Правила: ${active}/${state.chamfers.length}`;
+  $('chamfersEnabledToggle').checked=state.chamfersEnabled;
+  $('selectAllChamfersCheckbox').checked=!!state.chamfers.length&&active===state.chamfers.length;
+  $('selectAllChamfersCheckbox').indeterminate=active>0&&active<state.chamfers.length;
+  $('chamferMarkerList').classList.toggle('is-master-disabled',!state.chamfersEnabled);
+  state.chamfers.forEach((m,i)=>{
+    const x=m.x*chamferCanvas.width,y=m.y*chamferCanvas.height;
+    chamferCtx.save();
+    chamferCtx.globalAlpha=(state.chamfersEnabled&&m.enabled!==false)?1:.35;
+    chamferCtx.fillStyle=m.mode==='none'?'#ff6b6b':m.mode==='edge_break'?'#ffd166':'#63e6be';
+    chamferCtx.beginPath();chamferCtx.arc(x,y,8,0,Math.PI*2);chamferCtx.fill();chamferCtx.strokeStyle='#fff';chamferCtx.lineWidth=2;chamferCtx.stroke();
+    chamferCtx.fillStyle='#fff';chamferCtx.font='bold 13px Inter';chamferCtx.fillText(`${i+1}. ${m.mode==='edge_break'?'снять остроту':m.mode==='none'?'нет':m.notation}`,x+12,y-10);chamferCtx.restore();
+  });
+  $('chamferMarkerList').innerHTML=state.chamfers.length?state.chamfers.map((m,i)=>`<div class="chamfer-marker ${m.enabled===false?'is-disabled':''}"><label class="rule-check"><input type="checkbox" data-toggle-chamfer="${i}" ${m.enabled===false?'':'checked'}><span></span></label><span><i>${i+1}</i>${m.mode==='edge_break'?'Снять остроту':m.mode==='none'?'Без обработки':escapeHtml(m.notation)}${m.contourIndex!==null&&m.contourIndex!==undefined?` · точка X/Z №${m.contourIndex+1}`:''}</span><button data-remove-chamfer="${i}">×</button></div>`).join(''):'<div class="muted-text">Точки фасок не поставлены.</div>';
+  document.querySelectorAll('[data-remove-chamfer]').forEach(b=>b.onclick=()=>{state.chamfers.splice(Number(b.dataset.removeChamfer),1);renderDrawingIntelligence();scheduleAutosave();});
+  document.querySelectorAll('[data-toggle-chamfer]').forEach(input=>input.onchange=()=>{state.chamfers[Number(input.dataset.toggleChamfer)].enabled=input.checked;renderDrawingIntelligence();scheduleAutosave();});
 }
-chamferCanvas.onclick=e=>{const r=chamferCanvas.getBoundingClientRect(),px=(e.clientX-r.left)*chamferCanvas.width/r.width,py=(e.clientY-r.top)*chamferCanvas.height/r.height,x=px/chamferCanvas.width,y=py/chamferCanvas.height,mode=$('chamferModeSelect').value,notation=chamferNotationFromInputs();let contourIndex=null;if(state.chamferTransform?.type==='contour'&&state.contourPoints.length){let best=Infinity;state.contourPoints.forEach((p,i)=>{const q=state.chamferTransform.toPx(p),d=Math.hypot(q.x-px,q.y-py);if(d<best){best=d;contourIndex=i;}});if(best>55)contourIndex=null;}state.chamfers.push({x:Math.max(0,Math.min(1,x)),y:Math.max(0,Math.min(1,y)),mode,notation,contourIndex});if(contourIndex!==null&&contourIndex>0&&mode==='chamfer'){pushUndo();state.contourPoints[contourIndex].type='chamfer';state.contourPoints[contourIndex].rv=notation;state.contourPoints[contourIndex].direction='угол';}setChamferInputsFromNotation(notation);renderChamferEditor();renderEditor();scheduleAutosave();};
-$('undoChamferBtn').onclick=()=>{state.chamfers.pop();renderChamferEditor();scheduleAutosave();};
-$('clearChamfersBtn').onclick=()=>{state.chamfers=[];renderChamferEditor();scheduleAutosave();};
+chamferCanvas.onclick=e=>{const r=chamferCanvas.getBoundingClientRect(),px=(e.clientX-r.left)*chamferCanvas.width/r.width,py=(e.clientY-r.top)*chamferCanvas.height/r.height,x=px/chamferCanvas.width,y=py/chamferCanvas.height,mode=$('chamferModeSelect').value,notation=chamferNotationFromInputs();let contourIndex=null;if(state.chamferTransform?.type==='contour'&&state.contourPoints.length){let best=Infinity;state.contourPoints.forEach((p,i)=>{const q=state.chamferTransform.toPx(p),d=Math.hypot(q.x-px,q.y-py);if(d<best){best=d;contourIndex=i;}});if(best>55)contourIndex=null;}state.chamfers.push({x:Math.max(0,Math.min(1,x)),y:Math.max(0,Math.min(1,y)),mode,notation,contourIndex,enabled:true});if(contourIndex!==null&&contourIndex>0&&mode==='chamfer'){pushUndo();state.contourPoints[contourIndex].type='chamfer';state.contourPoints[contourIndex].rv=notation;state.contourPoints[contourIndex].direction='угол';}setChamferInputsFromNotation(notation);renderChamferEditor();renderEditor();scheduleAutosave();};
+$('undoChamferBtn').onclick=()=>{state.chamfers.pop();renderDrawingIntelligence();scheduleAutosave();};
+$('clearChamfersBtn').onclick=()=>{state.chamfers=[];renderDrawingIntelligence();scheduleAutosave();};
+$('addChamferFromControlsBtn').onclick=()=>{const mode=$('chamferModeSelect').value,notation=chamferNotationFromInputs();state.chamfers.push({x:.5,y:.5,mode,notation,contourIndex:null,enabled:true});renderDrawingIntelligence();scheduleAutosave();toast(mode==='chamfer'?`Фаска ${notation} добавлена`:'Правило кромки добавлено');};
+$('chamfersEnabledToggle').onchange=e=>{state.chamfersEnabled=e.target.checked;renderDrawingIntelligence();scheduleAutosave();};
+$('selectAllChamfersCheckbox').onchange=e=>{state.chamfers.forEach(x=>x.enabled=e.target.checked);renderDrawingIntelligence();scheduleAutosave();};
 $('chamferSizeInput').onchange=()=>chamferNotationFromInputs();
 $('chamferAngleInput').onchange=()=>chamferNotationFromInputs();
 $('chamferModeSelect').onchange=syncChamferNotationControls;
 setChamferInputsFromNotation('1×45°');
 syncChamferNotationControls();
 
-function collectShopTurnPayload(){return{...collectShopTurnData(),operations:state.operationRoute,threadSelection:selectedThread(),chamfers:state.chamfers};}
+function collectShopTurnPayload(){return{...collectShopTurnData(),operations:state.operationRoute,threadSelection:selectedThread(),drawingRules:{enabled:state.ruleControl.enabled,active:activeToleranceContext()},chamfers:state.chamfersEnabled?state.chamfers.filter(x=>x.enabled!==false):[]};}
 function makeOperationSnapshot(){const d=collectShopTurnData(),op=SHOP_OPERATIONS[d.operation]||{label:'Операция не выбрана'};return{...d,id:`op-${Date.now()}-${Math.random().toString(16).slice(2)}`,label:op.label,enabled:true,thread:['thread_ext','thread_int'].includes(d.operation)?selectedThread():{}};}
 function renderOperationRoute(){
   if(!$('operationRouteList'))return;const enabled=state.operationRoute.filter(o=>o.enabled!==false),tools=new Set(enabled.map(o=>`${o.toolT}/${o.toolD}`));$('routeSummary').textContent=`Операций: ${state.operationRoute.length} · Активных: ${enabled.length} · Инструментов: ${tools.size}`;
-  $('operationRouteList').innerHTML=state.operationRoute.length?state.operationRoute.map((o,i)=>`<article class="route-operation ${o.enabled===false?'disabled':''} ${i===state.activeRouteIndex?'active':''}"><div class="route-order">${i+1}</div><div class="route-main"><strong>${escapeHtml(o.label||o.operation||'Операция')}</strong><span>T${escapeHtml(o.toolT||'?')} D${escapeHtml(o.toolD||'?')} · ${escapeHtml(o.toolName||'инструмент не указан')}</span><small>S ${escapeHtml(o.speed||'—')} · F ${escapeHtml(o.feed||'—')} · D ${escapeHtml(o.depth||'—')}${o.thread?.designation?` · ${escapeHtml(o.thread.designation)}×${escapeHtml(o.thread.pitch)}`:''}</small></div><div class="route-actions"><button data-route-action="up" data-route-index="${i}">↑</button><button data-route-action="down" data-route-index="${i}">↓</button><button data-route-action="open" data-route-index="${i}">Открыть</button><button data-route-action="duplicate" data-route-index="${i}">Копия</button><button data-route-action="toggle" data-route-index="${i}">${o.enabled===false?'Вкл':'Выкл'}</button><button data-route-action="delete" data-route-index="${i}" class="danger-lite">×</button></div></article>`).join(''):'<div class="route-empty">Добавь торцовку, точение, расточку, резьбу, канавку и отрезку в нужном порядке.</div>';
+  $('operationRouteList').innerHTML=state.operationRoute.length?state.operationRoute.map((o,i)=>`<article class="route-operation ${o.enabled===false?'disabled':''} ${i===state.activeRouteIndex?'active':''}"><div class="route-order">${i+1}</div><div class="route-main"><strong>${escapeHtml(o.label||o.operation||'Операция')}</strong><span>T${escapeHtml(o.toolT||'?')} D${escapeHtml(o.toolD||'?')} · ${escapeHtml(o.toolName||'инструмент не указан')}</span><small>S ${escapeHtml(o.speed||'—')} · F ${escapeHtml(o.feed||'—')} · D ${escapeHtml(o.depth||'—')}${o.thread?.designation?` · ${escapeHtml(threadDisplay(o.thread))}`:''}</small></div><div class="route-actions"><button data-route-action="up" data-route-index="${i}">↑</button><button data-route-action="down" data-route-index="${i}">↓</button><button data-route-action="open" data-route-index="${i}">Открыть</button><button data-route-action="duplicate" data-route-index="${i}">Копия</button><button data-route-action="toggle" data-route-index="${i}">${o.enabled===false?'Вкл':'Выкл'}</button><button data-route-action="delete" data-route-index="${i}" class="danger-lite">×</button></div></article>`).join(''):'<div class="route-empty">Добавь торцовку, точение, расточку, резьбу, канавку и отрезку в нужном порядке.</div>';
   document.querySelectorAll('[data-route-action]').forEach(btn=>btn.onclick=()=>handleRouteAction(btn.dataset.routeAction,Number(btn.dataset.routeIndex)));
 }
 function handleRouteAction(action,index){const route=state.operationRoute,item=route[index];if(!item)return;if(action==='up'&&index>0)[route[index-1],route[index]]=[route[index],route[index-1]];else if(action==='down'&&index<route.length-1)[route[index+1],route[index]]=[route[index],route[index+1]];else if(action==='open'){state.activeRouteIndex=index;applyShopTurnData(item);if(item.thread?.designation){populateThreadCatalog(item.thread.designation);updateThreadPitchOptions(item.thread.pitch);$('threadSideSelect').value=item.thread.side||'external';$('threadToleranceInput').value=item.thread.tolerance||'';}setView('stock');toast(`Открыта операция ${index+1}`);}else if(action==='duplicate'){const copy=clone(item);copy.id=`op-${Date.now()}`;route.splice(index+1,0,copy);}else if(action==='toggle')item.enabled=item.enabled===false;else if(action==='delete'){route.splice(index,1);if(state.activeRouteIndex>=route.length)state.activeRouteIndex=route.length-1;}renderOperationRoute();validateOperationRoute(false);scheduleAutosave();}
@@ -623,4 +853,4 @@ $('newAnalysisBtn').onclick=()=>{state.file=null;state.restoredFileName=null;sta
 document.addEventListener('keydown',e=>{const tag=document.activeElement?.tagName;if(['INPUT','TEXTAREA','SELECT'].includes(tag))return;const mod=e.ctrlKey||e.metaKey;if(mod&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();}else if(e.key==='Delete'){e.preventDefault();$('deletePointBtn').click();}else if(e.key.toLowerCase()==='a'){e.preventDefault();openPointModal('add');}else if(e.key.toLowerCase()==='s'){e.preventDefault();saveProject(false);}else if(e.key==='ArrowLeft'){state.selectedIndex=Math.max(0,state.selectedIndex-1);renderEditor();}else if(e.key==='ArrowRight'){state.selectedIndex=Math.min(state.contourPoints.length-1,state.selectedIndex+1);renderEditor();}});
 window.addEventListener('resize',()=>{updateDeviceModeLabel();if(state.image){resizeImageCanvas();drawImageCanvas();}renderEditor();renderChamferEditor();});
 
-initThemeControls();updateDeviceModeLabel();initShopTurn();initOperationMultiPicker();loadHealth();loadThreadCatalog();loadLocalDraft();updateProjectUi();syncFileUi();renderDrawingIntelligence();renderProjectThreads();renderChamferEditor();renderOperationRoute();renderEditor();renderShopTurn();
+initThemeControls();updateDeviceModeLabel();initShopTurn();initOperationMultiPicker();loadHealth();loadThreadCatalog();loadLocalDraft();updateProjectUi();syncFileUi();if($('threadSearchInput'))$('threadSearchInput').value=state.threadLibraryUi.search||'';renderDrawingIntelligence();renderThreadLibrary();renderProjectThreads();renderChamferEditor();renderOperationRoute();renderEditor();renderShopTurn();

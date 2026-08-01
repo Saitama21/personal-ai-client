@@ -238,15 +238,22 @@ def test_stock_removal_accepts_shopturn_tool_flow():
 
 def test_health_reports_shopturn_feature():
     body = client.get("/api/health").json()
-    assert body["version"] == "2.4.4-pro"
+    assert body["version"] == "2.4.5-pro"
     assert "shopturn_tool_flow" in body["features"]
 
 
-def test_metric_thread_catalog_and_m8_default_pitch():
+def test_full_thread_catalog_and_m8_default_pitch():
     body = client.get('/api/thread-catalog').json()
-    m8 = next(item for item in body['items'] if item['designation'] == 'M8')
-    assert m8['coarse'] == 1.25
-    assert 1.25 in m8['pitches']
+    assert body['count'] == len(body['items'])
+    assert body['count'] >= 500
+    family_ids = {item['id'] for item in body['families']}
+    assert {'metric_iso', 'metric_fine', 'bspp', 'bspt', 'npt', 'unified', 'trapezoidal', 'pg', 'edison', 'api_special'} <= family_ids
+    m8 = next(item for item in body['items'] if item['designation'] == 'M8×1.25')
+    assert m8['diameter_mm'] == 8
+    assert m8['pitch_mm'] == 1.25
+    assert m8['default_tolerance_external'] == '6g'
+    assert m8['default_tolerance_internal'] == '6H'
+    assert m8['standard_profile'] is True
 
 
 def test_thread_inference_uses_coarse_pitch_when_omitted():
@@ -497,3 +504,61 @@ def test_split_chamfer_input_is_rendered_and_legacy_field_removed():
 def test_health_reports_split_chamfer_input_feature():
     body = client.get("/api/health").json()
     assert "split_chamfer_input" in body["features"]
+
+
+
+def test_health_reports_engineering_control_features():
+    body = client.get('/api/health').json()
+    expected = {
+        'toggleable_drawing_rules',
+        'full_thread_library',
+        'thread_library_filters',
+        'engineering_layout_overflow_fix',
+        'split_chamfer_input',
+    }
+    assert expected <= set(body['features'])
+
+
+def test_thread_catalog_has_unique_ids_and_major_families():
+    body = client.get('/api/thread-catalog').json()
+    ids = [item['id'] for item in body['items']]
+    assert len(ids) == len(set(ids))
+    examples = {item['designation'] for item in body['items']}
+    assert 'G 1/2' in examples
+    assert 'R 1/2' in examples
+    assert '1/2-14 NPT' in examples
+    assert '1/4-20 UNC' in examples
+    assert 'Tr20×4' in examples
+    assert 'PG 13.5' in examples
+    assert 'E27' in examples
+
+
+def test_engineering_dashboard_markup_contains_controls():
+    html = client.get('/').text
+    required_ids = {
+        'rulesEnabledToggle',
+        'selectAllRulesCheckbox',
+        'enableAllRulesBtn',
+        'threadFamilyTabs',
+        'threadSearchInput',
+        'threadDiameterFilter',
+        'threadPitchFilter',
+        'threadStandardOnlyToggle',
+        'threadProfileGrid',
+        'threadDetailsPanel',
+        'chamfersEnabledToggle',
+        'chamferSizeInput',
+        'chamferAngleInput',
+    }
+    for element_id in required_ids:
+        assert f'id="{element_id}"' in html
+    assert 'мм' in html
+    assert '°' in html
+
+
+def test_engineering_css_contains_overflow_guards():
+    css = (Path(__file__).parents[1] / 'app' / 'static' / 'styles.css').read_text(encoding='utf-8')
+    assert '.engineering-dashboard-grid' in css
+    assert 'minmax(0, 1fr)' in css
+    assert 'overflow-x: hidden' in css or 'overflow-x:hidden' in css
+    assert '.thread-library-card' in css

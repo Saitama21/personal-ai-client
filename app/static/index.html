@@ -41,13 +41,13 @@
         <button class="nav-item" data-view="settings"><span class="nav-icon" aria-hidden="true">⚙</span><span>Настройки</span></button>
       </nav>
       <div class="status-card glass-soft"><span class="status-dot" id="statusDot"></span><div><strong id="statusTitle">Проверка...</strong><small id="statusText">Соединение с сервером</small></div></div>
-      <div class="sidebar-footer creator-glass"><span class="creator-label">Создатель</span><strong>Єрошов Іван</strong><small>Версия 2.4.4 Split Chamfer Input</small></div>
+      <div class="sidebar-footer creator-glass"><span class="creator-label">Создатель</span><strong>Єрошов Іван</strong><small>Версия 2.4.5 Engineering Rules</small></div>
     </aside>
 
     <main>
       <section class="mobile-creator-strip glass" aria-label="Создатель и версия">
         <div class="mobile-creator-copy"><span>Создатель</span><strong>Єрошов Іван</strong></div>
-        <div class="mobile-version-badge">v2.4.4</div>
+        <div class="mobile-version-badge">v2.4.5</div>
       </section>
       <header class="topbar">
         <div><h1 id="pageTitle">Новый анализ</h1><p id="pageSubtitle">Загрузите изображение, PDF или SLDDRW и задайте вопрос</p></div>
@@ -107,53 +107,97 @@
           </div>
 
           <section id="drawingIntelligencePanel" class="drawing-intelligence glass-soft hidden">
-            <div class="panel-heading compact-heading">
+            <div class="panel-heading compact-heading engineering-heading">
               <div><span class="eyebrow">КОНТРОЛЬ ЧЕРТЕЖА</span><h3>Допуски, резьбы и фаски</h3></div>
-              <span id="drawingIntelBadge" class="badge">Ожидает анализа</span>
-            </div>
-            <div class="intelligence-grid">
-              <div class="intel-card">
-                <div class="mini-heading">Найденные допуски и требования</div>
-                <div id="toleranceList" class="intel-list"><span class="muted-text">После анализа здесь появятся размерные и геометрические допуски.</span></div>
-              </div>
-              <div class="intel-card">
-                <div class="mini-heading">Распознанные резьбы</div>
-                <div id="detectedThreadList" class="intel-list"><span class="muted-text">Резьбы пока не найдены.</span></div>
+              <div class="engineering-heading-actions">
+                <span id="drawingIntelBadge" class="badge">Ожидает анализа</span>
+                <button id="resetEngineeringFiltersBtn" class="small-button danger-lite">↻ Сбросить фильтры</button>
               </div>
             </div>
 
-            <div class="engineering-control-grid">
-              <section class="intel-card thread-catalog-card">
-                <div class="mini-heading">Каталог метрических резьб</div>
-                <div class="form-grid compact-form">
-                  <label><span>Резьба</span><select id="threadDesignationSelect"></select></label>
-                  <label><span>Шаг, мм</span><select id="threadPitchSelect"></select></label>
-                  <label><span>Тип</span><select id="threadSideSelect"><option value="external">Наружная</option><option value="internal">Внутренняя</option></select></label>
-                  <label><span>Класс допуска</span><input id="threadToleranceInput" placeholder="6g / 6H" /></label>
+            <div class="engineering-dashboard-grid">
+              <section class="intel-card tolerance-manager-card">
+                <div class="intel-section-head">
+                  <div><div class="mini-heading">Найденные допуски и требования</div><small id="ruleCountLabel">Правила: 0/0</small></div>
+                  <button class="collapse-button" type="button" data-collapse-target="toleranceRulesBody" aria-label="Свернуть блок">⌃</button>
                 </div>
-                <div class="button-row compact-buttons"><button id="applyDetectedThreadBtn" class="small-button">Взять распознанную</button><button id="addThreadToProjectBtn" class="secondary-button">Добавить резьбу</button></div>
-                <div id="projectThreadList" class="project-thread-list"></div>
-                <p class="control-note">Если на чертеже указано только M8, клиент автоматически принимает крупный шаг 1.25 мм и помечает его как принятый по стандартному ряду.</p>
-              </section>
-
-              <section class="intel-card chamfer-editor-card">
-                <div class="mini-heading">Фаски и снятие остроты</div>
-                <div class="chamfer-controls">
-                  <label class="chamfer-mode-field"><span>Режим</span><select id="chamferModeSelect"><option value="chamfer">Фаска</option><option value="edge_break">Снять остроту</option><option value="none">Не обрабатывать кромку</option></select></label>
-                  <div class="chamfer-notation-field">
-                    <span class="chamfer-control-label">Обозначение</span>
-                    <div id="chamferNotationSplit" class="chamfer-notation-split" aria-label="Размер и угол фаски">
-                      <label class="chamfer-number-field"><input id="chamferSizeInput" value="1" inputmode="decimal" autocomplete="off" aria-label="Размер фаски в миллиметрах" /><small>мм</small></label>
-                      <span class="chamfer-multiply" aria-hidden="true">×</span>
-                      <label class="chamfer-number-field"><input id="chamferAngleInput" value="45" inputmode="decimal" autocomplete="off" aria-label="Угол фаски в градусах" /><small>°</small></label>
-                    </div>
+                <div id="toleranceRulesBody" class="intel-section-body">
+                  <div class="rule-toolbar">
+                    <label class="check-line"><input id="selectAllRulesCheckbox" type="checkbox" checked><span>Выбрать всё</span></label>
+                    <label class="switch-line"><input id="rulesEnabledToggle" type="checkbox" checked><span class="switch-ui"></span><span>Включить правила</span></label>
                   </div>
-                  <button id="undoChamferBtn" class="small-button">Убрать последнюю</button>
-                  <button id="clearChamfersBtn" class="small-button danger-lite">Очистить точки</button>
+                  <div id="toleranceList" class="intel-list rule-list"><span class="muted-text">После анализа здесь появятся размерные и геометрические допуски.</span></div>
+                  <div class="rules-footnote">
+                    <span>ⓘ Отключённые правила и допуски не учитываются в итоговом анализе.</span>
+                    <button id="enableAllRulesBtn" class="small-button">↻ Включить все отключённые</button>
+                  </div>
                 </div>
-                <div class="chamfer-canvas-wrap"><canvas id="chamferCanvas" width="900" height="360"></canvas><div class="canvas-tip">Нажми на кромку мини-чертежа: введи размер в мм, затем угол в градусах, либо выбери «снять остроту»</div></div>
-                <div id="chamferMarkerList" class="chamfer-marker-list"></div>
               </section>
+
+              <div class="thread-workspace-column">
+                <section class="intel-card thread-library-card">
+                  <div class="thread-library-header">
+                    <div class="mini-heading">Библиотека резьб</div>
+                    <label class="thread-search"><span>⌕</span><input id="threadSearchInput" type="search" placeholder="Поиск: M8, G1/2, Tr40×7, 1/4-20 UNC…"></label>
+                  </div>
+                  <div id="threadFamilyTabs" class="thread-family-tabs" role="tablist"></div>
+                  <div class="thread-filter-bar">
+                    <label><span>Диаметр</span><select id="threadDiameterFilter"><option value="all">Любой</option></select></label>
+                    <label><span>Шаг / TPI</span><select id="threadPitchFilter"><option value="all">Любой</option></select></label>
+                    <label><span>Наружная / внутренняя</span><select id="threadSideSelect"><option value="external">Наружная</option><option value="internal">Внутренняя</option></select></label>
+                    <label><span>Класс допуска</span><input id="threadToleranceInput" placeholder="6g / 6H / 2A / 2B"></label>
+                    <label class="standard-only-filter"><span>Только стандартные</span><input id="threadStandardOnlyToggle" type="checkbox" checked><span class="switch-ui"></span></label>
+                  </div>
+                  <div class="thread-browser-grid">
+                    <div>
+                      <div id="threadProfileGrid" class="thread-profile-grid"><span class="muted-text">Загрузка библиотеки…</span></div>
+                      <div class="thread-library-meta">ⓘ <span id="threadCatalogCount">Загрузка…</span></div>
+                    </div>
+                    <aside id="threadDetailsPanel" class="thread-details-panel">
+                      <div class="thread-detail-empty">Выбери профиль резьбы из библиотеки.</div>
+                    </aside>
+                  </div>
+                </section>
+
+                <section class="intel-card detected-thread-card">
+                  <div class="intel-section-head">
+                    <div><div class="mini-heading">Распознанные в чертеже</div><small id="detectedThreadCountLabel">Правила: 0/0</small></div>
+                    <button class="collapse-button" type="button" data-collapse-target="detectedThreadBody" aria-label="Свернуть блок">⌃</button>
+                  </div>
+                  <div id="detectedThreadBody" class="intel-section-body detected-thread-body">
+                    <div id="detectedThreadList" class="intel-list"><span class="muted-text">Резьбы пока не найдены.</span></div>
+                    <button id="applyAllDetectedThreadsBtn" class="small-button">Добавить все распознанные</button>
+                    <div id="projectThreadList" class="project-thread-list"></div>
+                  </div>
+                </section>
+
+                <section class="intel-card chamfer-editor-card compact-chamfer-card">
+                  <div class="intel-section-head">
+                    <div><div class="mini-heading">Фаски и снятие остроты</div><small id="chamferRuleCountLabel">Правила: 0/0</small></div>
+                    <label class="switch-line"><input id="chamfersEnabledToggle" type="checkbox" checked><span class="switch-ui"></span><span>Включить фаски</span></label>
+                  </div>
+                  <div class="chamfer-controls compact-chamfer-controls">
+                    <label class="check-line chamfer-select-all"><input id="selectAllChamfersCheckbox" type="checkbox" checked><span>Выбрать всё</span></label>
+                    <label class="chamfer-mode-field"><span>Режим</span><select id="chamferModeSelect"><option value="chamfer">Фаска</option><option value="edge_break">Снять остроту</option><option value="none">Не обрабатывать кромку</option></select></label>
+                    <div class="chamfer-notation-field">
+                      <span class="chamfer-control-label">Размер</span>
+                      <div id="chamferNotationSplit" class="chamfer-notation-split" aria-label="Размер и угол фаски">
+                        <label class="chamfer-number-field"><input id="chamferSizeInput" value="1" inputmode="decimal" autocomplete="off" aria-label="Размер фаски в миллиметрах"><small>мм</small></label>
+                        <span class="chamfer-multiply" aria-hidden="true">×</span>
+                        <label class="chamfer-number-field"><input id="chamferAngleInput" value="45" inputmode="decimal" autocomplete="off" aria-label="Угол фаски в градусах"><small>°</small></label>
+                      </div>
+                    </div>
+                    <button id="addChamferFromControlsBtn" class="small-button">＋ Добавить фаску</button>
+                    <button id="undoChamferBtn" class="small-button">↶ Убрать последнюю</button>
+                    <button id="clearChamfersBtn" class="small-button danger-lite">⌫ Очистить точки</button>
+                  </div>
+                  <div id="chamferMarkerList" class="chamfer-marker-list"></div>
+                  <details class="chamfer-canvas-details">
+                    <summary>Мини-чертёж и выбор кромки</summary>
+                    <div class="chamfer-canvas-wrap"><canvas id="chamferCanvas" width="900" height="360"></canvas><div class="canvas-tip">Нажми на кромку мини-чертежа: введи размер в мм, затем угол в градусах, либо выбери «снять остроту»</div></div>
+                  </details>
+                </section>
+              </div>
             </div>
           </section>
         </section>
