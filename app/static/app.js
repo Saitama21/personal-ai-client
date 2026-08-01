@@ -522,7 +522,8 @@ function loadLocalDraft(){try{const d=JSON.parse(localStorage.getItem('personal-
 
 async function saveProject(forceCreate=false){const generated=`Проект ${new Date().toLocaleDateString('ru-RU')} ${new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}`;const name=state.currentProjectName==='Локальный черновик'?($('projectNameInput').value.trim()||generated):state.currentProjectName;if(!name.trim())return;const payload={name:name.trim(),data:collectProjectData()};try{const method=state.currentProjectId&&!forceCreate?'PUT':'POST',url=state.currentProjectId&&!forceCreate?`/api/projects/${state.currentProjectId}`:'/api/projects';const r=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const d=await r.json();if(!r.ok)throw new Error(d.detail||'Ошибка сохранения');state.currentProjectId=d.id;state.currentProjectName=d.name;updateProjectUi();$('autosaveState').textContent='Сохранено на Railway Volume';toast('Проект сохранён');}catch(e){toast(e.message);}}
 $('saveProjectBtn').onclick=()=>saveProject(false);$('createProjectBtn').onclick=async()=>{const name=$('projectNameInput').value.trim()||`Проект ${new Date().toLocaleString('ru-RU')}`;resetWorkspaceForNewProject();state.currentProjectName=name;updateProjectUi();await saveProject(true);};
-function resetWorkspaceForNewProject(){
+function resetWorkspaceForNewProject(options={}){
+  const autosave = options.autosave !== false;
   state.currentProjectId=null;state.currentProjectName='Локальный черновик';state.file=null;state.restoredFileName=null;state.image=null;state.crop=null;state.contourPoints=[];state.selectedIndex=0;state.undoStack=[];state.redoStack=[];state.validation=[];state.operationRoute=[];state.selectedOperationCodes=[];state.activeRouteIndex=-1;state.projectThreads=[];state.chamfers=[];state.chamfersEnabled=true;state.ruleControl={enabled:true,active:{},search:''};state.threadLibraryUi={family:'metric_iso',search:'',diameter:'all',pitch:'all',standardOnly:true,selectedId:null};state.drawingIntel={tolerances:[],tolerance_interpretations:[],threads:[],chamfers_detected:[],requires_chamfer_decision:true,notes:[]};
   fileInput.value='';dropZone.classList.remove('hidden');previewArea.classList.add('hidden');pdfPreview.src='';
   ['promptInput','blankDiameter','blankLength','blankWidth','blankHeight','blankLengthMill','zeroReference','firstSide','zeroReferenceCustom','firstSideCustom','stockNotes','offsetXInput','offsetZInput'].forEach(id=>{if($(id))$(id).value='';});
@@ -532,9 +533,22 @@ function resetWorkspaceForNewProject(){
   SHOP_INPUT_IDS.forEach(id=>{const el=$(id);if(!el)return;if(el.type==='checkbox')el.checked=false;else if(el.tagName==='SELECT')el.selectedIndex=0;else el.value='';});
   state.shopturn.wizardStep=0;populateToolPresets('');resetChat('analysis',true);resetChat('stock',true);
   $('resultContent').classList.add('hidden');$('resultEmpty').classList.remove('hidden');$('resultMeta').textContent='';$('stockResultContent').classList.add('hidden');$('stockResultEmpty').classList.remove('hidden');$('stockResultMeta').textContent='';$('drawingIntelligencePanel').classList.add('hidden');
-  localStorage.removeItem('personal-ai-pro-draft');updateProjectUi();syncFileUi();if($('threadSearchInput'))$('threadSearchInput').value=state.threadLibraryUi.search||'';renderDrawingIntelligence();renderThreadLibrary();renderProjectThreads();renderChamferEditor();renderOperationRoute();renderOperationMultiPicker();renderEditor();renderShopTurn();scheduleAutosave();
+  localStorage.removeItem('personal-ai-pro-draft');updateProjectUi();syncFileUi();if($('threadSearchInput'))$('threadSearchInput').value=state.threadLibraryUi.search||'';renderDrawingIntelligence();renderThreadLibrary();renderProjectThreads();renderChamferEditor();renderOperationRoute();renderOperationMultiPicker();renderEditor();renderShopTurn();if(autosave)scheduleAutosave();else $('autosaveState').textContent='Новая чистая сессия';
 }
-$('newProjectBtn').onclick=()=>{resetWorkspaceForNewProject();toast('Новый проект создан. Все рабочие поля очищены, история сохранена.');};
+function hasWorkspaceData(){
+  return Boolean(
+    state.file || state.restoredFileName || state.contourPoints.length || state.operationRoute.length ||
+    state.projectThreads.length || state.chamfers.length ||
+    $('promptInput')?.value.trim() || $('stockNotes')?.value.trim() ||
+    $('blankDiameter')?.value || $('blankLength')?.value || $('blankWidth')?.value ||
+    $('blankHeight')?.value || $('blankLengthMill')?.value
+  );
+}
+$('newProjectBtn').onclick=()=>{
+  if(hasWorkspaceData() && !confirm('Создать новый проект? Несохранённые рабочие данные будут удалены. Сохранённые проекты и история останутся.')) return;
+  resetWorkspaceForNewProject();
+  toast('Новый проект создан. Все рабочие поля очищены, проекты и история сохранены.');
+};
 async function loadProjects(){const list=$('projectsList');list.innerHTML='<div class="result-empty"><span>Загрузка...</span></div>';try{const r=await fetch('/api/projects');const items=await r.json();if(!items.length){list.innerHTML='<div class="result-empty"><strong>Проектов пока нет</strong></div>';return;}list.innerHTML=items.map(p=>`<div class="project-item"><div><h3>${escapeHtml(p.name)}</h3><small>Обновлён ${new Date(p.updated_at*1000).toLocaleString('ru-RU')}</small></div><div><button data-load="${p.id}">Открыть</button><button data-del="${p.id}" class="danger-lite">Удалить</button></div></div>`).join('');list.querySelectorAll('[data-load]').forEach(b=>b.onclick=async()=>{const r=await fetch(`/api/projects/${b.dataset.load}`),d=await r.json();if(!r.ok)return toast(d.detail||'Ошибка');state.currentProjectId=d.id;state.currentProjectName=d.name;applyProjectData(d.data);updateProjectUi();setView('stock');toast('Проект открыт');});list.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{if(!confirm('Удалить проект?'))return;await fetch(`/api/projects/${b.dataset.del}`,{method:'DELETE'});loadProjects();});}catch(e){list.innerHTML=`<div class="result-empty"><strong>${escapeHtml(e.message)}</strong></div>`;}}
 
 
@@ -1031,7 +1045,10 @@ $('newAnalysisBtn').onclick=()=>{state.file=null;state.restoredFileName=null;sta
 document.addEventListener('keydown',e=>{const tag=document.activeElement?.tagName;if(['INPUT','TEXTAREA','SELECT'].includes(tag))return;const mod=e.ctrlKey||e.metaKey;if(mod&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();}else if(e.key==='Delete'){e.preventDefault();$('deletePointBtn').click();}else if(e.key.toLowerCase()==='a'){e.preventDefault();openPointModal('add');}else if(e.key.toLowerCase()==='s'){e.preventDefault();saveProject(false);}else if(e.key==='ArrowLeft'){state.selectedIndex=Math.max(0,state.selectedIndex-1);renderEditor();}else if(e.key==='ArrowRight'){state.selectedIndex=Math.min(state.contourPoints.length-1,state.selectedIndex+1);renderEditor();}});
 window.addEventListener('resize',()=>{updateDeviceModeLabel();if(state.image){resizeImageCanvas();drawImageCanvas();}renderEditor();renderChamferEditor();});
 
-initThemeControls();updateDeviceModeLabel();initShopTurn();initOperationMultiPicker();loadHealth();loadThreadCatalog();loadLocalDraft();updateProjectUi();syncFileUi();if($('threadSearchInput'))$('threadSearchInput').value=state.threadLibraryUi.search||'';renderDrawingIntelligence();renderThreadLibrary();renderProjectThreads();renderChamferEditor();renderOperationRoute();renderEditor();renderShopTurn();
+initThemeControls();updateDeviceModeLabel();initShopTurn();initOperationMultiPicker();loadHealth();loadThreadCatalog();
+// Каждый новый запуск начинается с чистой рабочей сессии. Сохранённые проекты и история не удаляются.
+localStorage.removeItem('personal-ai-pro-draft');
+resetWorkspaceForNewProject({autosave:false});
 
 // v2.6.0 — data bridge for the physical 3D Stock Removal engine.
 window.CNC3D_getData = function CNC3D_getData() {
