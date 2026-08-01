@@ -2743,7 +2743,7 @@ button, .primary-button, .secondary-button { position: relative; pointer-events:
 }
 
 
-/* v2.7.5 Explicit device layouts — iPad is selected by JS, not viewport width */
+/* v2.7.6 Explicit device layouts — iPad is selected by JS, not viewport width */
 html.layout-tablet body.tablet-edition .mobile-creator-strip{display:none!important;}
 html.layout-tablet body.tablet-edition .tablet-workflow-shell{display:block!important;}
 html.layout-tablet body.tablet-edition .sidebar{display:flex!important;}
@@ -2763,4 +2763,197 @@ html.layout-desktop body .tablet-workflow-shell{display:none!important;}
   html.layout-tablet body.tablet-edition .tablet-inspector{display:block!important;position:fixed!important;right:10px!important;top:116px!important;bottom:auto!important;width:var(--tablet-inspector)!important;max-height:calc(100vh - 205px)!important;}
   html.layout-tablet body.tablet-edition .tablet-bottom-bar{display:grid!important;position:fixed!important;left:calc(var(--tablet-side) + 20px)!important;right:10px!important;bottom:10px!important;}
   html.layout-tablet body.tablet-edition .view{padding-right:calc(var(--tablet-inspector) + var(--tablet-gap))!important;}
+}
+
+/* v2.7.6 Stable iPad layout — hard reset of conflicting tablet rules */
+html.layout-tablet,
+html.layout-tablet body {
+  width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+html.layout-tablet body.tablet-edition {
+  --ipad-sidebar: 196px;
+  --ipad-gap: 12px;
+}
+
+html.layout-tablet body.tablet-edition .app-shell {
+  display: grid !important;
+  grid-template-columns: var(--ipad-sidebar) minmax(0, 1fr) !important;
+  gap: var(--ipad-gap) !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  padding: 10px !important;
+  box-sizing: border-box !important;
+}
+
+html.layout-tablet body.tablet-edition .sidebar {
+  position: sticky !important;
+  top: 10px !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: auto !important;
+  height: calc(100vh - 20px) !important;
+  min-width: 0 !important;
+  overflow-y: auto !important;
+  z-index: 20 !important;
+  transform: none !important;
+}
+
+html.layout-tablet body.tablet-edition .sidebar-nav {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 7px !important;
+}
+
+html.layout-tablet body.tablet-edition .sidebar-nav a,
+html.layout-tablet body.tablet-edition .sidebar-nav button {
+  width: 100% !important;
+  min-width: 0 !important;
+  justify-content: flex-start !important;
+  white-space: normal !important;
+}
+
+html.layout-tablet body.tablet-edition main {
+  display: block !important;
+  position: relative !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 0 86px !important;
+  overflow: visible !important;
+}
+
+html.layout-tablet body.tablet-edition .tablet-workflow-shell {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 214px !important;
+  grid-template-areas:
+    "steps inspector"
+    "content inspector" !important;
+  gap: 10px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 0 10px !important;
+  padding: 0 !important;
+  position: relative !important;
+}
+
+html.layout-tablet body.tablet-edition .tablet-step-rail {
+  grid-area: steps !important;
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  display: grid !important;
+  grid-template-columns: 78px repeat(9, minmax(0, 1fr)) !important;
+  gap: 4px !important;
+  overflow: hidden !important;
+  z-index: 10 !important;
+}
+
+html.layout-tablet body.tablet-edition .tablet-step {
+  min-width: 0 !important;
+  width: auto !important;
+  padding: 5px 2px !important;
+}
+
+html.layout-tablet body.tablet-edition .tablet-step span {
+  font-size: 7px !important;
+  line-height: 1.05 !important;
+  overflow-wrap: anywhere !important;
+}
+
+html.layout-tablet body.tablet-edition .tablet-inspector {
+  grid-area: inspector !important;
+  position: sticky !important;
+  top: 10px !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: auto !important;
+  max-width: none !important;
+  height: fit-content !important;
+  max-height: calc(100vh - 20px) !important;
+  overflow-y: auto !important;
+  transform: none !important;
+  z-index: 15 !important;
+}
+
+html.layout-tablet body.tablet-edition .view {
+  grid-area: content !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+html.layout-tablet body.tablet-edition .topbar {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 420px) !important;
+  gap: 12px !important;
+  align-items: start !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+html.layout-tablet body.tablet-edition .topbar-actions {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+html.layout-tablet body.tablet-edition .topbar-actions > * {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  grid-row: auto !important;
+  grid-column: auto !important;
+}
+
+html.layout-tablet body.tablet-edition .workspace-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.25fr) minmax(250px, .75fr) !important;
+  gap: 10px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+html.layout-tablet body.tablet-edition .tablet-bottom-bar {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr 1.3fr !important;
+  position: fixed !important;
+  left: calc(var(--ipad-sidebar) + 22px) !important;
+  right: 12px !important;
+  bottom: 10px !important;
+  width: auto !important;
+  z-index: 80 !important;
+}
+
+@media (orientation: portrait) {
+  html.layout-tablet body.tablet-edition {
+    --ipad-sidebar: 78px;
+  }
+  html.layout-tablet body.tablet-edition .tablet-workflow-shell {
+    grid-template-columns: 1fr !important;
+    grid-template-areas: "steps" "content" !important;
+  }
+  html.layout-tablet body.tablet-edition .tablet-inspector {
+    display: none !important;
+  }
+  html.layout-tablet body.tablet-edition .topbar,
+  html.layout-tablet body.tablet-edition .workspace-grid {
+    grid-template-columns: 1fr !important;
+  }
+  html.layout-tablet body.tablet-edition .tablet-step-rail {
+    overflow-x: auto !important;
+    grid-template-columns: 72px repeat(9, 58px) !important;
+  }
 }

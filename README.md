@@ -1,4 +1,4 @@
-# Personal AI Client PRO v2.7.5 Tablet UX
+# Personal AI Client PRO v2.7.6 Tablet UX
 
 # Personal AI Client PRO v2.6.0 — Structured Machining Operations
 
@@ -119,7 +119,7 @@ python -m py_compile app/main.py app/thread_library.py
 Добавлен отдельный планшетный профиль для iPad Pro 10.5: пошаговый мастер, закреплённый инспектор, нижняя навигация и управление MX Anywhere 3S.
 
 
-## v2.7.5 iPad layout activation fix
+## v2.7.6 iPad layout activation fix
 - iPad Pro 10.5 landscape (1112 CSS px) now enters Tablet Edition.
 - Desktop fixed sidebar starts above 1180 px to avoid conflict.
 - Added iPadOS touch-device fallback detection.
