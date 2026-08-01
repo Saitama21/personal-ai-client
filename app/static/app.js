@@ -35,7 +35,7 @@ state.drawingIntel = { tolerances: [], tolerance_interpretations: [], threads: [
 state.threadCatalog = [];
 state.threadFamilies = [];
 state.threadLibraryUi = { family: 'metric_iso', search: '', diameter: 'all', pitch: 'all', standardOnly: true, selectedId: null };
-state.ruleControl = { enabled: true, active: {} };
+state.ruleControl = { enabled: true, active: {}, search: '' };
 state.projectThreads = [];
 state.chamfers = [];
 state.chamfersEnabled = true;
@@ -102,12 +102,15 @@ const ZERO_REFERENCE_OPTIONS = [
   'Рабочее смещение G54 подтверждено',
 ];
 const FIRST_SIDE_OPTIONS = [
-  'Торец A',
-  'Торец B',
+  'Первая установка — торец A',
+  'Вторая установка — торец B',
   'Обработка с двух сторон',
   'Требуется переворот заготовки',
-  'Наружный контур',
-  'Внутренний контур',
+  'Торцовка', 'Наружное точение', 'Внутреннее точение', 'Наружная резьба', 'Внутренняя резьба', 'Фаски', 'Канавки', 'Отрезка',
+  'Фрезерование лысок', 'Фрезерование карманов', 'Фрезерование пазов', 'Сверление', 'Развёртывание', 'Зенковка', 'Резьба приводным инструментом', 'Фрезерование контура',
+  'Используется ось X', 'Используется ось Z', 'Используется ось C', 'Используется ось Y', 'Используется приводной инструмент',
+  'Обработка за один установ', 'Есть припуск на обработку', 'Заготовка после лазерной резки', 'Заготовка после пилы', 'Отверстия уже выполнены',
+  'Требуется высокая чистота поверхности', 'Требуется соосность', 'Требуется симметрия',
 ];
 
 function splitOptionValue(value) {
@@ -122,6 +125,8 @@ function syncStockModeUi(mode = state.stockMode) {
   });
   $('latheFields').classList.toggle('hidden', state.stockMode === 'mill');
   $('millFields').classList.toggle('hidden', state.stockMode === 'lathe');
+  document.querySelectorAll('[data-operation-group="lathe"]').forEach(el => el.classList.toggle('hidden', state.stockMode === 'mill'));
+  document.querySelectorAll('[data-operation-group="mill"]').forEach(el => el.classList.toggle('hidden', state.stockMode === 'lathe'));
 }
 
 function syncStockOptionValues() {
@@ -498,14 +503,14 @@ $('importBtn').onclick=()=>$('importContourInput').click();$('importContourInput
 function collectEditorSettings(){return{xMode:state.xMode,process:state.process,z0:state.z0,closed:state.closed,snap:state.snap,snapStep:state.snapStep,showBlank:state.showBlank,showLabels:state.showLabels,showDimensions:state.showDimensions};}
 function applyEditorSettings(s={}){Object.assign(state,{xMode:s.xMode||'diameter',process:s.process||'outer',z0:s.z0||'right',closed:!!s.closed,snap:s.snap!==false,snapStep:number(s.snapStep,.1),showBlank:s.showBlank!==false,showLabels:s.showLabels!==false,showDimensions:!!s.showDimensions});$('xModeSelect').value=state.xMode;$('processSelect').value=state.process;$('z0Select').value=state.z0;$('snapToggle').checked=state.snap;$('snapStepInput').value=state.snapStep;$('blankOverlayToggle').checked=state.showBlank;$('labelsToggle').checked=state.showLabels;$('dimensionsToggle').checked=state.showDimensions;$('closeContourBtn').textContent=state.closed?'Разомкнуть':'Замкнуть';}
 function collectProjectData(){syncStockOptionValues();return{contourPoints:state.contourPoints,editor:collectEditorSettings(),shopturn:collectShopTurnData(),operationRoute:state.operationRoute,projectThreads:state.projectThreads,chamfers:state.chamfers,chamfersEnabled:state.chamfersEnabled,drawingIntel:state.drawingIntel,ruleControl:state.ruleControl,threadLibraryUi:state.threadLibraryUi,stockMode:state.stockMode,blank:{diameter:$('blankDiameter').value,length:$('blankLength').value,width:$('blankWidth').value,height:$('blankHeight').value,millLength:$('blankLengthMill').value},zeroReference:$('zeroReference').value,firstSide:$('firstSide').value,stockOptions:{zero:[...document.querySelectorAll('[data-zero-value]:checked')].map(x=>x.dataset.zeroValue),sides:[...document.querySelectorAll('[data-side-value]:checked')].map(x=>x.dataset.sideValue),zeroCustom:$('zeroReferenceCustom').value,sideCustom:$('firstSideCustom').value},notes:$('stockNotes').value,fileName:state.file?.name||state.restoredFileName||null,updatedAt:Date.now()};}
-function applyProjectData(d={}, options={}){const restoreFileLabel=options.restoreFileLabel!==false;state.restoredFileName=restoreFileLabel?(d.fileName||null):null;state.contourPoints=Array.isArray(d.contourPoints)?clone(d.contourPoints):[];applyEditorSettings(d.editor||{});state.stockMode=STOCK_MODE_VALUES.has(d.stockMode)?d.stockMode:'lathe';syncStockModeUi(state.stockMode);const b=d.blank||{};$('blankDiameter').value=b.diameter||'';$('blankLength').value=b.length||'';$('blankWidth').value=b.width||'';$('blankHeight').value=b.height||'';$('blankLengthMill').value=b.millLength||'';applyStockOptionValues(d.zeroReference||'',d.firstSide||'');$('stockNotes').value=d.notes||'';applyShopTurnData(d.shopturn||{});state.operationRoute=Array.isArray(d.operationRoute)?clone(d.operationRoute):[];state.selectedOperationCodes=[];state.projectThreads=Array.isArray(d.projectThreads)?clone(d.projectThreads).map(x=>({...x,enabled:x.enabled!==false})):[];state.chamfers=Array.isArray(d.chamfers)?clone(d.chamfers).map(x=>({...x,enabled:x.enabled!==false})):[];state.chamfersEnabled=d.chamfersEnabled!==false;state.ruleControl=d.ruleControl&&typeof d.ruleControl==='object'?{enabled:d.ruleControl.enabled!==false,active:{...(d.ruleControl.active||{})}}:{enabled:true,active:{}};state.threadLibraryUi=d.threadLibraryUi&&typeof d.threadLibraryUi==='object'?{family:d.threadLibraryUi.family||'metric_iso',search:d.threadLibraryUi.search||'',diameter:d.threadLibraryUi.diameter||'all',pitch:d.threadLibraryUi.pitch||'all',standardOnly:d.threadLibraryUi.standardOnly!==false,selectedId:d.threadLibraryUi.selectedId||null}:{family:'metric_iso',search:'',diameter:'all',pitch:'all',standardOnly:true,selectedId:null};state.drawingIntel=d.drawingIntel||{tolerances:[],tolerance_interpretations:[],threads:[],chamfers_detected:[],requires_chamfer_decision:true,notes:[]};state.drawingIntel.threads=(state.drawingIntel.threads||[]).map(x=>({...x,enabled:x.enabled!==false}));if((state.drawingIntel.tolerances?.length||state.drawingIntel.threads?.length||state.chamfers.length||state.projectThreads.length))$('drawingIntelligencePanel').classList.remove('hidden');state.selectedIndex=0;state.activeRouteIndex=-1;state.validation=[];if($('threadSearchInput'))$('threadSearchInput').value=state.threadLibraryUi.search||'';renderDrawingIntelligence();renderThreadLibrary();renderProjectThreads();renderChamferEditor();renderOperationRoute();renderOperationMultiPicker();renderEditor();syncFileUi();}
+function applyProjectData(d={}, options={}){const restoreFileLabel=options.restoreFileLabel!==false;state.restoredFileName=restoreFileLabel?(d.fileName||null):null;state.contourPoints=Array.isArray(d.contourPoints)?clone(d.contourPoints):[];applyEditorSettings(d.editor||{});state.stockMode=STOCK_MODE_VALUES.has(d.stockMode)?d.stockMode:'lathe';syncStockModeUi(state.stockMode);const b=d.blank||{};$('blankDiameter').value=b.diameter||'';$('blankLength').value=b.length||'';$('blankWidth').value=b.width||'';$('blankHeight').value=b.height||'';$('blankLengthMill').value=b.millLength||'';applyStockOptionValues(d.zeroReference||'',d.firstSide||'');$('stockNotes').value=d.notes||'';applyShopTurnData(d.shopturn||{});state.operationRoute=Array.isArray(d.operationRoute)?clone(d.operationRoute):[];state.selectedOperationCodes=[];state.projectThreads=Array.isArray(d.projectThreads)?clone(d.projectThreads).map(x=>({...x,enabled:x.enabled!==false})):[];state.chamfers=Array.isArray(d.chamfers)?clone(d.chamfers).map(x=>({...x,enabled:x.enabled!==false})):[];state.chamfersEnabled=d.chamfersEnabled!==false;state.ruleControl=d.ruleControl&&typeof d.ruleControl==='object'?{enabled:d.ruleControl.enabled!==false,active:{...(d.ruleControl.active||{})},search:String(d.ruleControl.search||'')}:{enabled:true,active:{},search:''};state.threadLibraryUi=d.threadLibraryUi&&typeof d.threadLibraryUi==='object'?{family:d.threadLibraryUi.family||'metric_iso',search:d.threadLibraryUi.search||'',diameter:d.threadLibraryUi.diameter||'all',pitch:d.threadLibraryUi.pitch||'all',standardOnly:d.threadLibraryUi.standardOnly!==false,selectedId:d.threadLibraryUi.selectedId||null}:{family:'metric_iso',search:'',diameter:'all',pitch:'all',standardOnly:true,selectedId:null};state.drawingIntel=d.drawingIntel||{tolerances:[],tolerance_interpretations:[],threads:[],chamfers_detected:[],requires_chamfer_decision:true,notes:[]};state.drawingIntel.threads=(state.drawingIntel.threads||[]).map(x=>({...x,enabled:x.enabled!==false}));if((state.drawingIntel.tolerances?.length||state.drawingIntel.threads?.length||state.chamfers.length||state.projectThreads.length))$('drawingIntelligencePanel').classList.remove('hidden');state.selectedIndex=0;state.activeRouteIndex=-1;state.validation=[];if($('threadSearchInput'))$('threadSearchInput').value=state.threadLibraryUi.search||'';renderDrawingIntelligence();renderThreadLibrary();renderProjectThreads();renderChamferEditor();renderOperationRoute();renderOperationMultiPicker();renderEditor();syncFileUi();}
 function scheduleAutosave(){clearTimeout(state.autosaveTimer);clearTimeout(state.serverSaveTimer);$('autosaveState').textContent='Сохранение...';state.autosaveTimer=setTimeout(()=>{localStorage.setItem('personal-ai-pro-draft',JSON.stringify(collectProjectData()));$('autosaveState').textContent=state.currentProjectId?'Локально сохранено · синхронизация...':'Автосохранено локально';},450);if(state.currentProjectId){state.serverSaveTimer=setTimeout(async()=>{try{const r=await fetch(`/api/projects/${state.currentProjectId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:state.currentProjectName,data:collectProjectData()})});if(r.ok)$('autosaveState').textContent='Синхронизировано с Railway Volume';else $('autosaveState').textContent='Локально сохранено · ошибка синхронизации';}catch{$('autosaveState').textContent='Локально сохранено · сервер недоступен';}},1400);}}
 function loadLocalDraft(){try{const d=JSON.parse(localStorage.getItem('personal-ai-pro-draft')||'null');if(d)applyProjectData(d,{restoreFileLabel:false});}catch{}}
 
 async function saveProject(forceCreate=false){const generated=`Проект ${new Date().toLocaleDateString('ru-RU')} ${new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}`;const name=state.currentProjectName==='Локальный черновик'?($('projectNameInput').value.trim()||generated):state.currentProjectName;if(!name.trim())return;const payload={name:name.trim(),data:collectProjectData()};try{const method=state.currentProjectId&&!forceCreate?'PUT':'POST',url=state.currentProjectId&&!forceCreate?`/api/projects/${state.currentProjectId}`:'/api/projects';const r=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const d=await r.json();if(!r.ok)throw new Error(d.detail||'Ошибка сохранения');state.currentProjectId=d.id;state.currentProjectName=d.name;updateProjectUi();$('autosaveState').textContent='Сохранено на Railway Volume';toast('Проект сохранён');}catch(e){toast(e.message);}}
 $('saveProjectBtn').onclick=()=>saveProject(false);$('createProjectBtn').onclick=async()=>{const name=$('projectNameInput').value.trim()||`Проект ${new Date().toLocaleString('ru-RU')}`;resetWorkspaceForNewProject();state.currentProjectName=name;updateProjectUi();await saveProject(true);};
 function resetWorkspaceForNewProject(){
-  state.currentProjectId=null;state.currentProjectName='Локальный черновик';state.file=null;state.restoredFileName=null;state.image=null;state.crop=null;state.contourPoints=[];state.selectedIndex=0;state.undoStack=[];state.redoStack=[];state.validation=[];state.operationRoute=[];state.selectedOperationCodes=[];state.activeRouteIndex=-1;state.projectThreads=[];state.chamfers=[];state.chamfersEnabled=true;state.ruleControl={enabled:true,active:{}};state.threadLibraryUi={family:'metric_iso',search:'',diameter:'all',pitch:'all',standardOnly:true,selectedId:null};state.drawingIntel={tolerances:[],tolerance_interpretations:[],threads:[],chamfers_detected:[],requires_chamfer_decision:true,notes:[]};
+  state.currentProjectId=null;state.currentProjectName='Локальный черновик';state.file=null;state.restoredFileName=null;state.image=null;state.crop=null;state.contourPoints=[];state.selectedIndex=0;state.undoStack=[];state.redoStack=[];state.validation=[];state.operationRoute=[];state.selectedOperationCodes=[];state.activeRouteIndex=-1;state.projectThreads=[];state.chamfers=[];state.chamfersEnabled=true;state.ruleControl={enabled:true,active:{},search:''};state.threadLibraryUi={family:'metric_iso',search:'',diameter:'all',pitch:'all',standardOnly:true,selectedId:null};state.drawingIntel={tolerances:[],tolerance_interpretations:[],threads:[],chamfers_detected:[],requires_chamfer_decision:true,notes:[]};
   fileInput.value='';dropZone.classList.remove('hidden');previewArea.classList.add('hidden');pdfPreview.src='';
   ['promptInput','blankDiameter','blankLength','blankWidth','blankHeight','blankLengthMill','zeroReference','firstSide','zeroReferenceCustom','firstSideCustom','stockNotes','offsetXInput','offsetZInput'].forEach(id=>{if($(id))$(id).value='';});
   document.querySelectorAll('[data-zero-value], [data-side-value]').forEach(input=>{input.checked=false;input.closest('.choice-card')?.classList.remove('selected');});
@@ -588,7 +593,11 @@ function renderToleranceManager(){
   $('selectAllRulesCheckbox').checked=!!entries.length&&active===entries.length;
   $('selectAllRulesCheckbox').indeterminate=active>0&&active<entries.length;
   $('toleranceList').classList.toggle('is-master-disabled',!state.ruleControl.enabled);
-  $('toleranceList').innerHTML=entries.length?entries.map(entry=>{
+  const search=String(state.ruleControl.search||'').trim().toLowerCase();
+  const visibleEntries=search?entries.filter(entry=>[entry.title,entry.description,entry.application].join(' ').toLowerCase().includes(search)):entries;
+  if($('engineeringRuleSearchInput')&&$('engineeringRuleSearchInput').value!==state.ruleControl.search)$('engineeringRuleSearchInput').value=state.ruleControl.search||'';
+  if($('clearEngineeringRuleSearch'))$('clearEngineeringRuleSearch').classList.toggle('hidden',!search);
+  $('toleranceList').innerHTML=visibleEntries.length?visibleEntries.map(entry=>{
     const key=ruleIdentity(entry.kind,entry.value),enabled=isRuleActive(entry.kind,entry.value);
     return `<article class="engineering-rule-row ${enabled?'':'is-disabled'}" data-rule-key="${escapeHtml(key)}">
       <label class="rule-check"><input type="checkbox" data-rule-toggle="${escapeHtml(key)}" ${enabled?'checked':''}><span></span></label>
@@ -596,7 +605,7 @@ function renderToleranceManager(){
       <span class="rule-status ${enabled?'active':'off'}">${enabled?'Активно':'Отключено'}</span>
       <button class="rule-more" type="button" title="Переключить" data-rule-more="${escapeHtml(key)}">⋮</button>
     </article>`;
-  }).join(''):'<span class="muted-text">Явные допуски не распознаны. Проверь основную надпись и технические требования.</span>';
+  }).join(''):(entries.length?'<span class="muted-text">По этому запросу правила не найдены.</span>':'<span class="muted-text">Явные допуски не распознаны. Проверь основную надпись и технические требования.</span>');
   document.querySelectorAll('[data-rule-toggle]').forEach(input=>input.onchange=()=>{
     state.ruleControl.active[input.dataset.ruleToggle]=input.checked;renderDrawingIntelligence();scheduleAutosave();
   });
@@ -625,6 +634,8 @@ function renderDrawingIntelligence(){
   const activeRules=toleranceEntries().filter(x=>isRuleActive(x.kind,x.value)).length;
   const activeThreads=threads.filter(x=>x.enabled!==false).length;
   $('drawingIntelBadge').textContent=`Допуски: ${activeRules} · Резьбы: ${activeThreads} · Фаски: ${state.chamfers.filter(x=>x.enabled!==false).length}`;
+  const filtersChanged=!state.ruleControl.enabled||Object.values(state.ruleControl.active||{}).some(v=>v===false)||!!String(state.ruleControl.search||'').trim()||state.threadLibraryUi.search||state.threadLibraryUi.diameter!=='all'||state.threadLibraryUi.pitch!=='all'||state.threadLibraryUi.standardOnly!==true||state.chamfersEnabled===false||state.chamfers.some(x=>x.enabled===false);
+  if($('resetEngineeringFiltersBtn'))$('resetEngineeringFiltersBtn').disabled=!filtersChanged;
   $('chamfersEnabledToggle').checked=state.chamfersEnabled;
   $('chamferRuleCountLabel').textContent=`Правила: ${state.chamfers.filter(x=>x.enabled!==false).length}/${state.chamfers.length}`;
   if(state.drawingIntel.chamfers_detected?.length&&!state.chamfers.length)setChamferInputsFromNotation(state.drawingIntel.chamfers_detected[0]);
@@ -757,13 +768,15 @@ function addSelectedThreadToProject(){
 
 
 function resetEngineeringFilters(){
-  state.ruleControl.enabled=true;state.ruleControl.active={};
+  state.ruleControl.enabled=true;state.ruleControl.active={};state.ruleControl.search='';
   for(const entry of toleranceEntries())state.ruleControl.active[ruleIdentity(entry.kind,entry.value)]=true;
   state.threadLibraryUi={family:'metric_iso',search:'',diameter:'all',pitch:'all',standardOnly:true,selectedId:null};
-  $('threadSearchInput').value='';$('threadToleranceInput').value='';$('threadSideSelect').value='external';
+  if($('engineeringRuleSearchInput'))$('engineeringRuleSearchInput').value='';$('threadSearchInput').value='';$('threadToleranceInput').value='';$('threadSideSelect').value='external';
   state.chamfersEnabled=true;state.chamfers.forEach(x=>x.enabled=true);
   renderDrawingIntelligence();renderThreadLibrary();scheduleAutosave();toast('Инженерные фильтры сброшены');
 }
+$('engineeringRuleSearchInput').oninput=e=>{state.ruleControl.search=e.target.value;renderDrawingIntelligence();};
+$('clearEngineeringRuleSearch').onclick=()=>{state.ruleControl.search='';$('engineeringRuleSearchInput').value='';renderDrawingIntelligence();$('engineeringRuleSearchInput').focus();};
 $('rulesEnabledToggle').onchange=e=>{state.ruleControl.enabled=e.target.checked;renderDrawingIntelligence();scheduleAutosave();};
 $('selectAllRulesCheckbox').onchange=e=>{for(const entry of toleranceEntries())state.ruleControl.active[ruleIdentity(entry.kind,entry.value)]=e.target.checked;renderDrawingIntelligence();scheduleAutosave();};
 $('enableAllRulesBtn').onclick=()=>{for(const entry of toleranceEntries())state.ruleControl.active[ruleIdentity(entry.kind,entry.value)]=true;state.ruleControl.enabled=true;renderDrawingIntelligence();scheduleAutosave();};

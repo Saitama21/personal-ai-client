@@ -41,13 +41,13 @@
         <button class="nav-item" data-view="settings"><span class="nav-icon" aria-hidden="true">⚙</span><span>Настройки</span></button>
       </nav>
       <div class="status-card glass-soft"><span class="status-dot" id="statusDot"></span><div><strong id="statusTitle">Проверка...</strong><small id="statusText">Соединение с сервером</small></div></div>
-      <div class="sidebar-footer creator-glass"><span class="creator-label">Создатель</span><strong>Єрошов Іван</strong><small>Версия 2.4.6 Network Fix</small></div>
+      <div class="sidebar-footer creator-glass"><span class="creator-label">Создатель</span><strong>Єрошов Іван</strong><small>Версия 2.4.8 Operations</small></div>
     </aside>
 
     <main>
       <section class="mobile-creator-strip glass" aria-label="Создатель и версия">
         <div class="mobile-creator-copy"><span>Создатель</span><strong>Єрошов Іван</strong></div>
-        <div class="mobile-version-badge">v2.4.6</div>
+        <div class="mobile-version-badge">v2.4.8</div>
       </section>
       <header class="topbar">
         <div><h1 id="pageTitle">Новый анализ</h1><p id="pageSubtitle">Загрузите изображение, PDF или SLDDRW и задайте вопрос</p></div>
@@ -111,7 +111,7 @@
               <div><span class="eyebrow">КОНТРОЛЬ ЧЕРТЕЖА</span><h3>Допуски, резьбы и фаски</h3></div>
               <div class="engineering-heading-actions">
                 <span id="drawingIntelBadge" class="badge">Ожидает анализа</span>
-                <button id="resetEngineeringFiltersBtn" class="small-button danger-lite">↻ Сбросить фильтры</button>
+                <button id="resetEngineeringFiltersBtn" class="small-button danger-lite engineering-reset-button" disabled>↻ Сбросить фильтры</button>
               </div>
             </div>
 
@@ -123,9 +123,10 @@
                 </div>
                 <div id="toleranceRulesBody" class="intel-section-body">
                   <div class="rule-toolbar">
-                    <label class="check-line"><input id="selectAllRulesCheckbox" type="checkbox" checked><span>Выбрать всё</span></label>
-                    <label class="switch-line"><input id="rulesEnabledToggle" type="checkbox" checked><span class="switch-ui"></span><span>Включить правила</span></label>
+                    <label class="check-line rule-select-all"><input id="selectAllRulesCheckbox" type="checkbox" checked><span></span><b>Выбрать всё</b></label>
+                    <label class="switch-line rules-master-switch"><input id="rulesEnabledToggle" type="checkbox" checked><span class="switch-ui"></span><span>Учитывать допуски</span></label>
                   </div>
+                  <label class="engineering-rule-search"><span>⌕</span><input id="engineeringRuleSearchInput" type="search" placeholder="Поиск: H14, IT14, ±0,1, Ra3.2…"><button id="clearEngineeringRuleSearch" type="button" aria-label="Очистить поиск">×</button></label>
                   <div id="toleranceList" class="intel-list rule-list"><span class="muted-text">После анализа здесь появятся размерные и геометрические допуски.</span></div>
                   <div class="rules-footnote">
                     <span>ⓘ Отключённые правила и допуски не учитываются в итоговом анализе.</span>
@@ -233,17 +234,73 @@
                   <label class="custom-choice-input"><span>Другая база</span><input id="zeroReferenceCustom" placeholder="Например: Z0 по бурту, X0 по отверстию" /></label>
                 </section>
 
-                <section class="checkbox-group-card">
-                  <div class="checkbox-group-title"><strong>Стороны и условия обработки</strong><small>Можно отметить несколько этапов установки</small></div>
-                  <div class="checkbox-choice-grid" id="firstSideChoices">
-                    <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Торец A" /><span class="choice-indicator"></span><span><strong>Торец A</strong><small>Начать обработку с первой стороны</small></span></label>
-                    <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Торец B" /><span class="choice-indicator"></span><span><strong>Торец B</strong><small>Обработка второй стороны</small></span></label>
-                    <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Обработка с двух сторон" /><span class="choice-indicator"></span><span><strong>Две стороны</strong><small>Предусмотрены обе установки</small></span></label>
-                    <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Требуется переворот заготовки" /><span class="choice-indicator"></span><span><strong>Переворот</strong><small>Межоперационная переустановка</small></span></label>
-                    <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Наружный контур" /><span class="choice-indicator"></span><span><strong>Наружный контур</strong><small>Наружные диаметры и торцы</small></span></label>
-                    <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Внутренний контур" /><span class="choice-indicator"></span><span><strong>Внутренний контур</strong><small>Расточка, отверстия и внутренняя резьба</small></span></label>
+                <section class="checkbox-group-card machining-conditions-card">
+                  <div class="checkbox-group-title"><strong>Установка и операции</strong><small>Отметь все действия, которые нужны для этой детали</small></div>
+
+                  <div class="operation-subgroup">
+                    <h4>Установка детали</h4>
+                    <div class="checkbox-choice-grid" id="firstSideChoices">
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Первая установка — торец A" /><span class="choice-indicator"></span><span><strong>Торец A</strong><small>Первая установка и начало обработки</small></span></label>
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Вторая установка — торец B" /><span class="choice-indicator"></span><span><strong>Торец B</strong><small>Обработка детали со второй стороны</small></span></label>
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Обработка с двух сторон" /><span class="choice-indicator"></span><span><strong>Две стороны</strong><small>В маршруте предусмотрены обе установки</small></span></label>
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Требуется переворот заготовки" /><span class="choice-indicator"></span><span><strong>Переворот</strong><small>Межоперационная переустановка детали</small></span></label>
+                    </div>
                   </div>
-                  <label class="custom-choice-input"><span>Другое условие</span><input id="firstSideCustom" placeholder="Например: отверстия уже выполнены лазером" /></label>
+
+                  <div class="operation-subgroup" data-operation-group="lathe">
+                    <h4>Токарные операции</h4>
+                    <div class="checkbox-choice-grid">
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Торцовка" /><span class="choice-indicator"></span><span><strong>Торцовка</strong><small>Обработка торца заготовки</small></span></label>
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Наружное точение" /><span class="choice-indicator"></span><span><strong>Наружное точение</strong><small>Наружные диаметры и уступы</small></span></label>
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Внутреннее точение" /><span class="choice-indicator"></span><span><strong>Внутреннее точение</strong><small>Расточка и внутренние диаметры</small></span></label>
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Наружная резьба" /><span class="choice-indicator"></span><span><strong>Наружная резьба</strong><small>Нарезание наружной резьбы</small></span></label>
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Внутренняя резьба" /><span class="choice-indicator"></span><span><strong>Внутренняя резьба</strong><small>Резьба в отверстии</small></span></label>
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Фаски" /><span class="choice-indicator"></span><span><strong>Фаски</strong><small>Снятие фасок и острых кромок</small></span></label>
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Канавки" /><span class="choice-indicator"></span><span><strong>Канавки</strong><small>Наружные или внутренние канавки</small></span></label>
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Отрезка" /><span class="choice-indicator"></span><span><strong>Отрезка</strong><small>Отделение детали от прутка</small></span></label>
+                    </div>
+                  </div>
+
+                  <div class="operation-subgroup" data-operation-group="mill">
+                    <h4>Фрезерные операции</h4>
+                    <div class="checkbox-choice-grid">
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Фрезерование лысок" /><span class="choice-indicator"></span><span><strong>Лыски</strong><small>Две или несколько плоскостей</small></span></label>
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Фрезерование карманов" /><span class="choice-indicator"></span><span><strong>Карманы</strong><small>Закрытые и открытые карманы</small></span></label>
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Фрезерование пазов" /><span class="choice-indicator"></span><span><strong>Пазы</strong><small>Продольные, поперечные и шпоночные пазы</small></span></label>
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Сверление" /><span class="choice-indicator"></span><span><strong>Сверление</strong><small>Осевые и радиальные отверстия</small></span></label>
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Развёртывание" /><span class="choice-indicator"></span><span><strong>Развёртывание</strong><small>Чистовая калибровка отверстий</small></span></label>
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Зенковка" /><span class="choice-indicator"></span><span><strong>Зенковка</strong><small>Фаски и посадочные места отверстий</small></span></label>
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Резьба приводным инструментом" /><span class="choice-indicator"></span><span><strong>Резьба</strong><small>Метчик или резьбофреза</small></span></label>
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Фрезерование контура" /><span class="choice-indicator"></span><span><strong>Контур</strong><small>Наружный или внутренний фрезерный контур</small></span></label>
+                    </div>
+                  </div>
+
+                  <div class="operation-subgroup">
+                    <h4>Оси и оснащение</h4>
+                    <div class="checkbox-choice-grid compact-choice-grid">
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Используется ось X" /><span class="choice-indicator"></span><span><strong>X</strong><small>Поперечная ось</small></span></label>
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Используется ось Z" /><span class="choice-indicator"></span><span><strong>Z</strong><small>Продольная ось</small></span></label>
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Используется ось C" /><span class="choice-indicator"></span><span><strong>C</strong><small>Позиционирование шпинделя</small></span></label>
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Используется ось Y" /><span class="choice-indicator"></span><span><strong>Y</strong><small>Смещение приводного инструмента</small></span></label>
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Используется приводной инструмент" /><span class="choice-indicator"></span><span><strong>Приводной инструмент</strong><small>Фреза, сверло или метчик в револьвере</small></span></label>
+                    </div>
+                  </div>
+
+                  <div class="operation-subgroup">
+                    <h4>Дополнительные условия</h4>
+                    <div class="checkbox-choice-grid">
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Обработка за один установ" /><span class="choice-indicator"></span><span><strong>Один установ</strong><small>Все операции без переворота</small></span></label>
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Есть припуск на обработку" /><span class="choice-indicator"></span><span><strong>Есть припуск</strong><small>Размеры заготовки больше готовой детали</small></span></label>
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Заготовка после лазерной резки" /><span class="choice-indicator"></span><span><strong>После лазера</strong><small>Контур или отверстия частично готовы</small></span></label>
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Заготовка после пилы" /><span class="choice-indicator"></span><span><strong>После пилы</strong><small>Отрезанный круг или профиль</small></span></label>
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Отверстия уже выполнены" /><span class="choice-indicator"></span><span><strong>Отверстия готовы</strong><small>Не включать повторное сверление</small></span></label>
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Требуется высокая чистота поверхности" /><span class="choice-indicator"></span><span><strong>Высокая чистота</strong><small>Нужен отдельный чистовой проход</small></span></label>
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Требуется соосность" /><span class="choice-indicator"></span><span><strong>Соосность</strong><small>Критичное взаимное положение диаметров</small></span></label>
+                      <label class="choice-card checkbox-choice"><input type="checkbox" data-side-value="Требуется симметрия" /><span class="choice-indicator"></span><span><strong>Симметрия</strong><small>Контроль противоположных элементов</small></span></label>
+                    </div>
+                  </div>
+
+                  <label class="custom-choice-input"><span>Комментарий к установке и операциям</span><input id="firstSideCustom" placeholder="Например: две лыски 13 мм, фрезеровать после точения" /></label>
                 </section>
               </div>
               <input id="zeroReference" type="hidden" />

@@ -2464,3 +2464,43 @@ html[data-theme="light"] .thread-profile-button.selected {
   .tolerance-manager-card .rule-list { grid-template-columns: 1fr; }
   .tolerance-manager-card .rules-footnote { align-items: flex-start; flex-direction: column; }
 }
+
+
+/* PRO 2.4.7 · Engineering control readability and compact responsive toolbar */
+.drawing-intelligence { scroll-margin-top: 18px; }
+.drawing-intelligence .engineering-heading { margin-bottom: 16px; }
+.drawing-intelligence .intel-card { padding-top: 18px; }
+.rule-toolbar { flex-wrap: nowrap; min-height: 58px; }
+.rule-select-all { flex: 0 0 auto; white-space: nowrap; padding: 8px 10px; border-radius: 12px; }
+.rule-select-all b { color: var(--text); font-size: 14px; font-weight: 760; white-space: nowrap; }
+.rules-master-switch { margin-left: auto; white-space: nowrap; }
+.engineering-rule-search { display:grid !important; grid-template-columns:auto minmax(0,1fr) 30px; align-items:center; gap:8px !important; min-height:44px; margin:0 0 11px; padding:0 10px 0 12px; border:1px solid var(--glass-border); border-radius:14px; background:var(--control-bg); }
+.engineering-rule-search > span { color:var(--muted); font-size:20px; }
+.engineering-rule-search input { min-width:0; border:0 !important; background:transparent !important; box-shadow:none !important; padding:9px 0 !important; }
+.engineering-rule-search button { width:28px; height:28px; border:0; border-radius:9px; background:transparent; color:var(--muted); font-size:20px; cursor:pointer; }
+.engineering-rule-search button:hover { color:var(--text); background:var(--accent-soft); }
+.engineering-reset-button { min-height:40px; padding:8px 13px; opacity:.86; }
+.engineering-reset-button:disabled { opacity:.38; cursor:not-allowed; filter:saturate(.35); }
+.engineering-reset-button:not(:disabled):hover { opacity:1; }
+#drawingIntelBadge { white-space:nowrap; }
+html[data-theme="light"] .engineering-rule-search { background:rgba(255,255,255,.62); }
+@media (max-width: 620px) {
+  .rule-toolbar { flex-wrap:wrap; }
+  .rules-master-switch { width:100%; margin-left:0; justify-content:space-between; padding-top:8px; border-top:1px solid var(--glass-border); }
+  .rule-select-all { padding-inline:4px; }
+  .engineering-heading-actions { display:grid; grid-template-columns:1fr; width:100%; }
+  .engineering-heading-actions > * { width:100%; text-align:center; }
+}
+
+/* PRO 2.4.8 — structured machining operations */
+.operation-subgroup { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line, rgba(180,220,255,.16)); }
+.operation-subgroup:first-of-type { margin-top: 12px; padding-top: 0; border-top: 0; }
+.operation-subgroup h4 { margin: 0 0 10px; font-size: .92rem; letter-spacing: .02em; color: var(--text, #f2f7ff); }
+.compact-choice-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.compact-choice-grid .choice-card { min-height: 84px; }
+@media (max-width: 640px) {
+  .operation-subgroup { margin-top: 14px; padding-top: 14px; }
+  .operation-subgroup h4 { font-size: 1rem; }
+  .compact-choice-grid { grid-template-columns: 1fr 1fr; }
+  .compact-choice-grid .choice-card:last-child { grid-column: 1 / -1; }
+}
