@@ -2150,3 +2150,91 @@ html[data-theme="light"] .sidebar .brand-emblem {
   .sidebar .rozfood-logo { font-size: 12px; letter-spacing: .018em; overflow: visible; }
   .sidebar .brand-mini-title { font-size: 5.4px; letter-spacing: .12em; }
 }
+
+/* PRO 2.4.2 — laptop/desktop ROZFOOD wordmark fit correction */
+@media (min-width: 701px) {
+  .sidebar .brand-logo-glass {
+    width: 100%;
+    min-width: 0;
+    padding: 10px 12px;
+    gap: 8px;
+    justify-content: flex-start;
+  }
+  .sidebar .brand-wordmark {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: visible;
+  }
+  .sidebar .rozfood-logo {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    font-size: clamp(20px, 1.55vw, 22px);
+    line-height: 1.04;
+    letter-spacing: .085em;
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
+  }
+  .sidebar .brand-mini-title {
+    margin-top: 4px;
+    font-size: 7px;
+    letter-spacing: .19em;
+  }
+}
+
+/* Typical notebook widths: the sidebar is 250 px, so the logo must be tighter. */
+@media (min-width: 1025px) and (max-width: 1280px) {
+  .sidebar { padding-inline: 16px; }
+  .sidebar .brand { padding-inline: 2px; }
+  .sidebar .brand-logo-glass {
+    min-height: 72px;
+    padding: 9px 10px;
+    gap: 7px;
+  }
+  .sidebar .brand-emblem {
+    width: 30px;
+    height: 30px;
+    flex-basis: 30px;
+    border-radius: 10px;
+    font-size: 17px;
+  }
+  .sidebar .rozfood-logo {
+    font-size: 21px;
+    letter-spacing: .075em;
+  }
+  .sidebar .brand-mini-title {
+    font-size: 7px;
+    letter-spacing: .16em;
+  }
+}
+
+/* Tablet horizontal bar: preserve the full wordmark without stealing navigation space. */
+@media (min-width: 701px) and (max-width: 1024px) {
+  .sidebar .brand-logo-glass {
+    width: auto;
+    min-height: 48px;
+    padding: 7px 9px;
+    gap: 6px;
+  }
+  .sidebar .brand-emblem {
+    width: 28px;
+    height: 28px;
+    flex-basis: 28px;
+    font-size: 15px;
+  }
+  .sidebar .rozfood-logo {
+    width: auto;
+    font-size: 17px;
+    letter-spacing: .09em;
+  }
+  .sidebar .brand-mini-title {
+    font-size: 6px;
+    letter-spacing: .15em;
+  }
+}
+

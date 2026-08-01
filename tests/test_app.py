@@ -238,7 +238,7 @@ def test_stock_removal_accepts_shopturn_tool_flow():
 
 def test_health_reports_shopturn_feature():
     body = client.get("/api/health").json()
-    assert body["version"] == "2.4.1-pro"
+    assert body["version"] == "2.4.2-pro"
     assert "shopturn_tool_flow" in body["features"]
 
 
