@@ -238,7 +238,7 @@ def test_stock_removal_accepts_shopturn_tool_flow():
 
 def test_health_reports_shopturn_feature():
     body = client.get("/api/health").json()
-    assert body["version"] == "2.3.5-pro"
+    assert body["version"] == "2.3.6-pro"
     assert "shopturn_tool_flow" in body["features"]
 
 
@@ -433,3 +433,41 @@ def test_health_reports_chat_image_features():
     body=client.get('/api/health').json()
     assert 'chat_image_upload' in body['features']
     assert 'chat_region_selection' in body['features']
+
+
+def test_chat_does_not_reuse_previous_response_file_chain(monkeypatch):
+    """A deleted upload in the original response must not break later chat turns."""
+    import sys
+    import types
+    from app import main as main_module
+
+    calls = []
+
+    class FakeResponse:
+        output_text = "Ответ без повторного использования временного file_id"
+        id = "resp_new"
+
+    class FakeResponses:
+        def create(self, **kwargs):
+            calls.append(kwargs)
+            assert "previous_response_id" not in kwargs
+            return FakeResponse()
+
+    class FakeClient:
+        def __init__(self, api_key):
+            self.responses = FakeResponses()
+
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setitem(sys.modules, "openai", types.SimpleNamespace(OpenAI=FakeClient))
+
+    text, response_id = main_module.chat_with_openai(
+        question="M8 1.25",
+        previous_response_id="resp_with_deleted_file",
+        context_text="Исходный анализ чертежа",
+        conversation=[{"role": "user", "content": "Уточнение"}],
+    )
+
+    assert "временного file_id" in text
+    assert response_id == "resp_new"
+    assert calls
+    assert calls[0]["input"][-1]["content"] == "M8 1.25"

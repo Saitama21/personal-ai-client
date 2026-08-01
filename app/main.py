@@ -432,7 +432,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="Personal AI Client", version="2.3.5-pro", lifespan=lifespan)
+app = FastAPI(title="Personal AI Client", version="2.3.6-pro", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -1059,19 +1059,21 @@ def chat_with_openai(
                 {"type": "input_text", "text": question},
                 {"type": "input_image", "image_url": image_data_url(image_raw, image_media_type), "detail": "high"},
             ]
-        if previous_response_id:
-            response = client.responses.create(
-                model=MODEL, instructions=chat_instructions,
-                previous_response_id=previous_response_id,
-                input=[{"role": "user", "content": user_content}],
-            )
-        else:
-            input_messages: list[dict[str, Any]] = []
-            if context_text.strip():
-                input_messages.append({"role": "assistant", "content": "Предыдущий ответ ассистента:\n" + context_text.strip()[:16000]})
-            input_messages.extend(conversation[-16:])
-            input_messages.append({"role": "user", "content": user_content})
-            response = client.responses.create(model=MODEL, instructions=chat_instructions, input=input_messages)
+        # Не продолжаем Responses API через previous_response_id. Исходный анализ может
+        # ссылаться на временный OpenAI file_id, который уже удалён после обработки. Тогда
+        # любой следующий текстовый вопрос падает с 404 "Files [...] were not found".
+        # Вместо серверной цепочки каждый запрос собирается из сохранённого текста диалога.
+        input_messages: list[dict[str, Any]] = []
+        if context_text.strip():
+            input_messages.append({
+                "role": "assistant",
+                "content": "Предыдущий ответ ассистента:\n" + context_text.strip()[:16000],
+            })
+        input_messages.extend(conversation[-16:])
+        input_messages.append({"role": "user", "content": user_content})
+        response = client.responses.create(
+            model=MODEL, instructions=chat_instructions, input=input_messages
+        )
         text = response.output_text.strip()
         if not text:
             raise HTTPException(status_code=502, detail="Модель вернула пустой ответ")
@@ -1252,7 +1254,7 @@ def health() -> dict[str, Any]:
         "api_key_configured": bool(os.getenv("OPENAI_API_KEY")),
         "max_file_mb": MAX_FILE_MB,
         "supported_types": ["JPG", "PNG", "WEBP", "PDF", "SLDDRW"],
-        "version": "2.3.5-pro",
+        "version": "2.3.6-pro",
         "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52pty_profile", "drawing_intelligence", "tolerance_detection", "metric_thread_catalog", "chamfer_marker", "multi_operation_route", "contour_mirroring", "history_project_restore", "mobile_history", "multi_operation_picker", "general_tolerance_h14_rule", "stock_mode_radio", "multi_checkbox_setup", "hybrid_turn_mill_mode", "chat_image_upload", "chat_region_selection"],
     }
 
@@ -1343,6 +1345,8 @@ def continue_chat(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
     if len(question) > 6000:
         raise HTTPException(status_code=413, detail="Сообщение слишком длинное")
 
+    # Принимается для обратной совместимости со старыми клиентами, но не используется
+    # для цепочки Responses API: временные file_id не должны попадать в новые запросы.
     previous_response_id_raw = str(payload.get("previous_response_id") or "").strip()
     previous_response_id = previous_response_id_raw[:200] or None
     context_text = str(payload.get("context_text") or "")[:20000]
