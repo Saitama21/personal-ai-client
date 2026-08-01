@@ -338,10 +338,8 @@ function syncFileUi() {
   $('stockFileBadge').textContent = state.file?.name || state.restoredFileName || 'Нет файла';
   $('currentFilePill').classList.toggle('restored-file', !state.file && !!state.restoredFileName);
   $('analyzeBtn').disabled = !(state.file && $('promptInput').value.trim().length >= 3);
-  const notesReady = $('stockNotes').value.trim().length >= 10;
-  $('stockBtn').disabled = !(state.file || notesReady);
-  $('aiContourBtn').disabled = !state.file;
-  $('stockBtn').title = state.file || notesReady ? '' : 'Загрузите чертёж или опишите деталь минимум 10 символами';
+  const notesReady = ($('stockNotes')?.value || '').trim().length >= 10;
+  $('stockBtn').disabled = !(state.file || notesReady); $('aiContourBtn').disabled = !state.file;
 }
 function updateProjectUi() { $('activeProjectName').textContent = state.currentProjectName; $('projectNameInput').value = state.currentProjectName === 'Локальный черновик' ? '' : state.currentProjectName; }
 
@@ -349,7 +347,6 @@ function updateProjectUi() { $('activeProjectName').textContent = state.currentP
 ['dragleave','drop'].forEach(t => dropZone.addEventListener(t,e => { e.preventDefault(); dropZone.classList.remove('dragover'); }));
 dropZone.ondrop = e => handleFile(e.dataTransfer.files[0]); fileInput.onchange = () => handleFile(fileInput.files[0]);
 $('promptInput').oninput = syncFileUi;
-$('stockNotes').addEventListener('input',()=>{clearStockValidation();syncFileUi();});
 document.querySelectorAll('.quick-prompts button').forEach(b => b.onclick = () => { $('promptInput').value = b.dataset.prompt; syncFileUi(); });
 
 async function handleFile(file) {
@@ -404,29 +401,16 @@ document.querySelectorAll('[data-zero-value], [data-side-value]').forEach(input 
 syncStockModeUi();
 syncStockOptionValues();
 
-function showStockValidation(message){
-  const box=$('stockValidation');box.textContent=message;box.classList.remove('hidden');
-  $('stockNotesField').classList.add('field-invalid');
-  box.scrollIntoView({behavior:'smooth',block:'center'});
-}
-function clearStockValidation(){
-  $('stockValidation').classList.add('hidden');$('stockValidation').textContent='';$('stockNotesField').classList.remove('field-invalid');
-}
-function validateStockPlanInput(){
-  const notes=$('stockNotes').value.trim();
-  if(!state.file && notes.length<10){showStockValidation('Загрузите фото/PDF/SLDDRW или подробно опишите деталь в поле «Примечания» — минимум 10 символов.');return false;}
-  if(state.stockMode==='lathe' && (!$('blankDiameter').value.trim() || !$('blankLength').value.trim())){
-    showStockValidation('Для токарного плана укажите диаметр и длину фактической заготовки.');return false;
-  }
-  if(state.stockMode==='mill' && (!$('blankWidth').value.trim() || !$('blankHeight').value.trim() || !$('blankLengthMill').value.trim())){
-    showStockValidation('Для фрезерного плана укажите ширину, высоту и длину заготовки.');return false;
-  }
-  clearStockValidation();return true;
-}
 $('stockBtn').onclick = async () => {
-  if(!validateStockPlanInput())return;
-  const button=$('stockBtn');button.disabled=true;$('stockProgress').classList.remove('hidden');const f=new FormData();
-  if(state.file)f.append('file',state.file);
+  const notes = $('stockNotes').value.trim();
+  if(!state.file && notes.length < 10){
+    $('stockNotes').classList.add('field-error');
+    toast('Загрузите чертёж или подробно опишите деталь минимум 10 символами');
+    return;
+  }
+  $('stockNotes').classList.remove('field-error');
+  $('stockBtn').disabled=true;$('stockProgress').classList.remove('hidden');const f=new FormData();
+  if(state.file) f.append('file',state.file);
   f.append('stock_mode',state.stockMode);
   if(state.stockMode==='lathe'){
     f.append('blank_diameter',$('blankDiameter').value);f.append('blank_length',$('blankLength').value);
@@ -436,13 +420,8 @@ $('stockBtn').onclick = async () => {
     f.append('blank_diameter',$('blankDiameter').value);f.append('blank_length',$('blankLength').value);
     f.append('blank_width',$('blankWidth').value);f.append('blank_height',$('blankHeight').value);f.append('blank_mill_length',$('blankLengthMill').value);
   }
-  syncStockOptionValues();f.append('zero_reference',$('zeroReference').value);f.append('first_side',$('firstSide').value);f.append('notes',$('stockNotes').value.trim());f.append('shopturn_json',JSON.stringify(collectShopTurnPayload()));f.append('project_json',JSON.stringify(collectProjectData()));
-  try{
-    const d=await apiRequest('/api/stock-removal',{method:'POST',body:f},{timeoutMs:180000,retries:1});
-    $('stockResultEmpty').classList.add('hidden');$('stockResultContent').classList.remove('hidden');$('stockResultContent').innerHTML=renderText(d.response);
-    const source=d.source_mode==='text'?'по описанию':'по чертежу';$('stockResultMeta').textContent=`${d.model}${d.mock?' · MOCK':''} · ${source} · #${d.id}`;
-    startChat('stock',d);toast(`План сформирован ${source}`);
-  }catch(e){showStockValidation(e.message);toast(e.message);}finally{$('stockProgress').classList.add('hidden');syncFileUi();}
+  syncStockOptionValues(); f.append('zero_reference',$('zeroReference').value);f.append('first_side',$('firstSide').value);f.append('notes',$('stockNotes').value);f.append('shopturn_json',JSON.stringify(collectShopTurnPayload()));f.append('project_json',JSON.stringify(collectProjectData()));
+  try{const r=await fetch('/api/stock-removal',{method:'POST',body:f});const d=await r.json();if(!r.ok)throw new Error(d.detail||'Ошибка');$('stockResultEmpty').classList.add('hidden');$('stockResultContent').classList.remove('hidden');$('stockResultContent').innerHTML=renderText(d.response);$('stockResultMeta').textContent=`${d.model}${d.mock?' · MOCK':''} · ${d.source==='description'?'по описанию':'по чертежу'} · #${d.id}`;startChat('stock',d);toast('План сформирован');}catch(e){toast(e.message);}finally{$('stockProgress').classList.add('hidden');syncFileUi();}
 };
 $('aiContourBtn').onclick = async () => {
   if(!state.file)return; $('stockProgress').classList.remove('hidden');$('aiContourBtn').disabled=true;const f=new FormData();f.append('file',state.file);f.append('blank_diameter',$('blankDiameter').value);f.append('blank_length',$('blankLength').value);f.append('notes',$('stockNotes').value);
@@ -959,7 +938,16 @@ function buildShopTurnSteps(){const d=collectShopTurnData(),op=SHOP_OPERATIONS[d
 ];}
 function renderShopTurn(){if(!$('shopOperationSelect'))return;const d=collectShopTurnData(),op=SHOP_OPERATIONS[d.operation]||{label:'Операция не выбрана',machining:'',position:''};$('screenT').textContent=d.toolT||'—';$('screenD').textContent=d.toolD||'—';$('screenF').textContent=d.feed||'—';$('screenS').textContent=d.speed||'—';$('screenMachining').textContent=d.machining||op.machining;$('screenPosition').textContent=d.position||op.position;$('screenX0').textContent=d.x0||'—';$('screenZ0').textContent=d.z0||'—';$('screenX1').textContent=`${d.x1||'—'}${d.incrementMode==='incremental'?' inc':''}`;$('screenZ1').textContent=`${d.z1||'—'}${d.incrementMode==='incremental'?' inc':''}`;$('screenFS').textContent=`${d.fs1||'0'} / ${d.fs2||'0'} / ${d.fs3||'0'}`;$('screenDepth').textContent=d.depth||'—';$('screenAllowance').textContent=`${d.ux||'0'} / ${d.uz||'0'}`;$('consoleProgramName').textContent=op.machining==='Contour'?'Stock removal · New contour':op.label;$('consolePath').textContent=`NC/WKS → Program → ${op.label}`;$('toolSummaryCard').innerHTML=`<div><strong>T${escapeHtml(d.toolT||'?')} D${escapeHtml(d.toolD||'?')}</strong> · ${escapeHtml(d.toolName||'Инструмент не выбран')}</div><div>${escapeHtml(d.holder||'—')} · ${escapeHtml(d.insert||'—')} · R${escapeHtml(d.noseRadius||'—')}</div><div>S ${escapeHtml(d.speed||'—')} · F ${escapeHtml(d.feed||'—')} · D ${escapeHtml(d.depth||'—')} · СОЖ ${d.coolant?'ON':'OFF'}</div>`;const ready=!!(d.toolT&&d.toolD&&d.toolName&&d.speed&&d.feed&&d.x0&&d.z0&&d.x1&&d.z1);$('shopturnReadyBadge').textContent=ready?'Готово к проверке':'Заполни обязательные поля';$('shopturnReadyBadge').className=`badge ${ready?'badge-ready':'badge-missing'}`;renderShopTurnWizard();}
 function renderShopTurnWizard(){const steps=buildShopTurnSteps();state.shopturn.wizardStep=Math.max(0,Math.min(state.shopturn.wizardStep,steps.length-1));const step=steps[state.shopturn.wizardStep];$('wizardTitle').textContent=step.title;$('wizardCounter').textContent=`Шаг ${state.shopturn.wizardStep+1} из ${steps.length}`;$('wizardProgressBar').style.width=`${((state.shopturn.wizardStep+1)/steps.length)*100}%`;$('wizardBreadcrumb').innerHTML=step.path.map(x=>`<span>${escapeHtml(x)}</span>`).join('<span>→</span>');$('wizardInstruction').innerHTML=step.instruction;$('wizardValues').innerHTML=step.values.map(([k,v])=>`<div class="wizard-value"><span>${escapeHtml(k)}</span><strong>${escapeHtml(v)}</strong></div>`).join('');$('wizardPrevBtn').disabled=state.shopturn.wizardStep===0;$('wizardNextBtn').textContent=state.shopturn.wizardStep===steps.length-1?'Готово ✓':'Далее →';$('wizardAllSteps').innerHTML=steps.map((s,i)=>`<div class="wizard-step-item ${i===state.shopturn.wizardStep?'active':''} ${i<state.shopturn.wizardStep?'done':''}" data-step="${i}"><i>${i<state.shopturn.wizardStep?'✓':i+1}</i><span>${escapeHtml(s.title)}</span></div>`).join('');document.querySelectorAll('.console-row').forEach(r=>r.classList.remove('active-field'));if(step.field){const fieldMap={tool:null,speed:null,machining:'machining',x0:'x0',x1:'x1',fs:'fs',allowance:'allowance'};const f=fieldMap[step.field];if(f)document.querySelector(`[data-shop-field="${f}"]`)?.classList.add('active-field');}document.querySelectorAll('.wizard-step-item').forEach(x=>x.onclick=()=>{state.shopturn.wizardStep=Number(x.dataset.step);renderShopTurnWizard();scheduleAutosave();});}
-function initShopTurn(){populateToolPresets('face');applyToolPreset('face',true);autoFillCycleFromContour(false);SHOP_INPUT_IDS.forEach(id=>$(id)?.addEventListener('input',()=>{renderShopTurn();scheduleAutosave();}));$('shopOperationSelect').addEventListener('change',()=>{applyOperationDefaults(true);renderShopTurn();scheduleAutosave();});$('toolPresetSelect').addEventListener('change',()=>applyToolPreset($('toolPresetSelect').value,true));$('applyToolPresetBtn').onclick=()=>applyToolPreset($('toolPresetSelect').value,true);$('autoFillShopturnBtn').onclick=()=>autoFillCycleFromContour(true);$('saveCustomToolBtn').onclick=()=>{const d=collectShopTurnData();if(!d.toolName)return toast('Введи название инструмента');const custom=customToolPresets();custom.push({...d,label:`T${d.toolT} · ${d.toolName}`,operation:d.operation});localStorage.setItem('personal-ai-custom-tools',JSON.stringify(custom));populateToolPresets(`custom:${custom.length-1}`);toast('Инструмент сохранён в локальную библиотеку');};$('wizardPrevBtn').onclick=()=>{state.shopturn.wizardStep=Math.max(0,state.shopturn.wizardStep-1);renderShopTurnWizard();};$('wizardNextBtn').onclick=()=>{const max=buildShopTurnSteps().length-1;if(state.shopturn.wizardStep<max)state.shopturn.wizardStep++;else toast('Мастер ввода завершён. Выполни Graphic view и симуляцию.');renderShopTurnWizard();scheduleAutosave();};$('consoleAcceptBtn').onclick=()=>$('wizardNextBtn').click();document.querySelectorAll('[data-console-step]').forEach(btn=>btn.onclick=()=>{state.shopturn.wizardStep=Math.max(0,Math.min(Number(btn.dataset.consoleStep)||0,buildShopTurnSteps().length-1));document.querySelectorAll('[data-console-step]').forEach(x=>x.classList.toggle('active',x===btn));renderShopTurnWizard();scheduleAutosave();toast(`Открыт шаг: ${buildShopTurnSteps()[state.shopturn.wizardStep].title}`);});$('wizardCopyBtn').onclick=async()=>{const s=buildShopTurnSteps()[state.shopturn.wizardStep];const txt=`${s.title}\n${s.path.join(' → ')}\n${s.values.map(([k,v])=>`${k}: ${v}`).join('\n')}\n${s.instruction.replace(/<[^>]*>/g,'')}`;try{await navigator.clipboard.writeText(txt);toast('Данные шага скопированы');}catch{toast('Не удалось скопировать');}};renderShopTurn();}
+function applyMachineProfile(profile, showToast=true){
+  if(profile!=='tengyue_ck52pty') return;
+  const wanted=['Используется ось X','Используется ось Z','Используется ось C','Используется ось Y','Используется приводной инструмент'];
+  document.querySelectorAll('[data-side-value]').forEach(input=>{if(wanted.includes(input.dataset.sideValue))input.checked=true;});
+  $('toolDrivenToggle').checked=true;
+  syncStockOptionValues();
+  if(showToast) toast('Профиль CK52PT-Y: оси X/Z/C/Y, револьвер T1–T15 и приводной инструмент применены');
+}
+
+function initShopTurn(){populateToolPresets('face');applyToolPreset('face',true);autoFillCycleFromContour(false);SHOP_INPUT_IDS.forEach(id=>$(id)?.addEventListener('input',()=>{renderShopTurn();scheduleAutosave();}));$('machineProfileSelect').addEventListener('change',()=>{applyMachineProfile($('machineProfileSelect').value,true);renderShopTurn();scheduleAutosave();});$('shopOperationSelect').addEventListener('change',()=>{applyOperationDefaults(true);renderShopTurn();scheduleAutosave();});$('toolPresetSelect').addEventListener('change',()=>applyToolPreset($('toolPresetSelect').value,true));$('applyToolPresetBtn').onclick=()=>applyToolPreset($('toolPresetSelect').value,true);$('autoFillShopturnBtn').onclick=()=>autoFillCycleFromContour(true);$('saveCustomToolBtn').onclick=()=>{const d=collectShopTurnData();if(!d.toolName)return toast('Введи название инструмента');const custom=customToolPresets();custom.push({...d,label:`T${d.toolT} · ${d.toolName}`,operation:d.operation});localStorage.setItem('personal-ai-custom-tools',JSON.stringify(custom));populateToolPresets(`custom:${custom.length-1}`);toast('Инструмент сохранён в локальную библиотеку');};$('wizardPrevBtn').onclick=()=>{state.shopturn.wizardStep=Math.max(0,state.shopturn.wizardStep-1);renderShopTurnWizard();};$('wizardNextBtn').onclick=()=>{const max=buildShopTurnSteps().length-1;if(state.shopturn.wizardStep<max)state.shopturn.wizardStep++;else toast('Мастер ввода завершён. Выполни Graphic view и симуляцию.');renderShopTurnWizard();scheduleAutosave();};$('consoleAcceptBtn').onclick=()=>$('wizardNextBtn').click();document.querySelectorAll('[data-console-step]').forEach(btn=>btn.onclick=()=>{state.shopturn.wizardStep=Math.max(0,Math.min(Number(btn.dataset.consoleStep)||0,buildShopTurnSteps().length-1));document.querySelectorAll('[data-console-step]').forEach(x=>x.classList.toggle('active',x===btn));renderShopTurnWizard();scheduleAutosave();toast(`Открыт шаг: ${buildShopTurnSteps()[state.shopturn.wizardStep].title}`);});$('wizardCopyBtn').onclick=async()=>{const s=buildShopTurnSteps()[state.shopturn.wizardStep];const txt=`${s.title}\n${s.path.join(' → ')}\n${s.values.map(([k,v])=>`${k}: ${v}`).join('\n')}\n${s.instruction.replace(/<[^>]*>/g,'')}`;try{await navigator.clipboard.writeText(txt);toast('Данные шага скопированы');}catch{toast('Не удалось скопировать');}};renderShopTurn();}
 
 async function fetchHistoryDetail(id){const r=await fetch(`/api/history/${id}`);const d=await r.json();if(!r.ok)throw new Error(d.detail||'Не удалось открыть запись');return d;}
 function showHistoryResult(item){const isStock=String(item.prompt||'').startsWith('Stock Removal |');if(isStock){setView('stock');$('stockResultEmpty').classList.add('hidden');$('stockResultContent').classList.remove('hidden');$('stockResultContent').innerHTML=renderText(item.response||'');$('stockResultMeta').textContent=`${item.model}${item.mock?' · MOCK':''} · #${item.id}`;startChat('stock',{id:item.id,response:item.response,response_id:item.openai_response_id,model:item.model,mock:item.mock,loadHistory:true});}else{setView('analysis');$('promptInput').value=item.prompt||'';$('resultEmpty').classList.add('hidden');$('resultContent').classList.remove('hidden');$('resultContent').innerHTML=renderText(item.response||'');$('resultMeta').textContent=`${item.model}${item.mock?' · MOCK':''} · #${item.id}`;startChat('analysis',{id:item.id,response:item.response,response_id:item.openai_response_id,model:item.model,mock:item.mock,loadHistory:true});}}
@@ -974,3 +962,32 @@ document.addEventListener('keydown',e=>{const tag=document.activeElement?.tagNam
 window.addEventListener('resize',()=>{updateDeviceModeLabel();if(state.image){resizeImageCanvas();drawImageCanvas();}renderEditor();renderChamferEditor();});
 
 initThemeControls();updateDeviceModeLabel();initShopTurn();initOperationMultiPicker();loadHealth();loadThreadCatalog();loadLocalDraft();updateProjectUi();syncFileUi();if($('threadSearchInput'))$('threadSearchInput').value=state.threadLibraryUi.search||'';renderDrawingIntelligence();renderThreadLibrary();renderProjectThreads();renderChamferEditor();renderOperationRoute();renderEditor();renderShopTurn();
+
+// v2.6.0 — data bridge for the physical 3D Stock Removal engine.
+window.CNC3D_getData = function CNC3D_getData() {
+  const selectedOperations = [...document.querySelectorAll('[data-side-value]:checked')]
+    .map(el => el.dataset.sideValue)
+    .filter(value => /торц|точен|резьб|фаск|канав|отрез|фрез|сверл|разв|зенков/i.test(value || ''))
+    .map((name, index) => ({ id: `selected-${index}`, name, enabled: true }));
+  const routeOperations = (Array.isArray(state.operationRoute) ? state.operationRoute : []).map((item, index) => ({
+    id: item.id || `route-${index}`,
+    name: item.name || item.operationName || item.operation || item.type || item.kind || `Операция ${index + 1}`,
+    enabled: item.enabled !== false,
+    tool: item.tool || item.toolName || '',
+    feed: item.feed || item.f || null,
+    speed: item.speed || item.rpm || item.vc || null,
+  }));
+  return {
+    blankDiameter: document.getElementById('blankDiameter')?.value,
+    blankLength: document.getElementById('blankLength')?.value,
+    blankWidth: document.getElementById('blankWidth')?.value,
+    blankHeight: document.getElementById('blankHeight')?.value,
+    contourPoints: Array.isArray(state.contourPoints) ? state.contourPoints.map(p => ({...p})) : [],
+    xMode: state.xMode,
+    process: state.process,
+    stockMode: state.stockMode,
+    operations: routeOperations.length ? routeOperations : selectedOperations,
+    notes: document.getElementById('stockNotes')?.value || '',
+    material: /aisi\s*304|нержав/i.test(document.getElementById('stockNotes')?.value || '') ? 'AISI 304' : 'Материал детали',
+  };
+};

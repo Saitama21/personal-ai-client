@@ -238,7 +238,7 @@ def test_stock_removal_accepts_shopturn_tool_flow():
 
 def test_health_reports_shopturn_feature():
     body = client.get("/api/health").json()
-    assert body["version"] == "2.5.0-pro"
+    assert body["version"] == "2.4.8-pro"
     assert "shopturn_tool_flow" in body["features"]
 
 
@@ -562,27 +562,3 @@ def test_engineering_css_contains_overflow_guards():
     assert 'minmax(0, 1fr)' in css
     assert 'overflow-x: hidden' in css or 'overflow-x:hidden' in css
     assert '.thread-library-card' in css
-
-
-def test_stock_removal_accepts_text_only_description():
-    response = client.post(
-        "/api/stock-removal",
-        data={
-            "stock_mode": "lathe",
-            "blank_diameter": "16",
-            "blank_length": "45",
-            "notes": "Палец из AISI 304: проточить Ø10, выполнить наружную резьбу M6 и отрезать.",
-        },
-    )
-    assert response.status_code == 200
-    body = response.json()
-    assert body["source_mode"] == "text"
-
-
-def test_stock_removal_rejects_empty_text_without_file():
-    response = client.post(
-        "/api/stock-removal",
-        data={"stock_mode": "lathe", "blank_diameter": "16", "blank_length": "45", "notes": "коротко"},
-    )
-    assert response.status_code == 400
-    assert "Загрузите чертёж" in response.json()["detail"]

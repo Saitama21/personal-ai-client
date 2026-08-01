@@ -41,13 +41,13 @@
         <button class="nav-item" data-view="settings"><span class="nav-icon" aria-hidden="true">⚙</span><span>Настройки</span></button>
       </nav>
       <div class="status-card glass-soft"><span class="status-dot" id="statusDot"></span><div><strong id="statusTitle">Проверка...</strong><small id="statusText">Соединение с сервером</small></div></div>
-      <div class="sidebar-footer creator-glass"><span class="creator-label">Создатель</span><strong>Єрошов Іван</strong><small>Версия 2.5.0 Smart Process</small></div>
+      <div class="sidebar-footer creator-glass"><span class="creator-label">Создатель</span><strong>Єрошов Іван</strong><small>Версия 2.4.8 Operations</small></div>
     </aside>
 
     <main>
       <section class="mobile-creator-strip glass" aria-label="Создатель и версия">
         <div class="mobile-creator-copy"><span>Создатель</span><strong>Єрошов Іван</strong></div>
-        <div class="mobile-version-badge">v2.5.0</div>
+        <div class="mobile-version-badge">v2.6.0</div>
       </section>
       <header class="topbar">
         <div><h1 id="pageTitle">Новый анализ</h1><p id="pageSubtitle">Загрузите изображение, PDF или SLDDRW и задайте вопрос</p></div>
@@ -307,9 +307,8 @@
               <input id="firstSide" type="hidden" />
             </fieldset>
 
-            <div class="form-grid form-grid-wide"><label id="stockNotesField" class="full"><span>Примечания</span><textarea id="stockNotes" placeholder="Опишите деталь, размеры, резьбы и требуемые операции. Без файла — минимум 10 символов."></textarea><small class="field-help">Можно загрузить фото/PDF или сформировать предварительный план только по описанию.</small></label></div>
-            <div id="stockValidation" class="form-validation hidden" role="alert"></div>
-            <div class="button-row action-button-layer"><button id="stockBtn" class="primary-button" type="button">Сформировать план</button><button id="aiContourBtn" class="secondary-button" type="button" disabled>AI-контур X/Z</button></div>
+            <div class="form-grid form-grid-wide"><label class="full"><span>Примечания</span><textarea id="stockNotes" placeholder="Отверстия уже есть, обработка наружного контура..."></textarea></label></div>
+            <div class="button-row"><button id="stockBtn" class="primary-button" disabled>Сформировать план</button><button id="aiContourBtn" class="secondary-button" disabled>AI-контур X/Z</button></div>
             <div id="stockProgress" class="progress hidden"><span></span><p>Строю план и контур...</p></div>
           </section>
           <section class="panel glass stock-side-panel">
@@ -465,6 +464,41 @@
           </div>
         </section>
 
+
+        <section class="panel glass physics-sim-panel" id="physicsSimulationPanel">
+          <div class="panel-heading">
+            <div><span class="eyebrow">PHYSICAL 3D</span><h2>Физическая 3D-симуляция съёма металла</h2></div>
+            <div class="sim-status"><span class="badge" id="simEngineBadge">WebGL</span><span class="badge" id="simStatusBadge">Готова</span></div>
+          </div>
+          <div class="sim-layout">
+            <div class="sim-viewport-wrap glass-soft">
+              <div id="stock3dViewport" class="stock3d-viewport" aria-label="Трёхмерная симуляция обработки"></div>
+              <div class="sim-overlay-top"><span id="simOperationLabel">Операция не выбрана</span><span id="simRemovedLabel">Снято: 0 мм³</span></div>
+              <div class="sim-axis-legend"><span><i class="axis-x"></i>X</span><span><i class="axis-z"></i>Z</span><span><i class="axis-y"></i>Y</span></div>
+              <div id="simFallback" class="sim-fallback hidden">WebGL недоступен. Откройте клиент в актуальном Safari или Chrome.</div>
+            </div>
+            <aside class="sim-control-panel glass-soft">
+              <div class="mini-heading">Управление симуляцией</div>
+              <div class="sim-actions">
+                <button id="simBuildBtn" class="secondary-button">⟳ Построить модель</button>
+                <button id="simPlayBtn" class="primary-button">▶ Пуск</button>
+                <button id="simPauseBtn" class="small-button">Ⅱ Пауза</button>
+                <button id="simResetBtn" class="small-button">↺ Сброс</button>
+              </div>
+              <label class="sim-range-label"><span>Ход обработки</span><output id="simProgressValue">0%</output><input id="simProgressRange" type="range" min="0" max="1000" value="0" /></label>
+              <label class="sim-range-label"><span>Скорость</span><output id="simSpeedValue">1×</output><input id="simSpeedRange" type="range" min="0.25" max="4" step="0.25" value="1" /></label>
+              <div class="sim-step-actions"><button id="simPrevStepBtn" class="small-button">← Предыдущая</button><button id="simNextStepBtn" class="small-button">Следующая →</button></div>
+              <div class="sim-metrics" id="simMetrics">
+                <div><span>Заготовка</span><strong id="simBlankMetric">—</strong></div>
+                <div><span>Операций</span><strong id="simOpsMetric">0</strong></div>
+                <div><span>Объём снятия</span><strong id="simVolumeMetric">0 мм³</strong></div>
+                <div><span>Оценка времени</span><strong id="simTimeMetric">—</strong></div>
+              </div>
+              <div class="sim-warning">Модель учитывает геометрию заготовки, контур X/Z, последовательность операций и движение инструмента. Силы резания, вибрации и нагрев требуют отдельной CAM/FEA-модели.</div>
+            </aside>
+          </div>
+        </section>
+
         <section class="panel contour-panel glass">
           <div class="panel-heading"><div><span class="eyebrow">PRO EDITOR</span><h2>Редактор контура X/Z</h2></div><div class="editor-state"><span id="autosaveState">Автосохранение включено</span><span class="badge" id="validationBadge">Не проверен</span></div></div>
 
@@ -536,6 +570,8 @@
 
   <div id="pointModal" class="modal hidden"><div class="modal-backdrop" data-close-modal></div><div class="modal-card glass"><div class="modal-head"><h2 id="pointModalTitle">Точка контура</h2><button data-close-modal>×</button></div><div class="modal-grid"><label>X, мм<input id="pointXInput" inputmode="decimal" /></label><label>Z, мм<input id="pointZInput" inputmode="decimal" /></label><label>Тип<select id="pointTypeSelect"><option value="lineX">Прямая по X</option><option value="lineZ">Прямая по Z</option><option value="arcCW">Дуга CW</option><option value="arcCCW">Дуга CCW</option><option value="chamfer">Фаска</option></select></label><label>R / угол<input id="pointRvInput" placeholder="R5 или 2×45°" /></label><label>Направление<input id="pointDirectionInput" placeholder="по X / по Z / CW" /></label><label>Вставить после<select id="pointInsertSelect"></select></label></div><div class="modal-actions"><button data-close-modal>Отмена</button><button id="savePointModalBtn" class="primary-button">Сохранить</button></div></div></div>
   <div id="toast" class="toast"></div>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.min.js"></script>
   <script src="/static/app.js"></script>
+  <script src="/static/simulation3d.js"></script>
 </body>
 </html>
