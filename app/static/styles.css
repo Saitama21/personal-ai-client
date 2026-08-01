@@ -2602,7 +2602,7 @@ button, .primary-button, .secondary-button { position: relative; pointer-events:
 
 /* v2.7.3 Tablet Detection Fix — iPad Pro 10.5 */
 .tablet-workflow-shell{display:none}
-@media (min-width: 768px) and (max-width: 1180px) and (orientation: landscape){
+@media (min-width: 700px) and (max-width: 1400px) and (orientation: landscape){
   body.tablet-edition{--tablet-rail:136px;--tablet-inspector:244px;--tablet-bottom:70px}
   body.tablet-edition .app-shell{grid-template-columns:78px minmax(0,1fr);padding:10px;gap:10px;min-height:100vh}
   body.tablet-edition .sidebar{position:fixed!important;left:10px;top:10px;bottom:10px;width:78px;height:auto!important;z-index:120;padding:9px 7px;overflow:hidden}
@@ -2635,13 +2635,22 @@ button, .primary-button, .secondary-button { position: relative; pointer-events:
   body.tablet-edition .panel{border-radius:22px}
   body.tablet-edition .topbar-actions{gap:7px}.project-pill,.file-indicator{max-width:170px}
 }
-@media (min-width: 768px) and (max-width: 1180px) and (orientation: portrait){
-  body.tablet-edition .tablet-workflow-shell{display:none}
+@media (min-width: 700px) and (max-width: 1400px) and (orientation: portrait){
+  body.tablet-edition{--tablet-inspector:0px;--tablet-rail:0px;}
+  body.tablet-edition .tablet-workflow-shell{display:block;}
+  body.tablet-edition .tablet-step-rail{position:sticky;left:auto;top:6px;bottom:auto;width:auto;display:grid;grid-template-columns:auto repeat(9,minmax(42px,1fr));gap:4px;margin-bottom:8px;padding:6px;overflow-x:auto;}
+  body.tablet-edition .tablet-step{min-width:48px;display:flex;flex-direction:column;text-align:center;padding:5px 2px;}
+  body.tablet-edition .tablet-step span{font-size:8px;}
+  body.tablet-edition .tablet-inspector{position:fixed;right:8px;top:92px;bottom:76px;width:220px;transform:translateX(205px);transition:transform .2s ease;}
+  body.tablet-edition:not(.tablet-inspector-collapsed) .tablet-inspector{transform:translateX(0);}
+  body.tablet-edition main{margin-left:78px!important;padding:0 8px 78px 8px!important;}
+  body.tablet-edition .tablet-bottom-bar{left:98px;right:8px;bottom:8px;}
+  body.tablet-edition .view{padding-right:0!important;}
 }
 
-/* v2.7.3 Tablet analysis cards */
+/* v2.7.4 Tablet analysis cards */
 .tablet-analysis-summary{display:none}
-@media (min-width:768px) and (max-width:1100px){
+@media (min-width:700px) and (max-width:1400px){
   body.tablet-edition .result-panel.has-tablet-summary #resultContent{display:none!important}
   body.tablet-edition .tablet-analysis-summary{display:block;margin-top:6px}
   .tablet-analysis-stage{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px}
@@ -2664,8 +2673,8 @@ button, .primary-button, .secondary-button { position: relative; pointer-events:
   .tablet-analysis-details summary{padding:12px 14px;cursor:pointer;font-weight:700}.tablet-analysis-full-text{padding:0 14px 14px;line-height:1.6;color:var(--muted-strong);max-height:360px;overflow:auto}
 }
 
-/* v2.7.3 Tablet UX — iPad Pro 10.5 landscape */
-@media (min-width:768px) and (max-width:1100px) and (orientation:landscape){
+/* v2.7.4 Tablet UX — iPad Pro 10.5 landscape */
+@media (min-width:700px) and (max-width:1400px) and (orientation:landscape){
   body.tablet-edition{--tablet-side:202px;--tablet-inspector:210px;--tablet-gap:10px;}
   body.tablet-edition .app-shell{grid-template-columns:var(--tablet-side) minmax(0,1fr);gap:10px;padding:10px;}
   body.tablet-edition main{padding-bottom:82px;min-width:0;}
@@ -2731,4 +2740,27 @@ button, .primary-button, .secondary-button { position: relative; pointer-events:
   /* Persistent bottom navigation */
   body.tablet-edition .tablet-bottom-bar{display:grid;grid-template-columns:1fr 1fr 1.35fr;gap:8px;position:fixed;left:calc(var(--tablet-side) + 20px);right:calc(var(--tablet-inspector) + 20px);bottom:8px;z-index:60;padding:8px;border-radius:18px;}
   body.tablet-edition .tablet-bottom-bar button{min-height:46px;}
+}
+
+
+/* v2.7.5 Explicit device layouts — iPad is selected by JS, not viewport width */
+html.layout-tablet body.tablet-edition .mobile-creator-strip{display:none!important;}
+html.layout-tablet body.tablet-edition .tablet-workflow-shell{display:block!important;}
+html.layout-tablet body.tablet-edition .sidebar{display:flex!important;}
+html.layout-tablet body.tablet-edition .mobile-bottom-nav{display:none!important;}
+html.layout-tablet body.tablet-edition .app-shell{display:grid!important;}
+html.layout-tablet body.tablet-edition main{min-width:0!important;}
+html.layout-phone body .tablet-workflow-shell{display:none!important;}
+html.layout-desktop body .tablet-workflow-shell{display:none!important;}
+
+@media (orientation:landscape){
+  html.layout-tablet body.tablet-edition{--tablet-side:202px;--tablet-inspector:210px;--tablet-gap:10px;}
+  html.layout-tablet body.tablet-edition .app-shell{grid-template-columns:var(--tablet-side) minmax(0,1fr)!important;gap:10px!important;padding:10px!important;}
+  html.layout-tablet body.tablet-edition .sidebar{position:fixed!important;left:10px!important;top:10px!important;bottom:10px!important;width:var(--tablet-side)!important;height:auto!important;display:flex!important;overflow:auto!important;}
+  html.layout-tablet body.tablet-edition main{margin-left:var(--tablet-side)!important;padding:0 0 82px 10px!important;}
+  html.layout-tablet body.tablet-edition .tablet-workflow-shell{position:relative!important;padding-right:calc(var(--tablet-inspector) + var(--tablet-gap))!important;}
+  html.layout-tablet body.tablet-edition .tablet-step-rail{position:sticky!important;left:auto!important;top:6px!important;bottom:auto!important;width:auto!important;display:grid!important;grid-template-columns:auto repeat(9,minmax(44px,1fr))!important;}
+  html.layout-tablet body.tablet-edition .tablet-inspector{display:block!important;position:fixed!important;right:10px!important;top:116px!important;bottom:auto!important;width:var(--tablet-inspector)!important;max-height:calc(100vh - 205px)!important;}
+  html.layout-tablet body.tablet-edition .tablet-bottom-bar{display:grid!important;position:fixed!important;left:calc(var(--tablet-side) + 20px)!important;right:10px!important;bottom:10px!important;}
+  html.layout-tablet body.tablet-edition .view{padding-right:calc(var(--tablet-inspector) + var(--tablet-gap))!important;}
 }

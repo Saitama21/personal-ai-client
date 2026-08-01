@@ -196,24 +196,44 @@ function initThemeControls() {
   else if (systemDarkMedia?.addListener) systemDarkMedia.addListener(onSystemTheme);
 }
 
+function detectDeviceLayout() {
+  const ua = navigator.userAgent || '';
+  const platform = navigator.platform || '';
+  const touchPoints = navigator.maxTouchPoints || 0;
+  const isIPad = /iPad/.test(ua) || (platform === 'MacIntel' && touchPoints > 1);
+  const isIPhone = /iPhone|iPod/.test(ua);
+  const shortestSide = Math.min(screen.width || innerWidth, screen.height || innerHeight);
+  const touchTablet = !isIPhone && touchPoints > 1 && shortestSide >= 700 && shortestSide <= 1100;
+  if (isIPhone || window.innerWidth <= 700) return 'phone';
+  if (isIPad || touchTablet) return 'tablet';
+  return 'desktop';
+}
+
+function applyDeviceLayout() {
+  const layout = detectDeviceLayout();
+  document.documentElement.dataset.deviceLayout = layout;
+  document.documentElement.classList.remove('layout-phone','layout-tablet','layout-desktop');
+  document.documentElement.classList.add(`layout-${layout}`);
+  document.body?.classList.toggle('tablet-edition', layout === 'tablet');
+  document.body?.classList.toggle('phone-edition', layout === 'phone');
+  document.body?.classList.toggle('desktop-edition', layout === 'desktop');
+  window.__DEVICE_LAYOUT__ = layout;
+  return layout;
+}
+
 function updateDeviceModeLabel() {
-  const width = window.innerWidth;
-  const coarse = window.matchMedia?.('(pointer: coarse)').matches;
+  const layout = applyDeviceLayout();
   let label = 'Стационарный компьютер';
   let text = 'Боковая навигация и многоколоночная рабочая область.';
-  if (width <= 700) {
+  if (layout === 'phone') {
     label = 'Смартфон';
     text = 'Нижняя навигация, крупные зоны нажатия и одноколоночные блоки.';
-  } else if (width <= 1024) {
-    label = coarse ? 'Планшет' : 'Компактный экран';
-    text = 'Горизонтальная стеклянная навигация и адаптивные рабочие карточки.';
-  } else if (width <= 1366) {
-    label = 'Ноутбук';
-    text = 'Компактная боковая панель и автоматическое сворачивание сложных сеток.';
+  } else if (layout === 'tablet') {
+    label = 'iPad / планшет';
+    text = 'Отдельный планшетный мастер, инспектор и управление мышью или касанием.';
   }
   if ($('deviceModeLabel')) $('deviceModeLabel').textContent = label;
   if ($('deviceModeText')) $('deviceModeText').textContent = text;
-  document.documentElement.dataset.deviceLayout = width <= 700 ? 'phone' : width <= 1024 ? 'tablet' : width <= 1366 ? 'laptop' : 'desktop';
 }
 const fileInput = $('fileInput'), dropZone = $('dropZone'), previewArea = $('previewArea');
 const imageCanvas = $('imageCanvas'), imageCtx = imageCanvas.getContext('2d'), pdfPreview = $('pdfPreview');
@@ -1140,13 +1160,13 @@ window.CNC3D_getData = function CNC3D_getData() {
 };
 
 
-// v2.7.3 Tablet Edition — iPad Pro 10.5 detection fix
+// v2.7.4 Tablet Edition — iPad Pro 10.5 layout activation fix
 (() => {
   const steps=['analysis','ai','verify','tolerances','contour','tools','plan','simulation','export'];
   const labels=['Загрузка','AI-анализ','Проверка','Допуски','Контур','Инструмент','План','Симуляция','Экспорт'];
   let current=0;
-  const isTablet=()=>{const widthMatch=window.matchMedia('(min-width: 768px) and (max-width: 1180px)').matches;const ipadLike=(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1)||/iPad/.test(navigator.userAgent);return widthMatch||ipadLike;};
-  function applyTablet(){document.body.classList.toggle('tablet-edition',isTablet()); sync();}
+  const isTablet=()=>detectDeviceLayout()==='tablet';
+  function applyTablet(){applyDeviceLayout(); sync();}
   function q(id){return document.getElementById(id)}
   function activate(i,scroll=true){current=Math.max(0,Math.min(steps.length-1,i));window.__tabletWorkflowCurrent=current;document.querySelectorAll('.tablet-step').forEach((b,n)=>{b.classList.toggle('active',n===current);b.classList.toggle('done',n<current)}); if(q('tabletStepCounter'))q('tabletStepCounter').textContent=`Шаг ${current+1} из ${steps.length}`; if(q('tabletCurrentStage'))q('tabletCurrentStage').textContent=labels[current]; const pct=Math.round(current/(steps.length-1)*100); if(q('tabletProgressText'))q('tabletProgressText').textContent=pct+'%'; if(q('tabletProgressBar'))q('tabletProgressBar').style.width=pct+'%'; if(q('tabletBackBtn'))q('tabletBackBtn').disabled=current===0; if(q('tabletNextBtn'))q('tabletNextBtn').textContent=current===steps.length-1?'Готово':'Далее →'; if(scroll)navigate(steps[current]);}
   function navigate(step){
