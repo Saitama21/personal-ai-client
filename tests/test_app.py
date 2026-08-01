@@ -238,7 +238,7 @@ def test_stock_removal_accepts_shopturn_tool_flow():
 
 def test_health_reports_shopturn_feature():
     body = client.get("/api/health").json()
-    assert body["version"] == "2.6.4-clean-project-state"
+    assert body["version"] == "2.6.5-real-webgl"
     assert "shopturn_tool_flow" in body["features"]
 
 
@@ -568,10 +568,10 @@ def test_index_disables_browser_cache():
     response = client.get("/")
     assert response.status_code == 200
     assert "no-store" in response.headers.get("cache-control", "")
-    assert response.headers.get("x-app-version") == "2.6.4-clean-project-state"
+    assert response.headers.get("x-app-version") == "2.6.5-real-webgl"
 
 
 def test_static_assets_require_revalidation():
-    response = client.get("/static/app.js?v=2.6.4-clean-project-state")
+    response = client.get("/static/app.js?v=2.6.5-real-webgl")
     assert response.status_code == 200
     assert "no-cache" in response.headers.get("cache-control", "")

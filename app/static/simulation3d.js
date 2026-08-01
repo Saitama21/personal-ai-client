@@ -69,9 +69,34 @@
   }
   function setupScene(){
     const host=$s('stock3dViewport'); if(!host)return false;
-    if(!window.THREE){$s('simFallback')?.classList.remove('hidden');$s('simEngineBadge').textContent='WebGL недоступен';return false;}
+    if(!window.THREE){
+      const fallback=$s('simFallback');
+      fallback?.classList.remove('hidden');
+      if(fallback) fallback.textContent='3D-движок ещё не загружен. Обновите страницу.';
+      if($s('simEngineBadge')) $s('simEngineBadge').textContent='Движок не загружен';
+      return false;
+    }
+    try {
+      const probe=document.createElement('canvas');
+      const gl=probe.getContext('webgl2')||probe.getContext('webgl')||probe.getContext('experimental-webgl');
+      if(!gl) throw new Error('WebGL context unavailable');
+    } catch(err) {
+      const fallback=$s('simFallback');
+      fallback?.classList.remove('hidden');
+      if(fallback) fallback.textContent='WebGL отключён в браузере или недоступен на этом устройстве.';
+      if($s('simEngineBadge')) $s('simEngineBadge').textContent='WebGL недоступен';
+      console.error(err);
+      return false;
+    }
     host.innerHTML='';
-    const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'}); renderer.setPixelRatio(Math.min(devicePixelRatio||1,2)); renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap; host.appendChild(renderer.domElement); sim.renderer=renderer;
+    let renderer;
+    try { renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'}); }
+    catch(err){
+      const fallback=$s('simFallback'); fallback?.classList.remove('hidden');
+      if(fallback) fallback.textContent='Не удалось создать WebGL-сцену: '+(err?.message||err);
+      if($s('simEngineBadge')) $s('simEngineBadge').textContent='Ошибка WebGL';
+      console.error(err); return false;
+    } renderer.setPixelRatio(Math.min(devicePixelRatio||1,2)); renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap; host.appendChild(renderer.domElement); sim.renderer=renderer;
     sim.scene=new THREE.Scene(); sim.scene.background=new THREE.Color(0x07121e);
     sim.camera=new THREE.PerspectiveCamera(38,1,.1,2000);
     sim.scene.add(new THREE.HemisphereLight(0xbfe9ff,0x12202d,2.1));
@@ -127,5 +152,14 @@
     $s('simPrevStepBtn')?.addEventListener('click',()=>step(-1));$s('simNextStepBtn')?.addEventListener('click',()=>step(1));
     window.addEventListener('cnc-contour-updated',()=>{if(sim.data)build()});
   }
-  document.addEventListener('DOMContentLoaded',()=>{if(setupScene()){bind();setTimeout(build,300);}});
+  function init3D(){
+    if(sim.renderer)return;
+    if(setupScene()){
+      bind();
+      if($s('simFallback')) $s('simFallback').classList.add('hidden');
+      if($s('simEngineBadge')) $s('simEngineBadge').textContent='WebGL готов';
+      setTimeout(build,300);
+    }
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init3D,{once:true}); else init3D();
 })();
