@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#0b1420" id="themeColorMeta" />
   <meta name="color-scheme" content="light dark" />
+  <meta name="app-build" content="2.6.1-railway-cache-fix" />
   <script>
     (() => {
       try {
@@ -17,7 +18,7 @@
     })();
   </script>
   <title>Personal AI Client PRO</title>
-  <link rel="stylesheet" href="/static/styles.css" />
+  <link rel="stylesheet" href="/static/styles.css?v=2.6.1-railway-cache-fix" />
 </head>
 <body>
   <div class="background-orb orb-a"></div><div class="background-orb orb-b"></div><div class="background-orb orb-c"></div>
@@ -41,13 +42,13 @@
         <button class="nav-item" data-view="settings"><span class="nav-icon" aria-hidden="true">⚙</span><span>Настройки</span></button>
       </nav>
       <div class="status-card glass-soft"><span class="status-dot" id="statusDot"></span><div><strong id="statusTitle">Проверка...</strong><small id="statusText">Соединение с сервером</small></div></div>
-      <div class="sidebar-footer creator-glass"><span class="creator-label">Создатель</span><strong>Єрошов Іван</strong><small>Версия 2.4.8 Operations</small></div>
+      <div class="sidebar-footer creator-glass"><span class="creator-label">Создатель</span><strong>Єрошов Іван</strong><small>Версия 2.6.1 Physical 3D</small></div>
     </aside>
 
     <main>
       <section class="mobile-creator-strip glass" aria-label="Создатель и версия">
         <div class="mobile-creator-copy"><span>Создатель</span><strong>Єрошов Іван</strong></div>
-        <div class="mobile-version-badge">v2.6.0</div>
+        <div class="mobile-version-badge">v2.6.1</div>
       </section>
       <header class="topbar">
         <div><h1 id="pageTitle">Новый анализ</h1><p id="pageSubtitle">Загрузите изображение, PDF или SLDDRW и задайте вопрос</p></div>
@@ -571,7 +572,7 @@
   <div id="pointModal" class="modal hidden"><div class="modal-backdrop" data-close-modal></div><div class="modal-card glass"><div class="modal-head"><h2 id="pointModalTitle">Точка контура</h2><button data-close-modal>×</button></div><div class="modal-grid"><label>X, мм<input id="pointXInput" inputmode="decimal" /></label><label>Z, мм<input id="pointZInput" inputmode="decimal" /></label><label>Тип<select id="pointTypeSelect"><option value="lineX">Прямая по X</option><option value="lineZ">Прямая по Z</option><option value="arcCW">Дуга CW</option><option value="arcCCW">Дуга CCW</option><option value="chamfer">Фаска</option></select></label><label>R / угол<input id="pointRvInput" placeholder="R5 или 2×45°" /></label><label>Направление<input id="pointDirectionInput" placeholder="по X / по Z / CW" /></label><label>Вставить после<select id="pointInsertSelect"></select></label></div><div class="modal-actions"><button data-close-modal>Отмена</button><button id="savePointModalBtn" class="primary-button">Сохранить</button></div></div></div>
   <div id="toast" class="toast"></div>
   <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.min.js"></script>
-  <script src="/static/app.js"></script>
-  <script src="/static/simulation3d.js"></script>
+  <script src="/static/app.js?v=2.6.1-railway-cache-fix"></script>
+  <script src="/static/simulation3d.js?v=2.6.1-railway-cache-fix"></script>
 </body>
 </html>

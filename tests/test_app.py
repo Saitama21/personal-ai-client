@@ -238,7 +238,7 @@ def test_stock_removal_accepts_shopturn_tool_flow():
 
 def test_health_reports_shopturn_feature():
     body = client.get("/api/health").json()
-    assert body["version"] == "2.4.8-pro"
+    assert body["version"] == "2.6.1-railway-cache-fix"
     assert "shopturn_tool_flow" in body["features"]
 
 
@@ -562,3 +562,16 @@ def test_engineering_css_contains_overflow_guards():
     assert 'minmax(0, 1fr)' in css
     assert 'overflow-x: hidden' in css or 'overflow-x:hidden' in css
     assert '.thread-library-card' in css
+
+
+def test_index_disables_browser_cache():
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "no-store" in response.headers.get("cache-control", "")
+    assert response.headers.get("x-app-version") == "2.6.1-railway-cache-fix"
+
+
+def test_static_assets_require_revalidation():
+    response = client.get("/static/app.js?v=2.6.1-railway-cache-fix")
+    assert response.status_code == 200
+    assert "no-cache" in response.headers.get("cache-control", "")

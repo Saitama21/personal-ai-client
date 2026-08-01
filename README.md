@@ -78,3 +78,11 @@ python -m py_compile app/main.py app/thread_library.py
 ```
 
 Версия API: `2.4.8-pro`.
+
+
+## 2.6.1 Railway cache fix
+
+- HTML is served with `no-store`; static assets are revalidated.
+- CSS and JavaScript URLs include a release version query.
+- `/api/health` exposes the app version and Railway commit marker.
+- Every response includes `X-App-Version` and `X-Deploy-Commit`.

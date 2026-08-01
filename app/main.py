@@ -31,6 +31,8 @@ MAX_FILE_MB = int(os.getenv("MAX_FILE_MB", "20"))
 MODEL = os.getenv("OPENAI_MODEL", "gpt-5-mini")
 MOCK_MODE = os.getenv("MOCK_MODE", "false").lower() in {"1", "true", "yes"}
 KEEP_OPENAI_FILES = os.getenv("KEEP_OPENAI_FILES", "false").lower() in {"1", "true", "yes"}
+APP_VERSION = os.getenv("APP_VERSION", "2.6.1-railway-cache-fix")
+DEPLOY_COMMIT = os.getenv("RAILWAY_GIT_COMMIT_SHA", os.getenv("GIT_COMMIT", "local"))
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 STANDARD_ALLOWED_TYPES = ALLOWED_IMAGE_TYPES | {"application/pdf"}
@@ -434,7 +436,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="Personal AI Client", version="2.4.8-pro", lifespan=lifespan)
+app = FastAPI(title="Personal AI Client", version=APP_VERSION, lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -442,6 +444,26 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def deployment_cache_headers(request, call_next):
+    """Prevent stale HTML/app shells after a Railway deployment.
+
+    Static assets use versioned URLs in index.html. We still require revalidation so
+    Safari/PWA-like caches cannot keep an older build indefinitely.
+    """
+    response = await call_next(request)
+    path = request.url.path
+    response.headers["X-App-Version"] = APP_VERSION
+    response.headers["X-Deploy-Commit"] = DEPLOY_COMMIT[:12]
+    if path == "/" or path.endswith(".html"):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    elif path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-cache, must-revalidate, max-age=0"
+    return response
+
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
@@ -1244,7 +1266,14 @@ X указывай в диаметрах. Z0 считать на правом т
 
 @app.get("/")
 def index() -> FileResponse:
-    return FileResponse(STATIC_DIR / "index.html")
+    return FileResponse(
+        STATIC_DIR / "index.html",
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
 
 
 @app.get("/api/health")
@@ -1256,7 +1285,8 @@ def health() -> dict[str, Any]:
         "api_key_configured": bool(os.getenv("OPENAI_API_KEY")),
         "max_file_mb": MAX_FILE_MB,
         "supported_types": ["JPG", "PNG", "WEBP", "PDF", "SLDDRW"],
-        "version": "2.4.8-pro",
+        "version": APP_VERSION,
+        "deploy_commit": DEPLOY_COMMIT[:12],
         "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52pty_profile", "drawing_intelligence", "tolerance_detection", "metric_thread_catalog", "chamfer_marker", "multi_operation_route", "contour_mirroring", "history_project_restore", "mobile_history", "multi_operation_picker", "general_tolerance_h14_rule", "stock_mode_radio", "multi_checkbox_setup", "hybrid_turn_mill_mode", "chat_image_upload", "chat_region_selection", "split_chamfer_input", "toggleable_drawing_rules", "full_thread_library", "thread_library_filters", "engineering_layout_overflow_fix", "text_only_stock_plan", "safari_touch_hotfix", "machine_profile_autofill"],
     }
 
