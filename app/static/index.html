@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#0b1420" id="themeColorMeta" />
   <meta name="color-scheme" content="light dark" />
-  <meta name="app-build" content="2.6.7-staged-plan" />
+  <meta name="app-build" content="2.7.0-tablet-foundation" />
   <script>
     (() => {
       try {
@@ -18,7 +18,7 @@
     })();
   </script>
   <title>Personal AI Client PRO</title>
-  <link rel="stylesheet" href="/static/styles.css?v=2.6.7-staged-plan" />
+  <link rel="stylesheet" href="/static/styles.css?v=2.7.0-tablet-foundation" />
 </head>
 <body>
   <div class="background-orb orb-a"></div><div class="background-orb orb-b"></div><div class="background-orb orb-c"></div>
@@ -42,15 +42,47 @@
         <button class="nav-item" data-view="settings"><span class="nav-icon" aria-hidden="true">⚙</span><span>Настройки</span></button>
       </nav>
       <div class="status-card glass-soft"><span class="status-dot" id="statusDot"></span><div><strong id="statusTitle">Проверка...</strong><small id="statusText">Соединение с сервером</small></div></div>
-      <div class="sidebar-footer creator-glass"><span class="creator-label">Создатель</span><strong>Єрошов Іван</strong><small>Версия 2.6.7 Staged Plan</small></div>
+      <div class="sidebar-footer creator-glass"><span class="creator-label">Создатель</span><strong>Єрошов Іван</strong><small>Версия 2.7.0 Tablet Edition</small></div>
       <button id="sidebarCollapseBtn" class="sidebar-collapse-button" type="button" aria-expanded="true" title="Свернуть боковую панель"><span aria-hidden="true">‹</span><span class="sidebar-collapse-label">Свернуть панель</span></button>
     </aside>
 
     <main>
       <section class="mobile-creator-strip glass" aria-label="Создатель и версия">
         <div class="mobile-creator-copy"><span>Создатель</span><strong>Єрошов Іван</strong></div>
-        <div class="mobile-version-badge">v2.6.7</div>
+        <div class="mobile-version-badge">v2.7.0</div>
       </section>
+
+      <section id="tabletWorkflowShell" class="tablet-workflow-shell" aria-label="Планшетный мастер обработки">
+        <aside class="tablet-step-rail glass-soft">
+          <div class="tablet-step-head"><span>ПРОЦЕСС</span><strong id="tabletStepCounter">Шаг 1 из 9</strong></div>
+          <button class="tablet-step active" data-tablet-step="analysis"><b>1</b><span>Загрузка</span></button>
+          <button class="tablet-step" data-tablet-step="ai"><b>2</b><span>AI-анализ</span></button>
+          <button class="tablet-step" data-tablet-step="verify"><b>3</b><span>Проверка</span></button>
+          <button class="tablet-step" data-tablet-step="tolerances"><b>4</b><span>Допуски</span></button>
+          <button class="tablet-step" data-tablet-step="contour"><b>5</b><span>Контур</span></button>
+          <button class="tablet-step" data-tablet-step="tools"><b>6</b><span>Инструмент</span></button>
+          <button class="tablet-step" data-tablet-step="plan"><b>7</b><span>План</span></button>
+          <button class="tablet-step" data-tablet-step="simulation"><b>8</b><span>Симуляция</span></button>
+          <button class="tablet-step" data-tablet-step="export"><b>9</b><span>Экспорт</span></button>
+        </aside>
+        <aside class="tablet-inspector glass">
+          <div class="tablet-inspector-head"><div><span>ИНСПЕКТОР</span><strong>Статус проекта</strong></div><button id="tabletInspectorToggle" type="button" title="Свернуть инспектор">›</button></div>
+          <div class="tablet-inspector-body">
+            <div class="tablet-stat"><span>Проект</span><strong id="tabletProjectName">Локальный черновик</strong></div>
+            <div class="tablet-stat"><span>Файл</span><strong id="tabletFileState">Не выбран</strong></div>
+            <div class="tablet-stat"><span>Текущий этап</span><strong id="tabletCurrentStage">Загрузка</strong></div>
+            <div class="tablet-progress"><div><span>Готовность</span><strong id="tabletProgressText">0%</strong></div><i><b id="tabletProgressBar"></b></i></div>
+            <div class="tablet-kpi-grid"><div><span>Ошибки</span><strong id="tabletErrorCount">0</strong></div><div><span>Предупреждения</span><strong id="tabletWarningCount">0</strong></div></div>
+            <div class="tablet-input-mode"><span>Управление</span><strong>MX Anywhere 3S + Touch</strong><small>Колесо — масштаб · средняя кнопка — панорама</small></div>
+          </div>
+        </aside>
+        <div class="tablet-bottom-bar glass">
+          <button id="tabletBackBtn" class="ghost-button" type="button">← Назад</button>
+          <button id="tabletSaveBtn" class="ghost-button" type="button">Сохранить</button>
+          <button id="tabletNextBtn" class="primary-button" type="button">Далее →</button>
+        </div>
+      </section>
+
       <header class="topbar">
         <div><h1 id="pageTitle">Новый анализ</h1><p id="pageSubtitle">Загрузите изображение, PDF или SLDDRW и задайте вопрос</p></div>
         <div class="topbar-actions">
@@ -310,26 +342,8 @@
             </fieldset>
 
             <div class="form-grid form-grid-wide"><label class="full"><span>Примечания</span><textarea id="stockNotes" placeholder="Отверстия уже есть, обработка наружного контура..."></textarea></label></div>
-            <div class="button-row"><button id="stockBtn" class="primary-button" disabled>Сформировать план по этапам</button><button id="aiContourBtn" class="secondary-button" disabled>AI-контур X/Z</button></div>
-            <section id="stockStagePanel" class="stock-stage-panel hidden" aria-live="polite">
-              <div class="stock-stage-head">
-                <div><span class="eyebrow">SMART TECHPROCESS</span><h3 id="stockStageTitle">Подготовка</h3></div>
-                <strong id="stockStagePercent">0%</strong>
-              </div>
-              <div class="stock-stage-track"><span id="stockStageBar"></span></div>
-              <ol id="stockStageList" class="stock-stage-list">
-                <li data-stage="drawing"><i></i><span><strong>Анализ чертежа</strong><small>Файл, область и исходные данные</small></span><b>Ожидание</b></li>
-                <li data-stage="geometry"><i></i><span><strong>Размеры и геометрия</strong><small>Диаметры, длины, контур и базы</small></span><b>Ожидание</b></li>
-                <li data-stage="requirements"><i></i><span><strong>Допуски, резьбы и фаски</strong><small>Инженерные обозначения и требования</small></span><b>Ожидание</b></li>
-                <li data-stage="operations"><i></i><span><strong>Маршрут обработки</strong><small>Черновые, чистовые и вспомогательные операции</small></span><b>Ожидание</b></li>
-                <li data-stage="tools"><i></i><span><strong>Инструменты</strong><small>Державки, пластины, сверла и фрезы</small></span><b>Ожидание</b></li>
-                <li data-stage="cutting"><i></i><span><strong>Режимы резания</strong><small>Обороты, подачи и глубины проходов</small></span><b>Ожидание</b></li>
-                <li data-stage="contour"><i></i><span><strong>Контур X/Z и Stock Removal</strong><small>Подготовка геометрии для симуляции</small></span><b>Ожидание</b></li>
-                <li data-stage="final"><i></i><span><strong>Инженерная проверка</strong><small>Порядок, ограничения и итоговый план</small></span><b>Ожидание</b></li>
-              </ol>
-              <p id="stockStageMessage" class="stock-stage-message">Проверяю введённые данные…</p>
-            </section>
-            <div id="stockProgress" class="progress hidden"><span></span><p>Формируется инженерный план…</p></div>
+            <div class="button-row"><button id="stockBtn" class="primary-button" disabled>Сформировать план</button><button id="aiContourBtn" class="secondary-button" disabled>AI-контур X/Z</button></div>
+            <div id="stockProgress" class="progress hidden"><span></span><p>Строю план и контур...</p></div>
           </section>
           <section class="panel glass stock-side-panel">
             <div class="panel-heading"><div><span class="eyebrow">КОНТРОЛЬ</span><h2>Перед обработкой</h2></div></div>
@@ -622,7 +636,7 @@
 
   <div id="pointModal" class="modal hidden"><div class="modal-backdrop" data-close-modal></div><div class="modal-card glass"><div class="modal-head"><h2 id="pointModalTitle">Точка контура</h2><button data-close-modal>×</button></div><div class="modal-grid"><label>X, мм<input id="pointXInput" inputmode="decimal" /></label><label>Z, мм<input id="pointZInput" inputmode="decimal" /></label><label>Тип<select id="pointTypeSelect"><option value="lineX">Прямая по X</option><option value="lineZ">Прямая по Z</option><option value="arcCW">Дуга CW</option><option value="arcCCW">Дуга CCW</option><option value="chamfer">Фаска</option></select></label><label>R / угол<input id="pointRvInput" placeholder="R5 или 2×45°" /></label><label>Направление<input id="pointDirectionInput" placeholder="по X / по Z / CW" /></label><label>Вставить после<select id="pointInsertSelect"></select></label></div><div class="modal-actions"><button data-close-modal>Отмена</button><button id="savePointModalBtn" class="primary-button">Сохранить</button></div></div></div>
   <div id="toast" class="toast"></div>
-  <script src="/static/app.js?v=2.6.7-staged-plan"></script>
+  <script src="/static/app.js?v=2.7.0-tablet-foundation"></script>
   <script type="module">
     const badge = document.getElementById("simEngineBadge");
     const fallback = document.getElementById("simFallback");
@@ -630,7 +644,7 @@
       const THREE = await import("https://cdnjs.cloudflare.com/ajax/libs/three.js/0.168.0/three.module.min.js");
       window.THREE = THREE;
       window.dispatchEvent(new Event("three-ready"));
-      await import("/static/simulation3d.js?v=2.6.7-staged-plan");
+      await import("/static/simulation3d.js?v=2.7.0-tablet-foundation");
     } catch (error) {
       console.error("Three.js load failed", error);
       if (badge) badge.textContent = "3D-движок не загружен";
