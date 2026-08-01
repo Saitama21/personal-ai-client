@@ -119,8 +119,10 @@
           <section class="panel media-panel glass">
             <div class="panel-heading"><div><span class="eyebrow">01 · Файл</span><h2>Область анализа</h2></div><span id="fileBadge" class="badge">Нет файла</span></div>
             <div id="dropZone" class="drop-zone glass-soft" role="group" aria-label="Выбор файла для анализа">
-              <input id="fileInput" class="native-file-overlay" type="file" accept="image/jpeg,image/png,image/webp,application/pdf,.slddrw,application/octet-stream" aria-label="Выбрать файл" />
-              <div class="drop-zone-content" aria-hidden="true"><div class="drop-icon">⇪</div><strong>Перетащите файл сюда</strong><span>JPG, PNG, WEBP, PDF, SLDDRW</span><span class="native-picker-button">Выбрать файл</span></div>
+              <div class="drop-zone-content"><div class="drop-icon" aria-hidden="true">⇪</div><strong>Выберите файл для анализа</strong><span>JPG, PNG, WEBP, PDF, SLDDRW</span></div>
+              <label class="native-picker-label" for="fileInput">Выбрать файл</label>
+              <input id="fileInput" class="native-file-input" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf,.slddrw,image/jpeg,image/png,image/webp,application/pdf,application/octet-stream" aria-label="Выбрать файл" />
+              <p class="file-picker-help">На смартфоне и планшете откроется системное приложение «Файлы».</p>
             </div>
             <div id="previewArea" class="preview-area hidden"><canvas id="imageCanvas"></canvas><iframe id="pdfPreview" title="Предпросмотр PDF"></iframe><div id="selectionHint" class="selection-hint">Проведите мышью, чтобы выделить область</div></div>
             <div class="media-toolbar"><button id="selectAllBtn" class="small-button glass-soft" disabled>Выделить всё</button><button id="clearSelectionBtn" class="small-button glass-soft" disabled>Сбросить рамку</button><span id="selectionInfo">Область не выбрана</span></div>

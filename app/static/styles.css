@@ -3043,3 +3043,17 @@ html.layout-desktop body .workspace-grid{display:grid!important;grid-template-co
 html.layout-phone body main *,
 html.layout-tablet body main *,
 html.layout-desktop body main *{min-width:0;box-sizing:border-box;}
+
+
+/* v2.8.1 Universal native file picker — one implementation for phone/tablet/desktop */
+.drop-zone{position:relative;overflow:visible;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;min-width:0;}
+.drop-zone .drop-zone-content{pointer-events:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;width:100%;height:auto;text-align:center;}
+.drop-zone .native-file-overlay{display:none !important;}
+.native-picker-label{display:inline-flex;align-items:center;justify-content:center;min-height:52px;padding:0 28px;border:1px solid var(--line-strong);border-radius:18px;background:color-mix(in srgb,var(--accent) 18%,var(--glass-soft));color:var(--text);font-weight:800;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;position:relative;z-index:3;}
+.native-picker-label:active{transform:scale(.98);}
+.native-file-input{display:block !important;position:static !important;width:min(100%,520px) !important;height:auto !important;opacity:1 !important;z-index:auto !important;font-size:16px !important;color:var(--muted);background:transparent;border:0;padding:0;margin:0;pointer-events:auto !important;}
+.native-file-input::file-selector-button{-webkit-appearance:none;appearance:none;min-height:52px;padding:0 22px;margin-right:12px;border:1px solid var(--line-strong);border-radius:16px;background:var(--glass-soft);color:var(--text);font-weight:800;cursor:pointer;}
+.file-picker-help{margin:0;color:var(--muted);font-size:12px;text-align:center;}
+@media (max-width:767px){.drop-zone{min-height:300px;padding:18px}.native-picker-label,.native-file-input::file-selector-button{min-height:56px}.native-file-input{width:100% !important;}}
+@media (min-width:768px) and (max-width:1199px){.drop-zone{min-height:390px}.native-picker-label{min-width:240px}.native-file-input{width:min(100%,560px) !important;}}
+@media (min-width:1200px){.drop-zone{min-height:380px}.native-picker-label{min-width:220px;}}

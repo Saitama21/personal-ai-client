@@ -345,7 +345,7 @@ async function loadHealth() {
     const r = await fetch('/api/health'); if (!r.ok) throw new Error('Сервер недоступен'); state.health = await r.json();
     $('statusDot').className = 'status-dot online'; $('statusTitle').textContent = state.health.mock_mode ? 'Тестовый режим' : 'OpenAI подключён';
     $('statusText').textContent = state.health.mock_mode ? 'API не расходуется' : state.health.model; $('modelName').textContent = state.health.model;
-    $('modeName').textContent = state.health.mock_mode ? 'MOCK' : 'LIVE'; $('appVersion').textContent = state.health.version || '2.7.9 Native iPad Upload';
+    $('modeName').textContent = state.health.mock_mode ? 'MOCK' : 'LIVE'; $('appVersion').textContent = state.health.version || '2.8.1 Universal Responsive';
     $('supportedFormatsText').textContent = `Форматы: ${(state.health.supported_types || []).join(', ')}`;
   } catch (e) { $('statusDot').className = 'status-dot error'; $('statusTitle').textContent = 'Нет соединения'; $('statusText').textContent = e.message; }
 }
@@ -377,11 +377,20 @@ function updateProjectUi() { $('activeProjectName').textContent = state.currentP
 ['dragenter','dragover'].forEach(t => dropZone.addEventListener(t,e => { e.preventDefault(); dropZone.classList.add('dragover'); }));
 ['dragleave','drop'].forEach(t => dropZone.addEventListener(t,e => { e.preventDefault(); dropZone.classList.remove('dragover'); }));
 dropZone.ondrop = e => handleFile(e.dataTransfer?.files?.[0]);
-fileInput.addEventListener('change', e => {
-  const file = e.target.files && e.target.files[0];
-  if (!file) { toast('Файл не выбран'); return; }
-  handleFile(file).catch(err => { console.error('handleFile failed', err); toast(err?.message || 'Не удалось открыть файл'); });
-});
+async function onNativeFileSelected(e) {
+  const input = e.currentTarget || e.target;
+  const file = input?.files?.item ? input.files.item(0) : input?.files?.[0];
+  if (!file) return;
+  try {
+    await handleFile(file);
+    toast(`Файл выбран: ${file.name}`);
+    if (typeof window.__tabletWorkflowActivate === 'function') window.__tabletWorkflowActivate(1, false);
+  } catch (err) {
+    console.error('handleFile failed', err);
+    toast(err?.message || 'Не удалось открыть файл');
+  }
+}
+fileInput.addEventListener('change', onNativeFileSelected, {passive:true});
 $('promptInput').oninput = syncFileUi;
 document.querySelectorAll('.quick-prompts button').forEach(b => b.onclick = () => { $('promptInput').value = b.dataset.prompt; syncFileUi(); });
 
@@ -1176,7 +1185,7 @@ window.CNC3D_getData = function CNC3D_getData() {
 // v2.7.4 Tablet Edition — iPad Pro 10.5 layout activation fix
 (() => {
   const steps=['analysis','ai','verify','tolerances','contour','tools','plan','simulation','export'];
-  const labels=['Загрузка','AI-анализ','Проверка','Допуски','Контур','Инструмент','План','Симуляция','Экспорт'];
+  const labels=['Выбор файла','AI-анализ','Проверка','Допуски','Контур','Инструмент','План','Симуляция','Экспорт'];
   let current=0;
   const isTablet=()=>detectDeviceLayout()==='tablet';
   function applyTablet(){applyDeviceLayout(); sync();}
@@ -1187,7 +1196,7 @@ window.CNC3D_getData = function CNC3D_getData() {
     const [view,id]=map[step]||[]; const nav=document.querySelector(`.nav-item[data-view="${view}"]`); if(nav)nav.click(); setTimeout(()=>{const el=q(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},120);
   }
   function sync(){if(!isTablet())return; if(q('tabletProjectName'))q('tabletProjectName').textContent=q('activeProjectName')?.textContent||'Локальный черновик'; if(q('tabletFileState'))q('tabletFileState').textContent=q('currentFilePill')?.textContent||'Не выбран';}
-  window.__tabletWorkflowActivate=(i,scroll=true)=>activate(i,scroll); window.addEventListener('resize',applyTablet); document.addEventListener('DOMContentLoaded',()=>{applyTablet();document.querySelectorAll('.tablet-step').forEach((b,i)=>b.addEventListener('click',()=>activate(i)));q('tabletBackBtn')?.addEventListener('click',()=>activate(current-1));q('tabletNextBtn')?.addEventListener('click',()=>{ if(current===0 && !state.file){ toast('Сначала выберите файл'); try{ fileInput.focus(); }catch(_){} return; } activate(current+1); });q('tabletSaveBtn')?.addEventListener('click',()=>q('saveProjectBtn')?.click());q('tabletGoVerifyBtn')?.addEventListener('click',()=>activate(2));q('tabletInspectorToggle')?.addEventListener('click',()=>document.body.classList.toggle('tablet-inspector-collapsed'));new MutationObserver(sync).observe(document.body,{subtree:true,childList:true,characterData:true});activate(0,false);});
+  window.__tabletWorkflowActivate=(i,scroll=true)=>activate(i,scroll); window.addEventListener('resize',applyTablet); document.addEventListener('DOMContentLoaded',()=>{applyTablet();document.querySelectorAll('.tablet-step').forEach((b,i)=>b.addEventListener('click',()=>activate(i)));q('tabletBackBtn')?.addEventListener('click',()=>activate(current-1));q('tabletNextBtn')?.addEventListener('click',()=>{ if(current===0 && !state.file){ toast('Сначала нажмите «Выбрать файл»'); try{ fileInput.scrollIntoView({behavior:'smooth',block:'center'}); fileInput.focus(); }catch(_){} return; } activate(current+1); });q('tabletSaveBtn')?.addEventListener('click',()=>q('saveProjectBtn')?.click());q('tabletGoVerifyBtn')?.addEventListener('click',()=>activate(2));q('tabletInspectorToggle')?.addEventListener('click',()=>document.body.classList.toggle('tablet-inspector-collapsed'));new MutationObserver(sync).observe(document.body,{subtree:true,childList:true,characterData:true});activate(0,false);});
 })();
 
 // Unified responsive layout: reacts to viewport, split view and orientation changes.
