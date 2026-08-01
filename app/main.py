@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 import re
 import zlib
+from uuid import uuid4
 
 from fastapi import Body, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,6 +24,7 @@ STATIC_DIR = BASE_DIR / "app" / "static"
 DATA_DIR = Path(os.getenv("DATA_DIR", BASE_DIR / "data"))
 DB_PATH = DATA_DIR / "history.db"
 UPLOAD_DIR = DATA_DIR / "uploads"
+CHAT_UPLOAD_DIR = DATA_DIR / "chat_uploads"
 MAX_FILE_MB = int(os.getenv("MAX_FILE_MB", "20"))
 MODEL = os.getenv("OPENAI_MODEL", "gpt-5-mini")
 MOCK_MODE = os.getenv("MOCK_MODE", "false").lower() in {"1", "true", "yes"}
@@ -430,7 +432,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="Personal AI Client", version="2.3.4-pro", lifespan=lifespan)
+app = FastAPI(title="Personal AI Client", version="2.3.5-pro", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -444,6 +446,7 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 def init_storage() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    CHAT_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(DB_PATH) as db:
         db.execute(
             """
@@ -487,10 +490,23 @@ def init_storage() -> None:
                 role TEXT NOT NULL,
                 content TEXT NOT NULL,
                 openai_response_id TEXT,
+                attachment_filename TEXT,
+                attachment_path TEXT,
+                attachment_media_type TEXT,
+                crop_json TEXT,
                 FOREIGN KEY (analysis_id) REFERENCES analyses(id) ON DELETE CASCADE
             )
             """
         )
+        chat_columns = {row[1] for row in db.execute("PRAGMA table_info(chat_messages)").fetchall()}
+        for column_name, column_type in (
+            ("attachment_filename", "TEXT"),
+            ("attachment_path", "TEXT"),
+            ("attachment_media_type", "TEXT"),
+            ("crop_json", "TEXT"),
+        ):
+            if column_name not in chat_columns:
+                db.execute(f"ALTER TABLE chat_messages ADD COLUMN {column_name} {column_type}")
         db.commit()
 
 
@@ -550,16 +566,23 @@ def save_history(
 
 
 def save_chat_message(
-    *, analysis_id: int | None, role: str, content: str, openai_response_id: str | None = None
+    *, analysis_id: int | None, role: str, content: str, openai_response_id: str | None = None,
+    attachment_filename: str | None = None, attachment_path: str | None = None,
+    attachment_media_type: str | None = None, crop: dict[str, float] | None = None,
 ) -> int:
     if role not in {"user", "assistant"}:
         raise ValueError("Некорректная роль сообщения")
     with db_conn() as db:
         cursor = db.execute(
             """INSERT INTO chat_messages
-            (analysis_id, created_at, role, content, openai_response_id)
-            VALUES (?, ?, ?, ?, ?)""",
-            (analysis_id, int(time.time()), role, content, openai_response_id),
+            (analysis_id, created_at, role, content, openai_response_id,
+             attachment_filename, attachment_path, attachment_media_type, crop_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                analysis_id, int(time.time()), role, content, openai_response_id,
+                attachment_filename, attachment_path, attachment_media_type,
+                json.dumps(crop, ensure_ascii=False) if crop else None,
+            ),
         )
         db.commit()
         return int(cursor.lastrowid)
@@ -572,7 +595,15 @@ def get_chat_messages(analysis_id: int, limit: int = 100) -> list[dict[str, Any]
             "SELECT * FROM chat_messages WHERE analysis_id = ? ORDER BY id ASC LIMIT ?",
             (analysis_id, limit),
         ).fetchall()
-    return [dict(row) for row in rows]
+    result: list[dict[str, Any]] = []
+    for row in rows:
+        item = dict(row)
+        raw_crop = item.pop("crop_json", None)
+        item["crop"] = json.loads(raw_crop) if raw_crop else None
+        stored_path = item.pop("attachment_path", None)
+        item["attachment_url"] = f"/api/chat-attachments/{Path(stored_path).name}" if stored_path else None
+        result.append(item)
+    return result
 
 
 def parse_crop(raw: str | None) -> dict[str, float] | None:
@@ -985,21 +1016,26 @@ def sanitize_chat_conversation(value: Any) -> list[dict[str, str]]:
     return result
 
 
-def build_chat_mock(question: str, context_text: str, conversation: list[dict[str, str]]) -> str:
+def build_chat_mock(
+    question: str, context_text: str, conversation: list[dict[str, str]], has_image: bool = False
+) -> str:
     previous_count = len(conversation)
     context_note = "Предыдущий анализ получен." if context_text.strip() else "Предыдущий анализ не передан."
+    image_note = "Получено изображение или выделенная область для визуального уточнения.\n\n" if has_image else ""
     return (
         "## Тестовый ответ диалога\n\n"
         f"**Ваш вопрос:** {question}\n\n"
         f"{context_note} В истории диалога сообщений: **{previous_count}**.\n\n"
+        f"{image_note}"
         "Сейчас включён `MOCK_MODE`, поэтому это демонстрационный ответ. "
-        "В рабочем режиме ассистент продолжит разговор с учётом предыдущего анализа и вопросов."
+        "В рабочем режиме ассистент продолжит разговор с учётом предыдущего анализа, вопросов и приложенного изображения."
     )
 
 
 def chat_with_openai(
     *, question: str, previous_response_id: str | None,
-    context_text: str, conversation: list[dict[str, str]]
+    context_text: str, conversation: list[dict[str, str]],
+    image_raw: bytes | None = None, image_media_type: str | None = None,
 ) -> tuple[str, str]:
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
@@ -1007,38 +1043,35 @@ def chat_with_openai(
             status_code=503,
             detail="OPENAI_API_KEY не настроен. Включите MOCK_MODE=true для проверки интерфейса.",
         )
-
     from openai import OpenAI
-
     client = OpenAI(api_key=api_key)
     chat_instructions = SYSTEM_INSTRUCTIONS + """
 
 Продолжай технический диалог с пользователем. Учитывай предыдущий анализ, уточняющие вопросы и ответы.
+Если приложено изображение, анализируй именно его. Если передана выделенная область, считай её главным объектом уточнения.
 Не начинай анализ заново без необходимости. Если пользователь отвечает на твой вопрос, используй ответ для уточнения вывода.
-Если данных всё ещё недостаточно, задай один конкретный вопрос. Не заканчивай фразами вроде «если хотите, могу» — вместо этого дай полезный ответ или задай нужный вопрос.
+Если данных всё ещё недостаточно, задай один конкретный вопрос. Не заканчивай фразами вроде «если хотите, могу».
 """
     try:
+        user_content: str | list[dict[str, Any]] = question
+        if image_raw and image_media_type:
+            user_content = [
+                {"type": "input_text", "text": question},
+                {"type": "input_image", "image_url": image_data_url(image_raw, image_media_type), "detail": "high"},
+            ]
         if previous_response_id:
             response = client.responses.create(
-                model=MODEL,
-                instructions=chat_instructions,
+                model=MODEL, instructions=chat_instructions,
                 previous_response_id=previous_response_id,
-                input=[{"role": "user", "content": question}],
+                input=[{"role": "user", "content": user_content}],
             )
         else:
             input_messages: list[dict[str, Any]] = []
             if context_text.strip():
-                input_messages.append({
-                    "role": "assistant",
-                    "content": "Предыдущий ответ ассистента:\n" + context_text.strip()[:16000],
-                })
+                input_messages.append({"role": "assistant", "content": "Предыдущий ответ ассистента:\n" + context_text.strip()[:16000]})
             input_messages.extend(conversation[-16:])
-            input_messages.append({"role": "user", "content": question})
-            response = client.responses.create(
-                model=MODEL,
-                instructions=chat_instructions,
-                input=input_messages,
-            )
+            input_messages.append({"role": "user", "content": user_content})
+            response = client.responses.create(model=MODEL, instructions=chat_instructions, input=input_messages)
         text = response.output_text.strip()
         if not text:
             raise HTTPException(status_code=502, detail="Модель вернула пустой ответ")
@@ -1219,8 +1252,8 @@ def health() -> dict[str, Any]:
         "api_key_configured": bool(os.getenv("OPENAI_API_KEY")),
         "max_file_mb": MAX_FILE_MB,
         "supported_types": ["JPG", "PNG", "WEBP", "PDF", "SLDDRW"],
-        "version": "2.3.4-pro",
-        "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52pty_profile", "drawing_intelligence", "tolerance_detection", "metric_thread_catalog", "chamfer_marker", "multi_operation_route", "contour_mirroring", "history_project_restore", "mobile_history", "multi_operation_picker", "general_tolerance_h14_rule", "stock_mode_radio", "multi_checkbox_setup", "hybrid_turn_mill_mode"],
+        "version": "2.3.5-pro",
+        "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52pty_profile", "drawing_intelligence", "tolerance_detection", "metric_thread_catalog", "chamfer_marker", "multi_operation_route", "contour_mirroring", "history_project_restore", "mobile_history", "multi_operation_picker", "general_tolerance_h14_rule", "stock_mode_radio", "multi_checkbox_setup", "hybrid_turn_mill_mode", "chat_image_upload", "chat_region_selection"],
     }
 
 
@@ -1272,12 +1305,24 @@ def history_detail(analysis_id: int) -> dict[str, Any]:
 
 @app.delete("/api/history/{analysis_id}")
 def delete_history(analysis_id: int) -> dict[str, bool]:
+    attachment_paths: list[str] = []
     with db_conn() as db:
+        attachment_paths = [str(row[0]) for row in db.execute(
+            "SELECT attachment_path FROM chat_messages WHERE analysis_id = ? AND attachment_path IS NOT NULL",
+            (analysis_id,),
+        ).fetchall()]
         db.execute("DELETE FROM chat_messages WHERE analysis_id = ?", (analysis_id,))
         cursor = db.execute("DELETE FROM analyses WHERE id = ?", (analysis_id,))
         db.commit()
     if cursor.rowcount == 0:
         raise HTTPException(status_code=404, detail="Запись не найдена")
+    for stored_path in attachment_paths:
+        try:
+            path = CHAT_UPLOAD_DIR / Path(stored_path).name
+            if path.exists():
+                path.unlink()
+        except OSError:
+            pass
     return {"ok": True}
 
 
@@ -1337,6 +1382,79 @@ def continue_chat(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
         "model": MODEL,
         "mock": MOCK_MODE,
         "analysis_id": analysis_id,
+    }
+
+
+@app.get("/api/chat-attachments/{filename}")
+def chat_attachment(filename: str) -> FileResponse:
+    safe_name = Path(filename).name
+    if safe_name != filename or not re.fullmatch(r"[a-f0-9]{32}\.jpg", safe_name):
+        raise HTTPException(status_code=404, detail="Вложение не найдено")
+    path = CHAT_UPLOAD_DIR / safe_name
+    if not path.exists() or not path.is_file():
+        raise HTTPException(status_code=404, detail="Вложение не найдено")
+    return FileResponse(path, media_type="image/jpeg")
+
+
+@app.post("/api/chat-image")
+async def continue_chat_with_image(
+    file: UploadFile = File(...), question: str = Form(""),
+    previous_response_id: str = Form(""), analysis_id: str = Form(""),
+    context_text: str = Form(""), conversation_json: str = Form("[]"),
+    crop_json: str | None = Form(None),
+) -> dict[str, Any]:
+    question = question.strip() or "Проанализируй приложенное изображение или выделенную область и уточни предыдущий ответ."
+    if len(question) > 6000:
+        raise HTTPException(status_code=413, detail="Сообщение слишком длинное")
+    filename = file.filename or "chat-image"
+    suffix = Path(filename).suffix.lower()
+    content_type = (file.content_type or "").lower()
+    if suffix not in {".jpg", ".jpeg", ".png", ".webp"} and content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=415, detail="В чате поддерживаются JPG, PNG и WEBP")
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(status_code=400, detail="Изображение пустое")
+    if len(raw) > MAX_FILE_MB * 1024 * 1024:
+        raise HTTPException(status_code=413, detail=f"Файл больше {MAX_FILE_MB} МБ")
+    crop = parse_crop(crop_json)
+    processed_raw, processed_type = crop_image(raw, crop)
+    try:
+        parsed_conversation = json.loads(conversation_json or "[]")
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=400, detail="Некорректная история диалога") from exc
+    conversation = sanitize_chat_conversation(parsed_conversation)
+    parsed_analysis_id: int | None = None
+    if analysis_id.strip():
+        try:
+            parsed_analysis_id = int(analysis_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="Некорректный ID анализа") from exc
+        if parsed_analysis_id <= 0:
+            raise HTTPException(status_code=400, detail="Некорректный ID анализа")
+    previous_id = previous_response_id.strip()[:200] or None
+    context_value = context_text[:20000]
+    if MOCK_MODE:
+        response_text = build_chat_mock(question, context_value, conversation, has_image=True)
+        openai_response_id = None
+    else:
+        response_text, openai_response_id = chat_with_openai(
+            question=question, previous_response_id=previous_id,
+            context_text=context_value, conversation=conversation,
+            image_raw=processed_raw, image_media_type=processed_type,
+        )
+    stored_name = f"{uuid4().hex}.jpg"
+    CHAT_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    (CHAT_UPLOAD_DIR / stored_name).write_bytes(processed_raw)
+    save_chat_message(
+        analysis_id=parsed_analysis_id, role="user", content=question,
+        attachment_filename=filename[:240], attachment_path=stored_name,
+        attachment_media_type=processed_type, crop=crop,
+    )
+    save_chat_message(analysis_id=parsed_analysis_id, role="assistant", content=response_text, openai_response_id=openai_response_id)
+    return {
+        "response": response_text, "response_id": openai_response_id,
+        "model": MODEL, "mock": MOCK_MODE, "analysis_id": parsed_analysis_id,
+        "attachment_url": f"/api/chat-attachments/{stored_name}", "crop": crop,
     }
 
 

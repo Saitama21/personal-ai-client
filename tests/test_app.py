@@ -238,7 +238,7 @@ def test_stock_removal_accepts_shopturn_tool_flow():
 
 def test_health_reports_shopturn_feature():
     body = client.get("/api/health").json()
-    assert body["version"] == "2.3.4-pro"
+    assert body["version"] == "2.3.5-pro"
     assert "shopturn_tool_flow" in body["features"]
 
 
@@ -405,3 +405,31 @@ def test_stock_removal_accepts_hybrid_mode_and_multi_options():
     assert "Токарный X/Z + фрезерный" in body["response"]
     assert "X0 по оси детали; Z0 по правому торцу" in body["response"]
     assert "Торец A; Обработка с двух сторон" in body["response"]
+
+
+def test_chat_image_region_mock_and_attachment_history():
+    analysis = client.post("/api/analyze", data={"prompt":"Проверь чертёж"}, files={"file":("base.png", make_png(), "image/png")})
+    assert analysis.status_code == 200
+    analysis_id = analysis.json()["id"]
+    response = client.post("/api/chat-image", data={"question":"Что указано в выделенной области?","analysis_id":str(analysis_id),"context_text":analysis.json()["response"],"conversation_json":"[]","crop_json":'{"x":0.25,"y":0.25,"width":0.5,"height":0.5}'}, files={"file":("detail.png", make_png(), "image/png")})
+    assert response.status_code == 200
+    body=response.json()
+    assert body["mock"] is True
+    assert "изображение" in body["response"].lower()
+    attachment=client.get(body["attachment_url"])
+    assert attachment.status_code == 200
+    image=Image.open(io.BytesIO(attachment.content))
+    assert image.size == (60,40)
+    history=client.get(f"/api/chat/{analysis_id}").json()
+    user=[x for x in history if x["role"]=="user" and x.get("attachment_url")]
+    assert user and user[-1]["crop"]["width"] == 0.5
+    assert user[-1]["attachment_filename"] == "detail.png"
+
+def test_chat_image_rejects_non_image():
+    response=client.post("/api/chat-image",data={"question":"Проверь"},files={"file":("bad.txt",b"not image","text/plain")})
+    assert response.status_code == 415
+
+def test_health_reports_chat_image_features():
+    body=client.get('/api/health').json()
+    assert 'chat_image_upload' in body['features']
+    assert 'chat_region_selection' in body['features']

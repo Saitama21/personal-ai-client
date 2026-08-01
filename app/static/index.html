@@ -35,7 +35,7 @@
         <button class="nav-item" data-view="settings"><span class="nav-icon" aria-hidden="true">⚙</span><span>Настройки</span></button>
       </nav>
       <div class="status-card glass-soft"><span class="status-dot" id="statusDot"></span><div><strong id="statusTitle">Проверка...</strong><small id="statusText">Соединение с сервером</small></div></div>
-      <div class="sidebar-footer creator-glass"><span class="creator-label">Создатель</span><strong>Єрошов Іван</strong><small>Версия 2.3.4 Draft Reset + Glass Brand</small></div>
+      <div class="sidebar-footer creator-glass"><span class="creator-label">Создатель</span><strong>Єрошов Іван</strong><small>Версия 2.3.5 Chat Image Region</small></div>
     </aside>
 
     <main>
@@ -80,6 +80,14 @@
               <button id="analysisChatClear" class="small-button glass-soft">Очистить диалог</button>
             </div>
             <div id="analysisChatMessages" class="chat-messages"></div>
+            <div class="chat-image-tools">
+              <label class="small-button glass-soft chat-attach-label">📎 Прикрепить фото<input id="analysisChatFile" type="file" accept="image/jpeg,image/png,image/webp" hidden /></label>
+              <button id="analysisChatUseAll" class="small-button glass-soft hidden">Использовать всё фото</button>
+              <button id="analysisChatResetCrop" class="small-button glass-soft hidden">Сбросить рамку</button>
+              <button id="analysisChatClearImage" class="small-button glass-soft hidden">Убрать фото</button>
+              <span id="analysisChatImageStatus" class="chat-image-status">Можно приложить JPG, PNG или WEBP</span>
+            </div>
+            <div id="analysisChatImagePanel" class="chat-image-panel glass-soft hidden"><canvas id="analysisChatCanvas"></canvas><div class="chat-image-overlay-hint">Проведите по изображению, чтобы выделить область уточнения</div></div>
             <div class="chat-composer glass-soft">
               <textarea id="analysisChatInput" rows="2" placeholder="Ответьте ассистенту или задайте уточняющий вопрос..."></textarea>
               <button id="analysisChatSend" class="primary-button chat-send">Отправить</button>
@@ -321,6 +329,14 @@
               <button id="stockChatClear" class="small-button glass-soft">Очистить диалог</button>
             </div>
             <div id="stockChatMessages" class="chat-messages"></div>
+            <div class="chat-image-tools">
+              <label class="small-button glass-soft chat-attach-label">📎 Прикрепить фото<input id="stockChatFile" type="file" accept="image/jpeg,image/png,image/webp" hidden /></label>
+              <button id="stockChatUseAll" class="small-button glass-soft hidden">Использовать всё фото</button>
+              <button id="stockChatResetCrop" class="small-button glass-soft hidden">Сбросить рамку</button>
+              <button id="stockChatClearImage" class="small-button glass-soft hidden">Убрать фото</button>
+              <span id="stockChatImageStatus" class="chat-image-status">Можно приложить JPG, PNG или WEBP</span>
+            </div>
+            <div id="stockChatImagePanel" class="chat-image-panel glass-soft hidden"><canvas id="stockChatCanvas"></canvas><div class="chat-image-overlay-hint">Проведите по изображению, чтобы выделить область уточнения</div></div>
             <div class="chat-composer glass-soft">
               <textarea id="stockChatInput" rows="2" placeholder="Например: материал AISI 304, отверстия уже есть, какая последовательность обработки?"></textarea>
               <button id="stockChatSend" class="primary-button chat-send">Отправить</button>

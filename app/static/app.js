@@ -26,8 +26,8 @@ const state = {
   draggingPoint: false, dragSnapshotTaken: false, currentProjectId: null, currentProjectName: 'Локальный черновик',
   pointModalMode: 'add', validation: [], canvasTransform: null, autosaveTimer: null, serverSaveTimer: null,
   chat: {
-    analysis: { analysisId: null, rootResponseId: null, responseId: null, context: '', messages: [] },
-    stock: { analysisId: null, rootResponseId: null, responseId: null, context: '', messages: [] },
+    analysis: { analysisId: null, rootResponseId: null, responseId: null, context: '', messages: [], attachment: null },
+    stock: { analysisId: null, rootResponseId: null, responseId: null, context: '', messages: [], attachment: null },
   },
 };
 state.shopturn = { wizardStep: 0, customTools: [] };
@@ -182,97 +182,27 @@ function buildEngineeringContext() {
 
 function chatIds(mode) {
   return mode === 'stock'
-    ? { panel: 'stockChatPanel', messages: 'stockChatMessages', input: 'stockChatInput', send: 'stockChatSend', clear: 'stockChatClear', progress: 'stockChatProgress' }
-    : { panel: 'analysisChatPanel', messages: 'analysisChatMessages', input: 'analysisChatInput', send: 'analysisChatSend', clear: 'analysisChatClear', progress: 'analysisChatProgress' };
+    ? {panel:'stockChatPanel',messages:'stockChatMessages',input:'stockChatInput',send:'stockChatSend',clear:'stockChatClear',progress:'stockChatProgress',file:'stockChatFile',imagePanel:'stockChatImagePanel',canvas:'stockChatCanvas',useAll:'stockChatUseAll',resetCrop:'stockChatResetCrop',clearImage:'stockChatClearImage',imageStatus:'stockChatImageStatus'}
+    : {panel:'analysisChatPanel',messages:'analysisChatMessages',input:'analysisChatInput',send:'analysisChatSend',clear:'analysisChatClear',progress:'analysisChatProgress',file:'analysisChatFile',imagePanel:'analysisChatImagePanel',canvas:'analysisChatCanvas',useAll:'analysisChatUseAll',resetCrop:'analysisChatResetCrop',clearImage:'analysisChatClearImage',imageStatus:'analysisChatImageStatus'};
 }
-function resetChat(mode, hide = true) {
-  state.chat[mode] = { analysisId: null, rootResponseId: null, responseId: null, context: '', messages: [] };
-  const ids = chatIds(mode);
-  $(ids.messages).innerHTML = '';
-  $(ids.input).value = '';
-  $(ids.panel).classList.toggle('hidden', hide);
-}
-function startChat(mode, data) {
-  state.chat[mode] = {
-    analysisId: data.id || null,
-    rootResponseId: data.response_id || null,
-    responseId: data.response_id || null,
-    context: data.response || '',
-    messages: [],
-  };
-  const ids = chatIds(mode);
-  $(ids.panel).classList.remove('hidden');
-  $(ids.input).value = '';
-  renderChat(mode);
-}
-function renderChat(mode) {
-  const ids = chatIds(mode), chat = state.chat[mode];
-  if (!chat.messages.length) {
-    $(ids.messages).innerHTML = '<div class="chat-empty">Продолжите разговор: ответьте на вопрос ассистента или уточните расчёт.</div>';
-    return;
-  }
-  $(ids.messages).innerHTML = chat.messages.map(message => `
-    <div class="chat-row ${message.role}">
-      <div class="chat-avatar">${message.role === 'user' ? 'ВЫ' : 'AI'}</div>
-      <div class="chat-bubble">${renderText(message.content)}</div>
-    </div>`).join('');
-  $(ids.messages).scrollTop = $(ids.messages).scrollHeight;
-}
-async function sendChat(mode) {
-  const ids = chatIds(mode), chat = state.chat[mode];
-  const question = $(ids.input).value.trim();
-  if (!question) return;
-  const priorConversation = chat.messages.slice(-16).map(({role, content}) => ({role, content}));
-  chat.messages.push({ role: 'user', content: question });
-  $(ids.input).value = '';
-  $(ids.send).disabled = true;
-  $(ids.progress).classList.remove('hidden');
-  renderChat(mode);
-  try {
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        question,
-        previous_response_id: chat.responseId,
-        analysis_id: chat.analysisId,
-        context_text: `${chat.context}\n\n${buildEngineeringContext()}`,
-        conversation: priorConversation,
-      }),
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.detail || 'Ошибка диалога');
-    chat.responseId = data.response_id || chat.responseId;
-    chat.messages.push({ role: 'assistant', content: data.response });
-    renderChat(mode);
-    scheduleAutosave();
-  } catch (error) {
-    chat.messages.push({ role: 'assistant', content: `Ошибка: ${error.message}` });
-    renderChat(mode);
-    toast(error.message);
-  } finally {
-    $(ids.send).disabled = false;
-    $(ids.progress).classList.add('hidden');
-    $(ids.input).focus();
-  }
-}
-function clearChat(mode) {
-  const chat = state.chat[mode];
-  chat.messages = [];
-  chat.responseId = chat.rootResponseId;
-  renderChat(mode);
-}
-['analysis','stock'].forEach(mode => {
-  const ids = chatIds(mode);
-  $(ids.send).onclick = () => sendChat(mode);
-  $(ids.clear).onclick = () => clearChat(mode);
-  $(ids.input).addEventListener('keydown', event => {
-    if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault();
-      sendChat(mode);
-    }
-  });
-});
+function blankChatState(){return {analysisId:null,rootResponseId:null,responseId:null,context:'',messages:[],attachment:null};}
+function resetChat(mode,hide=true){clearChatAttachment(mode);state.chat[mode]=blankChatState();const ids=chatIds(mode);$(ids.messages).innerHTML='';$(ids.input).value='';$(ids.panel).classList.toggle('hidden',hide);}
+function startChat(mode,data){clearChatAttachment(mode);state.chat[mode]={analysisId:data.id||null,rootResponseId:data.response_id||null,responseId:data.response_id||null,context:data.response||'',messages:[],attachment:null};const ids=chatIds(mode);$(ids.panel).classList.remove('hidden');$(ids.input).value='';renderChat(mode);}
+function renderChat(mode){const ids=chatIds(mode),chat=state.chat[mode];if(!chat.messages.length){$(ids.messages).innerHTML='<div class="chat-empty">Продолжите разговор: ответьте ассистенту, приложите фото или выделите область для уточнения.</div>';return;}$(ids.messages).innerHTML=chat.messages.map(m=>`<div class="chat-row ${m.role}"><div class="chat-avatar">${m.role==='user'?'ВЫ':'AI'}</div><div class="chat-bubble">${m.imageUrl?`<figure class="chat-message-image"><img src="${m.imageUrl}" alt="Приложенное изображение"><figcaption>${m.crop?'Выделенная область изображения':'Приложенное изображение'}</figcaption></figure>`:''}${renderText(m.content)}</div></div>`).join('');$(ids.messages).scrollTop=$(ids.messages).scrollHeight;}
+function chatCanvasPosition(e,c){const r=c.getBoundingClientRect();const x=e.clientX??e.touches?.[0]?.clientX,y=e.clientY??e.touches?.[0]?.clientY;return{x:Math.max(0,Math.min(c.width,(x-r.left)*c.width/r.width)),y:Math.max(0,Math.min(c.height,(y-r.top)*c.height/r.height))};}
+function drawChatAttachment(mode){const ids=chatIds(mode),a=state.chat[mode]?.attachment;if(!a?.image)return;const c=$(ids.canvas),x=c.getContext('2d'),ratio=Math.min(1,1200/a.image.naturalWidth);c.width=Math.max(1,Math.round(a.image.naturalWidth*ratio));c.height=Math.max(1,Math.round(a.image.naturalHeight*ratio));x.clearRect(0,0,c.width,c.height);x.drawImage(a.image,0,0,c.width,c.height);if(a.crop){const px=a.crop.x*c.width,py=a.crop.y*c.height,pw=a.crop.width*c.width,ph=a.crop.height*c.height;x.save();x.fillStyle='rgba(2,8,16,.58)';x.fillRect(0,0,c.width,c.height);x.clearRect(px,py,pw,ph);x.drawImage(a.image,a.crop.x*a.image.naturalWidth,a.crop.y*a.image.naturalHeight,a.crop.width*a.image.naturalWidth,a.crop.height*a.image.naturalHeight,px,py,pw,ph);x.strokeStyle='#79e7ff';x.lineWidth=3;x.setLineDash([12,8]);x.strokeRect(px,py,pw,ph);x.restore();}}
+function updateChatImageStatus(mode){const ids=chatIds(mode),a=state.chat[mode]?.attachment;if(!a){$(ids.imageStatus).textContent='Можно приложить JPG, PNG или WEBP';return;}$(ids.imageStatus).textContent=a.crop?`Выбрана область ${Math.round(a.crop.width*100)}% × ${Math.round(a.crop.height*100)}%`:`Фото: ${a.file.name} · будет отправлено целиком`;}
+function clearChatAttachment(mode){const ids=chatIds(mode),chat=state.chat[mode];if(chat)chat.attachment=null;if($(ids.file))$(ids.file).value='';$(ids.imagePanel)?.classList.add('hidden');$(ids.useAll)?.classList.add('hidden');$(ids.resetCrop)?.classList.add('hidden');$(ids.clearImage)?.classList.add('hidden');if($(ids.canvas)){const c=$(ids.canvas);c.getContext('2d').clearRect(0,0,c.width,c.height);}updateChatImageStatus(mode);}
+function resetChatCrop(mode){const a=state.chat[mode]?.attachment;if(!a)return;a.crop=null;drawChatAttachment(mode);updateChatImageStatus(mode);}
+function useWholeChatImage(mode){const a=state.chat[mode]?.attachment;if(!a)return;a.crop={x:0,y:0,width:1,height:1};drawChatAttachment(mode);updateChatImageStatus(mode);}
+function chatAttachmentPreview(mode){const a=state.chat[mode]?.attachment;if(!a?.image)return null;const crop=a.crop||{x:0,y:0,width:1,height:1},c=document.createElement('canvas'),sw=Math.max(1,Math.round(crop.width*a.image.naturalWidth)),sh=Math.max(1,Math.round(crop.height*a.image.naturalHeight)),ratio=Math.min(1,900/sw);c.width=Math.max(1,Math.round(sw*ratio));c.height=Math.max(1,Math.round(sh*ratio));c.getContext('2d').drawImage(a.image,crop.x*a.image.naturalWidth,crop.y*a.image.naturalHeight,sw,sh,0,0,c.width,c.height);return c.toDataURL('image/jpeg',.88);}
+function loadChatImage(mode,file){if(!file)return;if(!['image/jpeg','image/png','image/webp'].includes(file.type)){toast('В чате поддерживаются JPG, PNG и WEBP');return;}const reader=new FileReader();reader.onload=()=>{const image=new Image();image.onload=()=>{state.chat[mode].attachment={file,image,crop:null,selecting:false,start:null};const ids=chatIds(mode);$(ids.imagePanel).classList.remove('hidden');$(ids.useAll).classList.remove('hidden');$(ids.resetCrop).classList.remove('hidden');$(ids.clearImage).classList.remove('hidden');drawChatAttachment(mode);updateChatImageStatus(mode);};image.onerror=()=>toast('Не удалось прочитать изображение');image.src=reader.result;};reader.readAsDataURL(file);}
+function beginChatCrop(mode,e){const ids=chatIds(mode),a=state.chat[mode]?.attachment;if(!a)return;e.preventDefault();a.selecting=true;a.start=chatCanvasPosition(e,$(ids.canvas));}
+function moveChatCrop(mode,e){const ids=chatIds(mode),a=state.chat[mode]?.attachment;if(!a?.selecting)return;e.preventDefault();const c=$(ids.canvas),p=chatCanvasPosition(e,c),x=Math.min(a.start.x,p.x),y=Math.min(a.start.y,p.y),w=Math.abs(p.x-a.start.x),h=Math.abs(p.y-a.start.y);a.crop={x:x/c.width,y:y/c.height,width:w/c.width,height:h/c.height};drawChatAttachment(mode);}
+function endChatCrop(mode){const a=state.chat[mode]?.attachment;if(!a?.selecting)return;a.selecting=false;if(!a.crop||a.crop.width*a.image.naturalWidth<8||a.crop.height*a.image.naturalHeight<8)a.crop=null;drawChatAttachment(mode);updateChatImageStatus(mode);}
+async function sendChat(mode){const ids=chatIds(mode),chat=state.chat[mode],a=chat.attachment,typed=$(ids.input).value.trim(),question=typed||(a?'Проанализируй приложенное изображение или выделенную область и уточни предыдущий ответ.':'');if(!question)return;const prior=chat.messages.slice(-16).map(({role,content})=>({role,content})),preview=a?chatAttachmentPreview(mode):null,crop=a?.crop?{...a.crop}:null;chat.messages.push({role:'user',content:question,imageUrl:preview,crop});$(ids.input).value='';$(ids.send).disabled=true;$(ids.progress).classList.remove('hidden');renderChat(mode);try{let response;if(a){const f=new FormData();f.append('file',a.file);f.append('question',question);f.append('previous_response_id',chat.responseId||'');f.append('analysis_id',chat.analysisId||'');f.append('context_text',`${chat.context}\n\n${buildEngineeringContext()}`);f.append('conversation_json',JSON.stringify(prior));if(a.crop)f.append('crop_json',JSON.stringify(a.crop));response=await fetch('/api/chat-image',{method:'POST',body:f});}else{response=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question,previous_response_id:chat.responseId,analysis_id:chat.analysisId,context_text:`${chat.context}\n\n${buildEngineeringContext()}`,conversation:prior})});}const data=await response.json();if(!response.ok)throw new Error(data.detail||'Ошибка диалога');chat.responseId=data.response_id||chat.responseId;chat.messages.push({role:'assistant',content:data.response});if(a)clearChatAttachment(mode);renderChat(mode);scheduleAutosave();}catch(error){chat.messages.push({role:'assistant',content:`Ошибка: ${error.message}`});renderChat(mode);toast(error.message);}finally{$(ids.send).disabled=false;$(ids.progress).classList.add('hidden');$(ids.input).focus();}}
+function clearChat(mode){const chat=state.chat[mode];chat.messages=[];chat.responseId=chat.rootResponseId;clearChatAttachment(mode);renderChat(mode);}
+['analysis','stock'].forEach(mode=>{const ids=chatIds(mode),canvas=$(ids.canvas);$(ids.send).onclick=()=>sendChat(mode);$(ids.clear).onclick=()=>clearChat(mode);$(ids.file).addEventListener('change',e=>loadChatImage(mode,e.target.files[0]));$(ids.useAll).onclick=()=>useWholeChatImage(mode);$(ids.resetCrop).onclick=()=>resetChatCrop(mode);$(ids.clearImage).onclick=()=>clearChatAttachment(mode);canvas.addEventListener('pointerdown',e=>beginChatCrop(mode,e));canvas.addEventListener('pointermove',e=>moveChatCrop(mode,e));window.addEventListener('pointerup',()=>endChatCrop(mode));$(ids.input).addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat(mode);}});});
 
 async function loadHealth() {
   try {
@@ -650,7 +580,7 @@ function renderShopTurnWizard(){const steps=buildShopTurnSteps();state.shopturn.
 function initShopTurn(){populateToolPresets('face');applyToolPreset('face',true);autoFillCycleFromContour(false);SHOP_INPUT_IDS.forEach(id=>$(id)?.addEventListener('input',()=>{renderShopTurn();scheduleAutosave();}));$('shopOperationSelect').addEventListener('change',()=>{applyOperationDefaults(true);renderShopTurn();scheduleAutosave();});$('toolPresetSelect').addEventListener('change',()=>applyToolPreset($('toolPresetSelect').value,true));$('applyToolPresetBtn').onclick=()=>applyToolPreset($('toolPresetSelect').value,true);$('autoFillShopturnBtn').onclick=()=>autoFillCycleFromContour(true);$('saveCustomToolBtn').onclick=()=>{const d=collectShopTurnData();if(!d.toolName)return toast('Введи название инструмента');const custom=customToolPresets();custom.push({...d,label:`T${d.toolT} · ${d.toolName}`,operation:d.operation});localStorage.setItem('personal-ai-custom-tools',JSON.stringify(custom));populateToolPresets(`custom:${custom.length-1}`);toast('Инструмент сохранён в локальную библиотеку');};$('wizardPrevBtn').onclick=()=>{state.shopturn.wizardStep=Math.max(0,state.shopturn.wizardStep-1);renderShopTurnWizard();};$('wizardNextBtn').onclick=()=>{const max=buildShopTurnSteps().length-1;if(state.shopturn.wizardStep<max)state.shopturn.wizardStep++;else toast('Мастер ввода завершён. Выполни Graphic view и симуляцию.');renderShopTurnWizard();scheduleAutosave();};$('consoleAcceptBtn').onclick=()=>$('wizardNextBtn').click();document.querySelectorAll('[data-console-step]').forEach(btn=>btn.onclick=()=>{state.shopturn.wizardStep=Math.max(0,Math.min(Number(btn.dataset.consoleStep)||0,buildShopTurnSteps().length-1));document.querySelectorAll('[data-console-step]').forEach(x=>x.classList.toggle('active',x===btn));renderShopTurnWizard();scheduleAutosave();toast(`Открыт шаг: ${buildShopTurnSteps()[state.shopturn.wizardStep].title}`);});$('wizardCopyBtn').onclick=async()=>{const s=buildShopTurnSteps()[state.shopturn.wizardStep];const txt=`${s.title}\n${s.path.join(' → ')}\n${s.values.map(([k,v])=>`${k}: ${v}`).join('\n')}\n${s.instruction.replace(/<[^>]*>/g,'')}`;try{await navigator.clipboard.writeText(txt);toast('Данные шага скопированы');}catch{toast('Не удалось скопировать');}};renderShopTurn();}
 
 async function fetchHistoryDetail(id){const r=await fetch(`/api/history/${id}`);const d=await r.json();if(!r.ok)throw new Error(d.detail||'Не удалось открыть запись');return d;}
-function showHistoryResult(item){const isStock=String(item.prompt||'').startsWith('Stock Removal |');if(isStock){setView('stock');$('stockResultEmpty').classList.add('hidden');$('stockResultContent').classList.remove('hidden');$('stockResultContent').innerHTML=renderText(item.response||'');$('stockResultMeta').textContent=`${item.model}${item.mock?' · MOCK':''} · #${item.id}`;startChat('stock',{id:item.id,response:item.response,response_id:item.openai_response_id,model:item.model,mock:item.mock});}else{setView('analysis');$('promptInput').value=item.prompt||'';$('resultEmpty').classList.add('hidden');$('resultContent').classList.remove('hidden');$('resultContent').innerHTML=renderText(item.response||'');$('resultMeta').textContent=`${item.model}${item.mock?' · MOCK':''} · #${item.id}`;startChat('analysis',{id:item.id,response:item.response,response_id:item.openai_response_id,model:item.model,mock:item.mock});}}
+function showHistoryResult(item){const isStock=String(item.prompt||'').startsWith('Stock Removal |');if(isStock){setView('stock');$('stockResultEmpty').classList.add('hidden');$('stockResultContent').classList.remove('hidden');$('stockResultContent').innerHTML=renderText(item.response||'');$('stockResultMeta').textContent=`${item.model}${item.mock?' · MOCK':''} · #${item.id}`;startChat('stock',{id:item.id,response:item.response,response_id:item.openai_response_id,model:item.model,mock:item.mock,loadHistory:true});}else{setView('analysis');$('promptInput').value=item.prompt||'';$('resultEmpty').classList.add('hidden');$('resultContent').classList.remove('hidden');$('resultContent').innerHTML=renderText(item.response||'');$('resultMeta').textContent=`${item.model}${item.mock?' · MOCK':''} · #${item.id}`;startChat('analysis',{id:item.id,response:item.response,response_id:item.openai_response_id,model:item.model,mock:item.mock,loadHistory:true});}}
 async function openHistoryEntry(id){try{const item=await fetchHistoryDetail(id);showHistoryResult(item);}catch(e){toast(e.message);}}
 async function loadHistoryProject(id){try{const item=await fetchHistoryDetail(id);resetWorkspaceForNewProject();if(item.project)applyProjectData(item.project);state.restoredFileName=item.filename||item.project?.fileName||null;state.currentProjectName=`Из истории · ${item.filename||`запись ${id}`}`;updateProjectUi();showHistoryResult(item);syncFileUi();scheduleAutosave();toast(item.has_project?'Проект восстановлен из истории':'Результат восстановлен. Исходный файл выбери заново.');}catch(e){toast(e.message);}}
 async function loadHistory(){const list=$('historyList');list.innerHTML='<div class="result-empty"><span>Загрузка...</span></div>';try{const r=await fetch('/api/history'),items=await r.json();if(!r.ok)throw new Error('Не удалось загрузить историю');if(!items.length){list.innerHTML='<div class="result-empty"><strong>История пуста</strong></div>';return;}list.innerHTML=items.map(i=>`<article class="history-item"><div class="history-copy"><div class="history-title-row"><h3 title="${escapeHtml(i.filename)}">${escapeHtml(i.filename)}</h3>${i.mock?'<span class="history-tag">MOCK</span>':''}${i.has_project?'<span class="history-tag project-tag">ПРОЕКТ</span>':''}</div><p title="${escapeHtml(i.prompt)}">${escapeHtml(i.prompt)}</p><small>${new Date(i.created_at*1000).toLocaleString('ru-RU')} · ${escapeHtml(i.model||'')}</small></div><div class="history-actions"><button data-open-history="${i.id}" class="small-button">Открыть</button><button data-load-history="${i.id}" class="secondary-button">Загрузить проект</button><button data-del="${i.id}" class="danger-lite" aria-label="Удалить запись">×</button></div></article>`).join('');list.querySelectorAll('[data-open-history]').forEach(b=>b.onclick=()=>openHistoryEntry(Number(b.dataset.openHistory)));list.querySelectorAll('[data-load-history]').forEach(b=>b.onclick=()=>loadHistoryProject(Number(b.dataset.loadHistory)));list.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{if(!confirm('Удалить запись из истории?'))return;await fetch(`/api/history/${b.dataset.del}`,{method:'DELETE'});loadHistory();});}catch(e){list.innerHTML=`<div class="result-empty"><strong>${escapeHtml(e.message)}</strong></div>`;}}
