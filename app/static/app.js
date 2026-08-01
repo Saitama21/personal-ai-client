@@ -1140,12 +1140,12 @@ window.CNC3D_getData = function CNC3D_getData() {
 };
 
 
-// v2.7.2 Tablet Edition analysis cards
+// v2.7.3 Tablet Edition — iPad Pro 10.5 detection fix
 (() => {
   const steps=['analysis','ai','verify','tolerances','contour','tools','plan','simulation','export'];
   const labels=['Загрузка','AI-анализ','Проверка','Допуски','Контур','Инструмент','План','Симуляция','Экспорт'];
   let current=0;
-  const isTablet=()=>window.matchMedia('(min-width: 768px) and (max-width: 1100px)').matches;
+  const isTablet=()=>{const widthMatch=window.matchMedia('(min-width: 768px) and (max-width: 1180px)').matches;const ipadLike=(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1)||/iPad/.test(navigator.userAgent);return widthMatch||ipadLike;};
   function applyTablet(){document.body.classList.toggle('tablet-edition',isTablet()); sync();}
   function q(id){return document.getElementById(id)}
   function activate(i,scroll=true){current=Math.max(0,Math.min(steps.length-1,i));window.__tabletWorkflowCurrent=current;document.querySelectorAll('.tablet-step').forEach((b,n)=>{b.classList.toggle('active',n===current);b.classList.toggle('done',n<current)}); if(q('tabletStepCounter'))q('tabletStepCounter').textContent=`Шаг ${current+1} из ${steps.length}`; if(q('tabletCurrentStage'))q('tabletCurrentStage').textContent=labels[current]; const pct=Math.round(current/(steps.length-1)*100); if(q('tabletProgressText'))q('tabletProgressText').textContent=pct+'%'; if(q('tabletProgressBar'))q('tabletProgressBar').style.width=pct+'%'; if(q('tabletBackBtn'))q('tabletBackBtn').disabled=current===0; if(q('tabletNextBtn'))q('tabletNextBtn').textContent=current===steps.length-1?'Готово':'Далее →'; if(scroll)navigate(steps[current]);}

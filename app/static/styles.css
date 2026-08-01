@@ -2540,7 +2540,7 @@ button, .primary-button, .secondary-button { position: relative; pointer-events:
 
 /* v2.6.6 — fixed floating notebook sidebar */
 .sidebar-collapse-button { display: none; }
-@media (min-width: 1025px) {
+@media (min-width: 1181px) {
   :root { --desktop-sidebar-width: clamp(250px, 18vw, 310px); --desktop-shell-gap: clamp(14px, 1.5vw, 24px); }
   .app-shell {
     display: block;
@@ -2600,9 +2600,9 @@ button, .primary-button, .secondary-button { position: relative; pointer-events:
 }
 
 
-/* v2.7.2 Tablet UX — iPad Pro 10.5 foundation */
+/* v2.7.3 Tablet Detection Fix — iPad Pro 10.5 */
 .tablet-workflow-shell{display:none}
-@media (min-width: 768px) and (max-width: 1100px) and (orientation: landscape){
+@media (min-width: 768px) and (max-width: 1180px) and (orientation: landscape){
   body.tablet-edition{--tablet-rail:136px;--tablet-inspector:244px;--tablet-bottom:70px}
   body.tablet-edition .app-shell{grid-template-columns:78px minmax(0,1fr);padding:10px;gap:10px;min-height:100vh}
   body.tablet-edition .sidebar{position:fixed!important;left:10px;top:10px;bottom:10px;width:78px;height:auto!important;z-index:120;padding:9px 7px;overflow:hidden}
@@ -2635,11 +2635,11 @@ button, .primary-button, .secondary-button { position: relative; pointer-events:
   body.tablet-edition .panel{border-radius:22px}
   body.tablet-edition .topbar-actions{gap:7px}.project-pill,.file-indicator{max-width:170px}
 }
-@media (min-width: 768px) and (max-width: 1100px) and (orientation: portrait){
+@media (min-width: 768px) and (max-width: 1180px) and (orientation: portrait){
   body.tablet-edition .tablet-workflow-shell{display:none}
 }
 
-/* v2.7.2 Tablet analysis cards */
+/* v2.7.3 Tablet analysis cards */
 .tablet-analysis-summary{display:none}
 @media (min-width:768px) and (max-width:1100px){
   body.tablet-edition .result-panel.has-tablet-summary #resultContent{display:none!important}
@@ -2664,7 +2664,7 @@ button, .primary-button, .secondary-button { position: relative; pointer-events:
   .tablet-analysis-details summary{padding:12px 14px;cursor:pointer;font-weight:700}.tablet-analysis-full-text{padding:0 14px 14px;line-height:1.6;color:var(--muted-strong);max-height:360px;overflow:auto}
 }
 
-/* v2.7.2 Tablet UX — iPad Pro 10.5 landscape */
+/* v2.7.3 Tablet UX — iPad Pro 10.5 landscape */
 @media (min-width:768px) and (max-width:1100px) and (orientation:landscape){
   body.tablet-edition{--tablet-side:202px;--tablet-inspector:210px;--tablet-gap:10px;}
   body.tablet-edition .app-shell{grid-template-columns:var(--tablet-side) minmax(0,1fr);gap:10px;padding:10px;}
