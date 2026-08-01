@@ -338,7 +338,10 @@ function syncFileUi() {
   $('stockFileBadge').textContent = state.file?.name || state.restoredFileName || 'Нет файла';
   $('currentFilePill').classList.toggle('restored-file', !state.file && !!state.restoredFileName);
   $('analyzeBtn').disabled = !(state.file && $('promptInput').value.trim().length >= 3);
-  $('stockBtn').disabled = !state.file; $('aiContourBtn').disabled = !state.file;
+  const notesReady = $('stockNotes').value.trim().length >= 10;
+  $('stockBtn').disabled = !(state.file || notesReady);
+  $('aiContourBtn').disabled = !state.file;
+  $('stockBtn').title = state.file || notesReady ? '' : 'Загрузите чертёж или опишите деталь минимум 10 символами';
 }
 function updateProjectUi() { $('activeProjectName').textContent = state.currentProjectName; $('projectNameInput').value = state.currentProjectName === 'Локальный черновик' ? '' : state.currentProjectName; }
 
@@ -346,6 +349,7 @@ function updateProjectUi() { $('activeProjectName').textContent = state.currentP
 ['dragleave','drop'].forEach(t => dropZone.addEventListener(t,e => { e.preventDefault(); dropZone.classList.remove('dragover'); }));
 dropZone.ondrop = e => handleFile(e.dataTransfer.files[0]); fileInput.onchange = () => handleFile(fileInput.files[0]);
 $('promptInput').oninput = syncFileUi;
+$('stockNotes').addEventListener('input',()=>{clearStockValidation();syncFileUi();});
 document.querySelectorAll('.quick-prompts button').forEach(b => b.onclick = () => { $('promptInput').value = b.dataset.prompt; syncFileUi(); });
 
 async function handleFile(file) {
@@ -400,8 +404,30 @@ document.querySelectorAll('[data-zero-value], [data-side-value]').forEach(input 
 syncStockModeUi();
 syncStockOptionValues();
 
+function showStockValidation(message){
+  const box=$('stockValidation');box.textContent=message;box.classList.remove('hidden');
+  $('stockNotesField').classList.add('field-invalid');
+  box.scrollIntoView({behavior:'smooth',block:'center'});
+}
+function clearStockValidation(){
+  $('stockValidation').classList.add('hidden');$('stockValidation').textContent='';$('stockNotesField').classList.remove('field-invalid');
+}
+function validateStockPlanInput(){
+  const notes=$('stockNotes').value.trim();
+  if(!state.file && notes.length<10){showStockValidation('Загрузите фото/PDF/SLDDRW или подробно опишите деталь в поле «Примечания» — минимум 10 символов.');return false;}
+  if(state.stockMode==='lathe' && (!$('blankDiameter').value.trim() || !$('blankLength').value.trim())){
+    showStockValidation('Для токарного плана укажите диаметр и длину фактической заготовки.');return false;
+  }
+  if(state.stockMode==='mill' && (!$('blankWidth').value.trim() || !$('blankHeight').value.trim() || !$('blankLengthMill').value.trim())){
+    showStockValidation('Для фрезерного плана укажите ширину, высоту и длину заготовки.');return false;
+  }
+  clearStockValidation();return true;
+}
 $('stockBtn').onclick = async () => {
-  if(!state.file)return; $('stockBtn').disabled=true;$('stockProgress').classList.remove('hidden');const f=new FormData();f.append('file',state.file);f.append('stock_mode',state.stockMode);
+  if(!validateStockPlanInput())return;
+  const button=$('stockBtn');button.disabled=true;$('stockProgress').classList.remove('hidden');const f=new FormData();
+  if(state.file)f.append('file',state.file);
+  f.append('stock_mode',state.stockMode);
   if(state.stockMode==='lathe'){
     f.append('blank_diameter',$('blankDiameter').value);f.append('blank_length',$('blankLength').value);
   }else if(state.stockMode==='mill'){
@@ -410,8 +436,13 @@ $('stockBtn').onclick = async () => {
     f.append('blank_diameter',$('blankDiameter').value);f.append('blank_length',$('blankLength').value);
     f.append('blank_width',$('blankWidth').value);f.append('blank_height',$('blankHeight').value);f.append('blank_mill_length',$('blankLengthMill').value);
   }
-  syncStockOptionValues(); f.append('zero_reference',$('zeroReference').value);f.append('first_side',$('firstSide').value);f.append('notes',$('stockNotes').value);f.append('shopturn_json',JSON.stringify(collectShopTurnPayload()));f.append('project_json',JSON.stringify(collectProjectData()));
-  try{const r=await fetch('/api/stock-removal',{method:'POST',body:f});const d=await r.json();if(!r.ok)throw new Error(d.detail||'Ошибка');$('stockResultEmpty').classList.add('hidden');$('stockResultContent').classList.remove('hidden');$('stockResultContent').innerHTML=renderText(d.response);$('stockResultMeta').textContent=`${d.model}${d.mock?' · MOCK':''} · #${d.id}`;startChat('stock',d);toast('План сформирован');}catch(e){toast(e.message);}finally{$('stockProgress').classList.add('hidden');syncFileUi();}
+  syncStockOptionValues();f.append('zero_reference',$('zeroReference').value);f.append('first_side',$('firstSide').value);f.append('notes',$('stockNotes').value.trim());f.append('shopturn_json',JSON.stringify(collectShopTurnPayload()));f.append('project_json',JSON.stringify(collectProjectData()));
+  try{
+    const d=await apiRequest('/api/stock-removal',{method:'POST',body:f},{timeoutMs:180000,retries:1});
+    $('stockResultEmpty').classList.add('hidden');$('stockResultContent').classList.remove('hidden');$('stockResultContent').innerHTML=renderText(d.response);
+    const source=d.source_mode==='text'?'по описанию':'по чертежу';$('stockResultMeta').textContent=`${d.model}${d.mock?' · MOCK':''} · ${source} · #${d.id}`;
+    startChat('stock',d);toast(`План сформирован ${source}`);
+  }catch(e){showStockValidation(e.message);toast(e.message);}finally{$('stockProgress').classList.add('hidden');syncFileUi();}
 };
 $('aiContourBtn').onclick = async () => {
   if(!state.file)return; $('stockProgress').classList.remove('hidden');$('aiContourBtn').disabled=true;const f=new FormData();f.append('file',state.file);f.append('blank_diameter',$('blankDiameter').value);f.append('blank_length',$('blankLength').value);f.append('notes',$('stockNotes').value);

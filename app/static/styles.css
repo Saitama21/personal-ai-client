@@ -2504,3 +2504,13 @@ html[data-theme="light"] .engineering-rule-search { background:rgba(255,255,255,
   .compact-choice-grid { grid-template-columns: 1fr 1fr; }
   .compact-choice-grid .choice-card:last-child { grid-column: 1 / -1; }
 }
+
+
+/* PRO 2.5.0 — Safari-safe actions and explicit validation */
+.action-button-layer{position:relative;z-index:20;isolation:isolate}
+.action-button-layer button{position:relative;z-index:21;pointer-events:auto;touch-action:manipulation;-webkit-tap-highlight-color:rgba(80,180,255,.22)}
+.panel::before,.panel::after,.glass::before,.glass::after,.glass-soft::before,.glass-soft::after{pointer-events:none}
+.form-validation{margin:10px 0 4px;padding:12px 14px;border:1px solid rgba(255,92,92,.6);border-radius:14px;background:rgba(140,24,35,.22);color:#ffd9dd;font-weight:700;line-height:1.4}
+.field-invalid textarea,.field-invalid input{border-color:#ff6673!important;box-shadow:0 0 0 3px rgba(255,77,92,.14)!important}
+.field-help{display:block;margin-top:7px;color:var(--muted);font-size:12px;line-height:1.35}
+@media (hover:none) and (pointer:coarse){.primary-button,.secondary-button,.small-button{min-height:46px}}

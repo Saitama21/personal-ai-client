@@ -41,13 +41,13 @@
         <button class="nav-item" data-view="settings"><span class="nav-icon" aria-hidden="true">⚙</span><span>Настройки</span></button>
       </nav>
       <div class="status-card glass-soft"><span class="status-dot" id="statusDot"></span><div><strong id="statusTitle">Проверка...</strong><small id="statusText">Соединение с сервером</small></div></div>
-      <div class="sidebar-footer creator-glass"><span class="creator-label">Создатель</span><strong>Єрошов Іван</strong><small>Версия 2.4.8 Operations</small></div>
+      <div class="sidebar-footer creator-glass"><span class="creator-label">Создатель</span><strong>Єрошов Іван</strong><small>Версия 2.5.0 Smart Process</small></div>
     </aside>
 
     <main>
       <section class="mobile-creator-strip glass" aria-label="Создатель и версия">
         <div class="mobile-creator-copy"><span>Создатель</span><strong>Єрошов Іван</strong></div>
-        <div class="mobile-version-badge">v2.4.8</div>
+        <div class="mobile-version-badge">v2.5.0</div>
       </section>
       <header class="topbar">
         <div><h1 id="pageTitle">Новый анализ</h1><p id="pageSubtitle">Загрузите изображение, PDF или SLDDRW и задайте вопрос</p></div>
@@ -307,8 +307,9 @@
               <input id="firstSide" type="hidden" />
             </fieldset>
 
-            <div class="form-grid form-grid-wide"><label class="full"><span>Примечания</span><textarea id="stockNotes" placeholder="Отверстия уже есть, обработка наружного контура..."></textarea></label></div>
-            <div class="button-row"><button id="stockBtn" class="primary-button" disabled>Сформировать план</button><button id="aiContourBtn" class="secondary-button" disabled>AI-контур X/Z</button></div>
+            <div class="form-grid form-grid-wide"><label id="stockNotesField" class="full"><span>Примечания</span><textarea id="stockNotes" placeholder="Опишите деталь, размеры, резьбы и требуемые операции. Без файла — минимум 10 символов."></textarea><small class="field-help">Можно загрузить фото/PDF или сформировать предварительный план только по описанию.</small></label></div>
+            <div id="stockValidation" class="form-validation hidden" role="alert"></div>
+            <div class="button-row action-button-layer"><button id="stockBtn" class="primary-button" type="button">Сформировать план</button><button id="aiContourBtn" class="secondary-button" type="button" disabled>AI-контур X/Z</button></div>
             <div id="stockProgress" class="progress hidden"><span></span><p>Строю план и контур...</p></div>
           </section>
           <section class="panel glass stock-side-panel">

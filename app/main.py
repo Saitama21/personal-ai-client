@@ -434,7 +434,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="Personal AI Client", version="2.4.8-pro", lifespan=lifespan)
+app = FastAPI(title="Personal AI Client", version="2.5.0-pro", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -878,7 +878,7 @@ def create_stock_removal_prompt(*, stock_mode: str, blank_summary: str, zero_ref
 
 
 def build_stock_removal_mock(filename: str, media_type: str, stock_mode: str, blank_summary: str, zero_reference: str, first_side: str, notes: str, raw: bytes | None = None, tool_summary: str = "") -> str:
-    file_kind = "SLDDRW" if media_type == SLDDRW_MEDIA_TYPE else ("PDF" if media_type == "application/pdf" else "изображение")
+    file_kind = "описание без файла" if media_type == "text/plain" else ("SLDDRW" if media_type == SLDDRW_MEDIA_TYPE else ("PDF" if media_type == "application/pdf" else "изображение"))
     preview = extract_slddrw_preview(raw or b"") if media_type == SLDDRW_MEDIA_TYPE and raw is not None else None
     extracted = [
         "наружный Ø130 мм",
@@ -1256,7 +1256,7 @@ def health() -> dict[str, Any]:
         "api_key_configured": bool(os.getenv("OPENAI_API_KEY")),
         "max_file_mb": MAX_FILE_MB,
         "supported_types": ["JPG", "PNG", "WEBP", "PDF", "SLDDRW"],
-        "version": "2.4.8-pro",
+        "version": "2.5.0-pro",
         "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52pty_profile", "drawing_intelligence", "tolerance_detection", "metric_thread_catalog", "chamfer_marker", "multi_operation_route", "contour_mirroring", "history_project_restore", "mobile_history", "multi_operation_picker", "general_tolerance_h14_rule", "stock_mode_radio", "multi_checkbox_setup", "hybrid_turn_mill_mode", "chat_image_upload", "chat_region_selection", "split_chamfer_input", "toggleable_drawing_rules", "full_thread_library", "thread_library_filters", "engineering_layout_overflow_fix"],
     }
 
@@ -1534,7 +1534,7 @@ async def analyze(
 
 @app.post("/api/stock-removal")
 async def stock_removal(
-    file: UploadFile = File(...),
+    file: UploadFile | None = File(None),
     stock_mode: str = Form(...),
     blank_diameter: str | None = Form(None),
     blank_length: str | None = Form(None),
@@ -1547,17 +1547,27 @@ async def stock_removal(
     shopturn_json: str | None = Form(None),
     project_json: str | None = Form(None),
 ) -> dict[str, Any]:
-    media_type = detect_media_type(file)
-    if media_type not in STANDARD_ALLOWED_TYPES | {SLDDRW_MEDIA_TYPE}:
-        raise HTTPException(status_code=415, detail="Поддерживаются JPG, PNG, WEBP, PDF и SLDDRW")
     if stock_mode not in {"lathe", "mill", "hybrid"}:
         raise HTTPException(status_code=400, detail="Некорректный режим обработки")
 
-    raw = await file.read()
-    if not raw:
-        raise HTTPException(status_code=400, detail="Файл пуст")
-    if len(raw) > MAX_FILE_MB * 1024 * 1024:
-        raise HTTPException(status_code=413, detail=f"Файл больше {MAX_FILE_MB} МБ")
+    raw = b""
+    media_type = "text/plain"
+    filename = "text-description.txt"
+    if file is not None and file.filename:
+        media_type = detect_media_type(file)
+        if media_type not in STANDARD_ALLOWED_TYPES | {SLDDRW_MEDIA_TYPE}:
+            raise HTTPException(status_code=415, detail="Поддерживаются JPG, PNG, WEBP, PDF и SLDDRW")
+        raw = await file.read()
+        if not raw:
+            raise HTTPException(status_code=400, detail="Файл пуст")
+        if len(raw) > MAX_FILE_MB * 1024 * 1024:
+            raise HTTPException(status_code=413, detail=f"Файл больше {MAX_FILE_MB} МБ")
+        filename = file.filename or "file"
+    elif len((notes or "").strip()) < 10:
+        raise HTTPException(
+            status_code=400,
+            detail="Загрузите чертёж или подробно опишите деталь в поле «Примечания» (минимум 10 символов)",
+        )
 
     if stock_mode == "lathe":
         blank_summary = f"Ø{blank_diameter or '?'} × {blank_length or '?'} мм"
@@ -1574,12 +1584,12 @@ async def stock_removal(
     openai_response_id: str | None = None
     if MOCK_MODE:
         response_text = build_stock_removal_mock(
-            file.filename or "file", media_type, stock_mode, blank_summary,
+            filename, media_type, stock_mode, blank_summary,
             zero_reference or "", first_side or "", notes or "", raw, tool_summary
         )
     else:
         response_text, openai_response_id = stock_removal_with_openai(
-            raw=raw, filename=file.filename or "file", media_type=media_type,
+            raw=raw, filename=filename, media_type=media_type,
             stock_mode=stock_mode, blank_summary=blank_summary,
             zero_reference=zero_reference or "", first_side=first_side or "", notes=notes or "",
             tool_summary=tool_summary
@@ -1587,7 +1597,7 @@ async def stock_removal(
 
     stock_prompt = f"Stock Removal | {blank_summary} | {shopturn_data.get('operation', 'operation not set')} | T{shopturn_data.get('toolT', '?')} D{shopturn_data.get('toolD', '?')}"
     analysis_id = save_history(
-        filename=file.filename or "file", media_type=media_type, prompt=stock_prompt, crop=None,
+        filename=filename, media_type=media_type, prompt=stock_prompt, crop=None,
         response=response_text, model=MODEL, mock=MOCK_MODE,
         openai_response_id=openai_response_id,
         project_snapshot=project_snapshot,
@@ -1606,6 +1616,7 @@ async def stock_removal(
         "model": MODEL,
         "mock": MOCK_MODE,
         "shopturn": shopturn_data,
+        "source_mode": "drawing" if raw else "text",
     }
 
 
