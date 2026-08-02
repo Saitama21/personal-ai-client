@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#07111f" id="themeColorMeta">
   <title>Personal AI Client PRO — Operator PDF</title>
-  <link rel="stylesheet" href="/static/styles.css?v=4.2.2-tablet-optimized">
+  <link rel="stylesheet" href="/static/styles.css?v=4.2.3-mobile-optimized">
 </head>
 <body>
 <div class="tablet-backdrop" id="tabletBackdrop" aria-hidden="true"></div>
@@ -42,7 +42,7 @@
       <div class="axis-row"><i></i>X <i></i>Z <i></i>Y <i></i>C</div>
       <button class="ghost small">Паспорт станка</button>
     </section>
-    <footer>Personal AI Client PRO<br><span>v4.2.2 Tablet Optimized</span></footer>
+    <footer>Personal AI Client PRO<br><span>v4.2.3 Mobile Optimized</span></footer>
   </aside>
 
   <main class="workspace">
@@ -62,6 +62,7 @@
       </div>
     </header>
 
+    <section class="mobile-progress" id="mobileProgress" aria-live="polite"></section>
     <section class="stepper" id="stepper"></section>
 
     <div class="layout-grid">
@@ -87,9 +88,9 @@
     </div>
   </main>
 </div>
-<script src="/static/app.js?v=4.2.2-tablet-optimized" defer></script>
+<script src="/static/app.js?v=4.2.3-mobile-optimized" defer></script>
 <script type="module">
-(async()=>{try{const THREE=await import("https://cdnjs.cloudflare.com/ajax/libs/three.js/0.168.0/three.module.min.js");window.THREE=THREE;await import("/static/simulation3d.js?v=4.2.2-tablet-optimized");window.CNC3D_init?.();}catch(error){console.error("Three.js load failed",error);window.dispatchEvent(new CustomEvent("cnc-3d-load-error",{detail:error}));}})();
+(async()=>{try{const THREE=await import("https://cdnjs.cloudflare.com/ajax/libs/three.js/0.168.0/three.module.min.js");window.THREE=THREE;await import("/static/simulation3d.js?v=4.2.3-mobile-optimized");window.CNC3D_init?.();}catch(error){console.error("Three.js load failed",error);window.dispatchEvent(new CustomEvent("cnc-3d-load-error",{detail:error}));}})();
 </script>
 </body>
 </html>

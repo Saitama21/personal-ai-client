@@ -1,4 +1,4 @@
-# Personal AI Client PRO v4.2.2 Tablet Optimized
+# Personal AI Client PRO v4.2.3 Mobile Optimized
 
 Последовательный CNC-мастер: анализ чертежа, проверка, заготовка, X/Z, AF, инструменты, техпроцесс, Stock Removal, 3D-симуляция и экспорт.
 
@@ -14,7 +14,7 @@
 Railway: `MOCK_MODE=false`, `OPENAI_MODE=live`, `OPENAI_API_KEY=...`.
 
 
-## v4.2.2 Tablet Optimized
+## v4.2.3 Mobile Optimized
 
 - единая размерная модель `dimensions.axialSegments`;
 - инженерная проверка, контур, Stock Removal, симуляция и PDF читают один источник;
@@ -22,7 +22,7 @@ Railway: `MOCK_MODE=false`, `OPENAI_MODE=live`, `OPENAI_API_KEY=...`.
 - старые проекты автоматически мигрируют из полей `threadLength`, `stepLength`, `headLength`.
 
 
-## Планшетная оптимизация v4.2.2
+## Планшетная оптимизация v4.2.3
 - планшетный диапазон 721–1199 CSS px;
 - рабочая область занимает всю ширину;
 - меню и сводка открываются как стеклянные выдвижные панели;
@@ -30,3 +30,7 @@ Railway: `MOCK_MODE=false`, `OPENAI_MODE=live`, `OPENAI_API_KEY=...`.
 - анализ, контур и симуляция получают увеличенную рабочую область;
 - кнопки Назад/Далее закреплены внизу;
 - логика проекта едина с desktop и mobile.
+
+
+## v4.2.3 Mobile Optimized
+Phone layout uses drawer navigation, bottom-sheet project summary, compact progress, single-column workflow, full-screen geometry/simulation and safe-area aware fixed actions. Project logic remains shared with desktop and tablet.

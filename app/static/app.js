@@ -11,7 +11,7 @@ function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&l
 function persist(){localStorage.setItem("rozfood_v400_project",JSON.stringify({...state,file:null,preview:null}))}
 function resetDependents(from){for(let i=from+1;i<state.done.length;i++)state.done[i]=false;if(from<3){state.contour=[];state.geometry={partType:"unknown",confidence:0,outerContour:[],innerContours:[],holes:[],secondaryFeatures:[],assumptions:[],warnings:[],coordinateSystem:{xMode:"diameter",zZero:"right_face"}}}if(from<4)state.afContour=[];if(from<5)state.tools=[];if(from<6)state.route=[];if(from<8)state.simulationReviewed=false;state.finalResult=null;state.finalizedAt=null;persist()}
 function render(){renderStepper();renderStage();renderInspector();renderNextStrip();document.querySelectorAll('[data-step-jump]').forEach(b=>b.classList.toggle('active',Number(b.dataset.stepJump)===state.step));}
-function renderStepper(){const c=$('#stepper');c.innerHTML='';STEPS.forEach((name,i)=>{const s=el('div','step'+(i===state.step?' current':'')+(state.done[i]?' done':'')+(i>0&&!state.done[i-1]&&i!==state.step?' locked':''));s.innerHTML=`<div class="step-num">${state.done[i]?'✓':i+1}</div><span>${name}</span>`;s.onclick=()=>{if(i===0||state.done[i-1]||state.done[i]){state.step=i;render()}};c.append(s)})}
+function renderStepper(){const c=$('#stepper');c.innerHTML='';const mp=$('#mobileProgress');if(mp){const complete=state.done.filter(Boolean).length;mp.innerHTML=`<div><b>Этап ${state.step+1} из ${STEPS.length}</b><span>${esc(STEPS[state.step])}</span></div><div class="mobile-progress-track"><i style="width:${Math.max((complete/STEPS.length)*100,((state.step+.15)/STEPS.length)*100)}%"></i></div>`;}STEPS.forEach((name,i)=>{const s=el('div','step'+(i===state.step?' current':'')+(state.done[i]?' done':'')+(i>0&&!state.done[i-1]&&i!==state.step?' locked':''));s.innerHTML=`<div class="step-num">${state.done[i]?'✓':i+1}</div><span>${name}</span>`;s.onclick=()=>{if(i===0||state.done[i-1]||state.done[i]){state.step=i;render()}};c.append(s)})}
 function shell(title,subtitle,body,status='В РАБОТЕ'){return `<div class="stage-title"><div><h2>${state.step+1}. ${title}</h2><p>${subtitle}</p></div><span class="status-badge">${status}</span></div>${body}`}
 function field(label,key,type='text'){return `<div class="field-row"><label>${label}</label><input data-field="${key}" type="${type}" value="${esc(state.fields[key])}"></div>`}
 function numeric(value){const n=Number(String(value??'').replace(',','.'));return Number.isFinite(n)?n:null}
@@ -200,25 +200,25 @@ bindPersistentNavigation();
 render();
 
 
-// v4.2.2 Tablet drawer controls. Layout selection is based only on viewport width.
-function isTabletViewport(){return window.matchMedia('(min-width:721px) and (max-width:1199px)').matches}
-function closeTabletPanels(){
+// v4.2.3 Responsive drawer controls for phone and tablet. Layout selection is based only on viewport width.
+function isResponsiveDrawerViewport(){return window.matchMedia('(max-width:1199px)').matches}
+function closeResponsivePanels(){
   document.body.classList.remove('tablet-sidebar-open','tablet-inspector-open');
   document.getElementById('tabletMenuBtn')?.setAttribute('aria-expanded','false');
   document.getElementById('tabletInspectorBtn')?.setAttribute('aria-expanded','false');
 }
-function toggleTabletPanel(kind){
-  if(!isTabletViewport())return;
+function toggleResponsivePanel(kind){
+  if(!isResponsiveDrawerViewport())return;
   const sidebar=kind==='sidebar';
   document.body.classList.toggle('tablet-sidebar-open',sidebar&&!document.body.classList.contains('tablet-sidebar-open'));
   document.body.classList.toggle('tablet-inspector-open',!sidebar&&!document.body.classList.contains('tablet-inspector-open'));
   document.getElementById('tabletMenuBtn')?.setAttribute('aria-expanded',String(document.body.classList.contains('tablet-sidebar-open')));
   document.getElementById('tabletInspectorBtn')?.setAttribute('aria-expanded',String(document.body.classList.contains('tablet-inspector-open')));
 }
-document.getElementById('tabletMenuBtn')?.addEventListener('click',()=>toggleTabletPanel('sidebar'));
-document.getElementById('tabletInspectorBtn')?.addEventListener('click',()=>toggleTabletPanel('inspector'));
-document.getElementById('tabletBackdrop')?.addEventListener('click',closeTabletPanels);
-document.addEventListener('keydown',event=>{if(event.key==='Escape')closeTabletPanels()});
-document.querySelectorAll('#sidebar button').forEach(button=>button.addEventListener('click',()=>{if(isTabletViewport())setTimeout(closeTabletPanels,0)}));
-window.addEventListener('resize',()=>{if(!isTabletViewport())closeTabletPanels()});
-window.addEventListener('orientationchange',closeTabletPanels);
+document.getElementById('tabletMenuBtn')?.addEventListener('click',()=>toggleResponsivePanel('sidebar'));
+document.getElementById('tabletInspectorBtn')?.addEventListener('click',()=>toggleResponsivePanel('inspector'));
+document.getElementById('tabletBackdrop')?.addEventListener('click',closeResponsivePanels);
+document.addEventListener('keydown',event=>{if(event.key==='Escape')closeResponsivePanels()});
+document.querySelectorAll('#sidebar button').forEach(button=>button.addEventListener('click',()=>{if(isResponsiveDrawerViewport())setTimeout(closeResponsivePanels,0)}));
+window.addEventListener('resize',()=>{if(!isResponsiveDrawerViewport())closeResponsivePanels()});
+window.addEventListener('orientationchange',closeResponsivePanels);

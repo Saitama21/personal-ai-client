@@ -17,6 +17,6 @@ def test_tablet_breakpoint_and_drawers():
 
 def test_tablet_js_controls():
     js=(ROOT/'app/static/app.js').read_text()
-    assert 'isTabletViewport' in js
-    assert 'toggleTabletPanel' in js
+    assert 'isResponsiveDrawerViewport' in js
+    assert 'toggleResponsivePanel' in js
     assert 'orientationchange' in js
