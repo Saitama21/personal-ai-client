@@ -1,5 +1,3 @@
-# Personal AI Client PRO v2.8.2 Unified Responsive
-
 # Personal AI Client PRO v2.6.0 — Structured Machining Operations
 
 Инженерный клиент для анализа JPG/PNG/WEBP/PDF/SLDDRW, подготовки контура, Stock Removal и переноса данных в SINUMERIK 828D.
@@ -113,13 +111,3 @@ python -m py_compile app/main.py app/thread_library.py
 - Новый проект полностью очищает файл, размеры, операции, допуски, резьбы, фаски, контур, результаты и 3D-состояние.
 - Сохранённые проекты Railway Volume, история, тема и пользовательская инструментальная библиотека не удаляются.
 - Перед сбросом заполненного проекта показывается подтверждение.
-
-
-## Tablet Edition 2.7.5
-Добавлен отдельный планшетный профиль для iPad Pro 10.5: пошаговый мастер, закреплённый инспектор, нижняя навигация и управление MX Anywhere 3S.
-
-
-## v2.7.6 iPad layout activation fix
-- iPad Pro 10.5 landscape (1112 CSS px) now enters Tablet Edition.
-- Desktop fixed sidebar starts above 1180 px to avoid conflict.
-- Added iPadOS touch-device fallback detection.
