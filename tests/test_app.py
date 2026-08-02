@@ -238,7 +238,7 @@ def test_stock_removal_accepts_shopturn_tool_flow():
 
 def test_health_reports_shopturn_feature():
     body = client.get("/api/health").json()
-    assert body["version"] == "3.0.1-local-fallback-fix"
+    assert body["version"] == "4.0.0-sequential-master"
     assert "shopturn_tool_flow" in body["features"]
 
 
@@ -480,26 +480,21 @@ def test_chat_does_not_reuse_previous_response_file_chain(monkeypatch):
     assert calls[0]["input"][-1]["content"] == "M8 1.25"
 
 
-def test_light_theme_engineering_panel_has_contrast_tokens():
+def test_v4_theme_tokens_present():
     from pathlib import Path
     css = (Path(__file__).parents[1] / "app" / "static" / "styles.css").read_text(encoding="utf-8")
-    assert "--glass-border: var(--line);" in css
-    assert "--control-bg: var(--button-bg);" in css
-    assert 'html[data-theme="light"] .drawing-intelligence .mini-heading' in css
-    assert "color: #2b4058;" in css
+    assert "--panel:#0e1b2d" in css
+    assert ".stepper" in css
+    assert "@media(max-width:720px)" in css
 
-
-def test_split_chamfer_input_is_rendered_and_legacy_field_removed():
+def test_v4_sequential_master_markup_present():
     root = Path(__file__).resolve().parents[1]
     html = (root / "app" / "static" / "index.html").read_text(encoding="utf-8")
     script = (root / "app" / "static" / "app.js").read_text(encoding="utf-8")
-    assert 'id="chamferSizeInput"' in html
-    assert 'id="chamferAngleInput"' in html
-    assert 'id="chamferNotationSplit"' in html
-    assert 'chamferNotationInput' not in html
-    assert 'chamferNotationInput' not in script
-    assert 'return `${size}×${angle}°`' in script
-
+    assert 'id="stepper"' in html
+    assert 'id="stagePanel"' in html
+    assert 'AF-контур' in script
+    assert 'Stock Removal' in script
 
 def test_health_reports_split_chamfer_input_feature():
     body = client.get("/api/health").json()
@@ -533,42 +528,23 @@ def test_thread_catalog_has_unique_ids_and_major_families():
     assert 'E27' in examples
 
 
-def test_engineering_dashboard_markup_contains_controls():
+def test_v4_dashboard_markup_contains_controls():
     html = client.get('/').text
-    required_ids = {
-        'rulesEnabledToggle',
-        'selectAllRulesCheckbox',
-        'enableAllRulesBtn',
-        'threadFamilyTabs',
-        'threadSearchInput',
-        'threadDiameterFilter',
-        'threadPitchFilter',
-        'threadStandardOnlyToggle',
-        'threadProfileGrid',
-        'threadDetailsPanel',
-        'chamfersEnabledToggle',
-        'chamferSizeInput',
-        'chamferAngleInput',
-    }
-    for element_id in required_ids:
+    for element_id in {'sidebar','stepper','stagePanel','summaryList','progressList','nextStrip'}:
         assert f'id="{element_id}"' in html
-    assert 'мм' in html
-    assert '°' in html
 
-
-def test_engineering_css_contains_overflow_guards():
+def test_v4_css_contains_responsive_guards():
     css = (Path(__file__).parents[1] / 'app' / 'static' / 'styles.css').read_text(encoding='utf-8')
-    assert '.engineering-dashboard-grid' in css
-    assert 'minmax(0, 1fr)' in css
-    assert 'overflow-x: hidden' in css or 'overflow-x:hidden' in css
-    assert '.thread-library-card' in css
-
+    assert '.layout-grid' in css
+    assert 'minmax(0,1fr)' in css
+    assert '@media(max-width:1100px)' in css
+    assert '@media(max-width:720px)' in css
 
 def test_index_disables_browser_cache():
     response = client.get("/")
     assert response.status_code == 200
     assert "no-store" in response.headers.get("cache-control", "")
-    assert response.headers.get("x-app-version") == "3.0.1-local-fallback-fix"
+    assert response.headers.get("x-app-version") == "4.0.0-sequential-master"
 
 
 def test_static_assets_require_revalidation():
