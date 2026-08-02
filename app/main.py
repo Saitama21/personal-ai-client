@@ -31,7 +31,7 @@ MAX_FILE_MB = int(os.getenv("MAX_FILE_MB", "20"))
 MODEL = os.getenv("OPENAI_MODEL", "gpt-5-mini")
 MOCK_MODE = os.getenv("MOCK_MODE", "false").lower() in {"1", "true", "yes"}
 KEEP_OPENAI_FILES = os.getenv("KEEP_OPENAI_FILES", "false").lower() in {"1", "true", "yes"}
-APP_VERSION = os.getenv("APP_VERSION", "2.6.6-floating-sidebar")
+APP_VERSION = os.getenv("APP_VERSION", "2.8.4-multiview-stock-removal")
 DEPLOY_COMMIT = os.getenv("RAILWAY_GIT_COMMIT_SHA", os.getenv("GIT_COMMIT", "local"))
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
@@ -93,6 +93,7 @@ METRIC_THREAD_CATALOG: dict[str, dict[str, Any]] = {
 SYSTEM_INSTRUCTIONS = """Ты персональный AI-ассистент для анализа фотографий, документов, технических изображений, PDF и машиностроительных чертежей.
 Отвечай на русском языке, если пользователь не попросил иначе. Будь конкретным: сначала краткий вывод, затем найденные детали, риски или неопределенности, после этого практические действия.
 При анализе чертежа обязательно ищи и явно перечисляй: размерные допуски, посадки, геометрические допуски, шероховатость, резьбы, фаски, скругления, технические требования и общие допуски в основной надписи или примечаниях.
+Обязательно связывай главный вид, торцевой вид, вид сверху, разрезы и местные виды одной детали. Размер без знака Ø на торцевом виде шестигранника/лысок трактуй как размер по плоскостям (AF), а не как диаметр. Не включай AF-размеры в токарный контур X/Z: оформляй их как отдельную фрезерную операцию. Если деталь содержит осесимметричный профиль и лыски/шестигранник, рекомендуй комбинированный токарно-фрезерный режим.
 Строго применяй следующее правило общих допусков без дополнительных вопросов:
 - H14: нижнее отклонение равно 0, верхнее отклонение равно +IT14;
 - h14: верхнее отклонение равно 0, нижнее отклонение равно −IT14;
@@ -204,10 +205,51 @@ def interpret_general_tolerance_rules(text: str) -> list[dict[str, str]]:
     return [dict(GENERAL_TOLERANCE_RULES[key]) for key in detected]
 
 
+
+def infer_multiview_features(text: str) -> dict[str, Any]:
+    """Infer secondary-view features from AI text without inventing geometry."""
+    source = text or ""
+    flat_values: list[float] = []
+    patterns = [
+        r"(?:AF|A/F|по\s+плоскостям|по\s+граням|под\s+ключ)\s*[=:]?\s*(\d+(?:[.,]\d+)?)",
+        r"(?:ширина|размер)\s+(?:по\s+)?(?:плоскостям|граням)\s*[=:]?\s*(\d+(?:[.,]\d+)?)",
+    ]
+    for pattern in patterns:
+        for match in re.finditer(pattern, source, flags=re.IGNORECASE):
+            value = float(match.group(1).replace(',', '.'))
+            if value not in flat_values:
+                flat_values.append(value)
+    has_hex = bool(re.search(r"шестигран|hexagon|лыск|по\s+плоскостям|по\s+граням|под\s+ключ", source, flags=re.IGNORECASE))
+    has_secondary_view = bool(re.search(r"вид\s+(?:справа|слева|сверху|снизу|торцев)|торцевой\s+вид|дополнительн(?:ый|ом)\s+вид", source, flags=re.IGNORECASE))
+    has_axial_profile = bool(re.search(r"(?:Ø|⌀)\s*\d+|токарн|наружн(?:ое|ый)\s+точен", source, flags=re.IGNORECASE))
+    secondary_features = []
+    for value in flat_values:
+        secondary_features.append({
+            "type": "flats",
+            "dimension": value,
+            "designation": f"AF {value:g}",
+            "source_view": "secondary/end view" if has_secondary_view else "drawing view",
+            "operation": "milling",
+            "exclude_from_xz_contour": True,
+        })
+    recommended_mode = "hybrid" if secondary_features and has_axial_profile else ("mill" if secondary_features else "lathe")
+    notes = []
+    if secondary_features:
+        notes.append("Размер по плоскостям связан с торцевым/дополнительным видом и не является диаметром.")
+        notes.append("Лыски или шестигранник выполняются отдельной фрезерной операцией после токарного профиля.")
+    return {
+        "has_secondary_view": has_secondary_view,
+        "has_hex_or_flats": has_hex or bool(secondary_features),
+        "secondary_features": secondary_features,
+        "recommended_stock_mode": recommended_mode,
+        "notes": notes,
+    }
+
 def build_drawing_intelligence(text: str) -> dict[str, Any]:
     threads = infer_metric_threads(text)
     tolerances = extract_tolerance_tokens(text)
     tolerance_interpretations = interpret_general_tolerance_rules(text)
+    multiview = infer_multiview_features(text)
     chamfer_tokens = []
     for pattern in [
         r"\b\d+(?:[.,]\d+)?\s*[xх×]\s*\d+(?:[.,]\d+)?\s*°",
@@ -224,9 +266,13 @@ def build_drawing_intelligence(text: str) -> dict[str, Any]:
         "tolerance_interpretations": tolerance_interpretations,
         "chamfers_detected": chamfer_tokens[:20],
         "requires_chamfer_decision": not bool(chamfer_tokens),
+        "view_relations": multiview,
+        "secondary_features": multiview["secondary_features"],
+        "recommended_stock_mode": multiview["recommended_stock_mode"],
         "notes": [
             "Шаг резьбы без явного указания принимается по стандартному крупному ряду и помечается как предположение.",
             "Неуказанные фаски не создаются автоматически: оператор отмечает их на мини-чертёже.",
+            *multiview["notes"],
         ],
     }
 
@@ -242,6 +288,10 @@ def augment_drawing_prompt(prompt: str) -> str:
 - не путай H14 и h14 и не задавай по этим обозначениям уточняющий вопрос;
 - отдельно перечисли резьбы. Если написано только M без шага, прими стандартный крупный шаг и прямо укажи, что он принят автоматически;
 - перечисли все явно заданные фаски и скругления;
+- свяжи главный и дополнительные виды одной детали: торцевой вид, вид справа/сверху, разрезы;
+- различай диаметры со знаком Ø и размеры по плоскостям/граням без Ø. Размер AF/по плоскостям не превращай в Ø;
+- если на торцевом виде показан шестигранник или лыски, вынеси их в отдельную фрезерную операцию и не включай в контур X/Z;
+- проверь цепочки размеров (например, сумма участков должна совпадать с общей длиной) и явно отметь совпадение или конфликт;
 - если фаска не задана, не спрашивай общий вопрос. Укажи конкретные кромки, для которых оператор должен выбрать «фаска» или «снять остроту»;
 - не задавай вопрос о данных, которые однозначно следуют из стандартного обозначения.
 """
@@ -895,6 +945,14 @@ def create_stock_removal_prompt(*, stock_mode: str, blank_summary: str, zero_ref
 7. Отдельно блок 'Инструмент и ShopTurn 828D': T/D, выбранный инструмент, F/S, поля X0/Z0/X1/Z1, FS1–FS3, D, UX и UZ.
 8. Отдельно блок 'Важно проверить'.
 
+Перед планом обязательно выполни связывание видов:
+- отдели осесимметричный токарный профиль от неосесимметричных элементов;
+- размер по плоскостям/граням (AF) не считать диаметром и не включать в X/Z;
+- шестигранник/лыски оформить отдельной операцией приводным инструментом;
+- если присутствуют и токарные ступени, и AF/лыски, рекомендуй режим hybrid;
+- проверь размерную цепь участков относительно общей длины.
+
+В разделе плана раздели операции на «Токарная часть» и «Фрезерная часть». Для каждой фрезерной особенности укажи связанный вид и размер AF.
 Нельзя выдумывать скрытые размеры. Если данных мало — так и скажи. Если на чертеже есть повторы или спорные места, перечисли допущения явно.
 """
 
@@ -1213,12 +1271,15 @@ def contour_with_openai(*, raw: bytes, filename: str, media_type: str, blank_dia
     from openai import OpenAI
     client = OpenAI(api_key=api_key)
     uploaded_file_id: str | None = None
-    prompt = f"""Проанализируй технический чертёж и предложи ориентировочный наружный токарный контур X/Z для Stock Removal.
+    prompt = f"""Проанализируй все виды технического чертежа и предложи ориентировочный наружный токарный контур X/Z для Stock Removal.
 Заготовка: диаметр {blank_diameter or 'не указан'} мм, длина {blank_length or 'не указана'} мм.
 Примечания: {notes or 'нет'}.
 X указывай в диаметрах. Z0 считать на правом торце, рабочее направление Z отрицательное.
+Свяжи главный, торцевой и дополнительные виды. Диаметр распознавай только при наличии Ø/⌀ или однозначного осесимметричного контекста.
+Размер по плоскостям/граням (AF), шестигранник и лыски НЕ включай в точки X/Z. Верни их в secondary_features как отдельную фрезерную операцию.
+Проверь цепочку длин и не смешивай длину участка с координатой Z.
 Возвращай ТОЛЬКО JSON без markdown:
-{{"name":"...","confidence":0.0,"assumptions":["..."],"points":[{{"x":140,"z":0,"type":"start","rv":"—","direction":"—"}},{{"x":130,"z":-3,"type":"lineX","rv":"—","direction":"по X"}}]}}
+{{"name":"...","confidence":0.0,"recommended_mode":"lathe|hybrid|mill","assumptions":["..."],"secondary_features":[{{"type":"flats","designation":"AF 13","dimension":13,"operation":"milling","source_view":"end view"}}],"points":[{{"x":16,"z":0,"type":"start","rv":"—","direction":"—"}},{{"x":16,"z":-4,"type":"lineZ","rv":"—","direction":"по Z"}}]}}
 Допустимые type: start, lineX, lineZ, arcCW, arcCCW, chamfer. Не выдумывай невидимые размеры; сомнительные места перечисли в assumptions.
 """
     try:
@@ -1247,10 +1308,26 @@ X указывай в диаметрах. Z0 считать на правом т
             input=[{"role": "user", "content": content}],
         )
         value = extract_json_object(response.output_text)
+        secondary = []
+        for item in value.get("secondary_features", []) if isinstance(value.get("secondary_features"), list) else []:
+            if not isinstance(item, dict):
+                continue
+            secondary.append({
+                "type": str(item.get("type") or "feature")[:40],
+                "designation": str(item.get("designation") or "")[:80],
+                "dimension": item.get("dimension"),
+                "operation": str(item.get("operation") or "milling")[:40],
+                "source_view": str(item.get("source_view") or "secondary view")[:80],
+            })
+        recommended = str(value.get("recommended_mode") or ("hybrid" if secondary else "lathe"))
+        if recommended not in {"lathe", "mill", "hybrid"}:
+            recommended = "hybrid" if secondary else "lathe"
         return {
             "name": str(value.get("name") or "AI-контур")[:120],
             "confidence": max(0.0, min(1.0, float(value.get("confidence") or 0.0))),
             "assumptions": [str(x)[:300] for x in value.get("assumptions", []) if isinstance(x, (str, int, float))][:20],
+            "secondary_features": secondary[:20],
+            "recommended_mode": recommended,
             "points": validate_contour_points(value.get("points")),
         }
     except HTTPException:
@@ -1287,7 +1364,7 @@ def health() -> dict[str, Any]:
         "supported_types": ["JPG", "PNG", "WEBP", "PDF", "SLDDRW"],
         "version": APP_VERSION,
         "deploy_commit": DEPLOY_COMMIT[:12],
-        "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52pty_profile", "drawing_intelligence", "tolerance_detection", "metric_thread_catalog", "chamfer_marker", "multi_operation_route", "contour_mirroring", "history_project_restore", "mobile_history", "multi_operation_picker", "general_tolerance_h14_rule", "stock_mode_radio", "multi_checkbox_setup", "hybrid_turn_mill_mode", "chat_image_upload", "chat_region_selection", "split_chamfer_input", "toggleable_drawing_rules", "full_thread_library", "thread_library_filters", "engineering_layout_overflow_fix", "text_only_stock_plan", "safari_touch_hotfix", "machine_profile_autofill"],
+        "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52pty_profile", "drawing_intelligence", "tolerance_detection", "metric_thread_catalog", "chamfer_marker", "multi_operation_route", "contour_mirroring", "history_project_restore", "mobile_history", "multi_operation_picker", "general_tolerance_h14_rule", "stock_mode_radio", "multi_checkbox_setup", "hybrid_turn_mill_mode", "chat_image_upload", "chat_region_selection", "split_chamfer_input", "toggleable_drawing_rules", "full_thread_library", "thread_library_filters", "engineering_layout_overflow_fix", "text_only_stock_plan", "safari_touch_hotfix", "machine_profile_autofill", "multiview_association", "af_flats_detection", "hybrid_stock_removal_split"],
     }
 
 

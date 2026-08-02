@@ -238,7 +238,7 @@ def test_stock_removal_accepts_shopturn_tool_flow():
 
 def test_health_reports_shopturn_feature():
     body = client.get("/api/health").json()
-    assert body["version"] == "2.6.6-floating-sidebar"
+    assert body["version"] == "2.8.4-multiview-stock-removal"
     assert "shopturn_tool_flow" in body["features"]
 
 
@@ -568,10 +568,47 @@ def test_index_disables_browser_cache():
     response = client.get("/")
     assert response.status_code == 200
     assert "no-store" in response.headers.get("cache-control", "")
-    assert response.headers.get("x-app-version") == "2.6.6-floating-sidebar"
+    assert response.headers.get("x-app-version") == "2.8.4-multiview-stock-removal"
 
 
 def test_static_assets_require_revalidation():
-    response = client.get("/static/app.js?v=2.6.6-floating-sidebar")
+    response = client.get("/static/app.js?v=2.8.4-multiview-stock-removal")
     assert response.status_code == 200
     assert "no-cache" in response.headers.get("cache-control", "")
+
+
+def test_multiview_feature_detection_keeps_af_out_of_diameter():
+    from app.main import infer_multiview_features
+    data = infer_multiview_features(
+        "Главный вид: ступени Ø16 и Ø10. Торцевой вид показывает шестигранник, размер по плоскостям 13 мм."
+    )
+    assert data["recommended_stock_mode"] == "hybrid"
+    assert data["secondary_features"][0]["designation"] == "AF 13"
+    assert data["secondary_features"][0]["exclude_from_xz_contour"] is True
+
+
+def test_drawing_intelligence_reports_secondary_milling_feature():
+    from app.main import build_drawing_intelligence
+    data = build_drawing_intelligence(
+        "Деталь имеет наружные Ø16 и Ø10, резьбу M8, фаску 0.5×45°. "
+        "На торцевом виде шестигранная головка, ширина по плоскостям 13 мм."
+    )
+    assert data["recommended_stock_mode"] == "hybrid"
+    assert data["threads"][0]["display"] == "M8×1.25"
+    assert data["secondary_features"][0]["operation"] == "milling"
+
+
+def test_stock_prompt_requires_view_association_and_operation_split():
+    from app.main import create_stock_removal_prompt
+    prompt = create_stock_removal_prompt(
+        stock_mode="hybrid", blank_summary="Ø16 × 31 мм", zero_reference="Z0 справа",
+        first_side="Торец A", notes="", tool_summary=""
+    )
+    assert "размер по плоскостям/граням (AF) не считать диаметром" in prompt
+    assert "Токарная часть" in prompt
+    assert "Фрезерная часть" in prompt
+
+
+def test_health_reports_multiview_features():
+    body = client.get("/api/health").json()
+    assert {"multiview_association", "af_flats_detection", "hybrid_stock_removal_split"} <= set(body["features"])

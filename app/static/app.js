@@ -31,7 +31,7 @@ const state = {
   },
 };
 state.shopturn = { wizardStep: 0, customTools: [] };
-state.drawingIntel = { tolerances: [], tolerance_interpretations: [], threads: [], chamfers_detected: [], requires_chamfer_decision: true, notes: [] };
+state.drawingIntel = { tolerances: [], tolerance_interpretations: [], threads: [], chamfers_detected: [], requires_chamfer_decision: true, secondary_features: [], recommended_stock_mode: 'lathe', notes: [] };
 state.threadCatalog = [];
 state.threadFamilies = [];
 state.threadLibraryUi = { family: 'metric_iso', search: '', diameter: 'all', pitch: 'all', standardOnly: true, selectedId: null };
@@ -428,7 +428,7 @@ $('stockBtn').onclick = async () => {
 };
 $('aiContourBtn').onclick = async () => {
   if(!state.file)return; $('stockProgress').classList.remove('hidden');$('aiContourBtn').disabled=true;const f=new FormData();f.append('file',state.file);f.append('blank_diameter',$('blankDiameter').value);f.append('blank_length',$('blankLength').value);f.append('notes',$('stockNotes').value);
-  try{const r=await fetch('/api/contour-ai',{method:'POST',body:f});const d=await r.json();if(!r.ok)throw new Error(d.detail||'Ошибка AI-контура');pushUndo();state.contourPoints=d.points;state.selectedIndex=0;state.closed=false;state.validation=[];renderEditor();scheduleAutosave();toast(`AI-контур готов · уверенность ${Math.round((d.confidence||0)*100)}%`);}catch(e){toast(e.message);}finally{$('stockProgress').classList.add('hidden');syncFileUi();}
+  try{const r=await fetch('/api/contour-ai',{method:'POST',body:f});const d=await r.json();if(!r.ok)throw new Error(d.detail||'Ошибка AI-контура');pushUndo();state.contourPoints=d.points;state.selectedIndex=0;state.closed=false;state.validation=[];if(d.recommended_mode==='hybrid'){state.stockMode='hybrid';syncStockModeUi('hybrid');}const features=Array.isArray(d.secondary_features)?d.secondary_features:[];if(features.length){const featureText=features.map(x=>`${x.designation||x.type}: отдельная ${x.operation==='milling'?'фрезерная':'дополнительная'} операция (${x.source_view||'доп. вид'})`).join('; ');const notes=$('stockNotes');if(!notes.value.includes(featureText))notes.value=[notes.value.trim(),featureText].filter(Boolean).join('\n');}renderEditor();scheduleAutosave();toast(`AI-контур готов · ${features.length?`доп. элементов: ${features.length} · `:''}уверенность ${Math.round((d.confidence||0)*100)}%`);}catch(e){toast(e.message);}finally{$('stockProgress').classList.add('hidden');syncFileUi();}
 };
 
 function pushUndo() { state.undoStack.push(JSON.stringify({points:state.contourPoints,closed:state.closed})); if(state.undoStack.length>80)state.undoStack.shift(); state.redoStack=[]; updateUndoButtons(); }
@@ -524,7 +524,7 @@ async function saveProject(forceCreate=false){const generated=`Проект ${ne
 $('saveProjectBtn').onclick=()=>saveProject(false);$('createProjectBtn').onclick=async()=>{const name=$('projectNameInput').value.trim()||`Проект ${new Date().toLocaleString('ru-RU')}`;resetWorkspaceForNewProject();state.currentProjectName=name;updateProjectUi();await saveProject(true);};
 function resetWorkspaceForNewProject(options={}){
   const autosave = options.autosave !== false;
-  state.currentProjectId=null;state.currentProjectName='Локальный черновик';state.file=null;state.restoredFileName=null;state.image=null;state.crop=null;state.contourPoints=[];state.selectedIndex=0;state.undoStack=[];state.redoStack=[];state.validation=[];state.operationRoute=[];state.selectedOperationCodes=[];state.activeRouteIndex=-1;state.projectThreads=[];state.chamfers=[];state.chamfersEnabled=true;state.ruleControl={enabled:true,active:{},search:''};state.threadLibraryUi={family:'metric_iso',search:'',diameter:'all',pitch:'all',standardOnly:true,selectedId:null};state.drawingIntel={tolerances:[],tolerance_interpretations:[],threads:[],chamfers_detected:[],requires_chamfer_decision:true,notes:[]};
+  state.currentProjectId=null;state.currentProjectName='Локальный черновик';state.file=null;state.restoredFileName=null;state.image=null;state.crop=null;state.contourPoints=[];state.selectedIndex=0;state.undoStack=[];state.redoStack=[];state.validation=[];state.operationRoute=[];state.selectedOperationCodes=[];state.activeRouteIndex=-1;state.projectThreads=[];state.chamfers=[];state.chamfersEnabled=true;state.ruleControl={enabled:true,active:{},search:''};state.threadLibraryUi={family:'metric_iso',search:'',diameter:'all',pitch:'all',standardOnly:true,selectedId:null};state.drawingIntel={tolerances:[],tolerance_interpretations:[],threads:[],chamfers_detected:[],requires_chamfer_decision:true,secondary_features:[],recommended_stock_mode:'lathe',notes:[]};
   fileInput.value='';dropZone.classList.remove('hidden');previewArea.classList.add('hidden');pdfPreview.src='';
   ['promptInput','blankDiameter','blankLength','blankWidth','blankHeight','blankLengthMill','zeroReference','firstSide','zeroReferenceCustom','firstSideCustom','stockNotes','offsetXInput','offsetZInput'].forEach(id=>{if($(id))$(id).value='';});
   document.querySelectorAll('[data-zero-value], [data-side-value]').forEach(input=>{input.checked=false;input.closest('.choice-card')?.classList.remove('selected');});
@@ -593,6 +593,8 @@ function applyDrawingIntelligence(data={}){
     threads:Array.isArray(data.threads)?data.threads.map(x=>({...x,enabled:x.enabled!==false})):[],
     chamfers_detected:Array.isArray(data.chamfers_detected)?data.chamfers_detected:[],
     requires_chamfer_decision:data.requires_chamfer_decision!==false,
+    secondary_features:Array.isArray(data.secondary_features)?data.secondary_features:[],
+    recommended_stock_mode:['lathe','mill','hybrid'].includes(data.recommended_stock_mode)?data.recommended_stock_mode:'lathe',
     notes:Array.isArray(data.notes)?data.notes:[]
   };
   for(const value of state.drawingIntel.tolerances) if(!(ruleIdentity('tolerance',value) in state.ruleControl.active)) state.ruleControl.active[ruleIdentity('tolerance',value)]=true;
