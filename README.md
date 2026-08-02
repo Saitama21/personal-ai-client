@@ -1,4 +1,4 @@
-# Personal AI Client PRO v4.2.0 Operator PDF
+# Personal AI Client PRO v4.2.1 Operator PDF
 
 Последовательный CNC-мастер: анализ чертежа, проверка, заготовка, X/Z, AF, инструменты, техпроцесс, Stock Removal, 3D-симуляция и экспорт.
 
@@ -12,3 +12,11 @@
 - режимы в документе помечаются как стартовые рекомендации, требующие проверки оператором.
 
 Railway: `MOCK_MODE=false`, `OPENAI_MODE=live`, `OPENAI_API_KEY=...`.
+
+
+## v4.2.1 Single Source Dimensions
+
+- единая размерная модель `dimensions.axialSegments`;
+- инженерная проверка, контур, Stock Removal, симуляция и PDF читают один источник;
+- размерная цепь блокирует подтверждение при несовпадении с общей длиной;
+- старые проекты автоматически мигрируют из полей `threadLength`, `stepLength`, `headLength`.

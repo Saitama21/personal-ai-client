@@ -285,7 +285,23 @@ def build_operator_pdf(snapshot: dict[str, Any]) -> bytes:
     frame = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="normal")
     doc.addPageTemplates(PageTemplate(id="operator", frames=[frame], onPage=_header_footer))
 
-    fields = snapshot.get("fields") if isinstance(snapshot.get("fields"), dict) else {}
+    fields = dict(snapshot.get("fields") if isinstance(snapshot.get("fields"), dict) else {})
+    dimensions = snapshot.get("dimensions") if isinstance(snapshot.get("dimensions"), dict) else {}
+    axial_segments = dimensions.get("axialSegments") if isinstance(dimensions.get("axialSegments"), list) else []
+    for segment in axial_segments:
+        if not isinstance(segment, dict):
+            continue
+        key = segment.get("key")
+        length = segment.get("length")
+        if key and length is not None:
+            fields[key] = length
+    if dimensions.get("overallLength") is not None:
+        fields["overallLength"] = dimensions.get("overallLength")
+    chain_values = [segment.get("length") for segment in axial_segments if isinstance(segment, dict) and segment.get("length") is not None]
+    chain_sum = sum(float(value) for value in chain_values) if chain_values else 0
+    dimension_chain_text = " + ".join(_fmt_number(value) for value in chain_values)
+    if dimension_chain_text:
+        dimension_chain_text += f" = {_fmt_number(chain_sum, ' мм')}"
     stock = snapshot.get("stock") if isinstance(snapshot.get("stock"), dict) else {}
     geometry = snapshot.get("geometry") if isinstance(snapshot.get("geometry"), dict) else {}
     contour = snapshot.get("contour") if isinstance(snapshot.get("contour"), list) else []
@@ -343,6 +359,7 @@ def build_operator_pdf(snapshot: dict[str, Any]) -> bytes:
             [
                 ["Параметр", "Подтверждённое значение"],
                 ["Общая длина", _fmt_number(fields.get("overallLength"), " мм")],
+                ["Размерная цепь", dimension_chain_text or "Не определена"],
                 ["Диаметр заготовки", _fmt_number(fields.get("blankDiameter"), " мм")],
                 ["Резьба", _safe(fields.get("thread"))],
                 ["Длина резьбы", _fmt_number(fields.get("threadLength"), " мм")],

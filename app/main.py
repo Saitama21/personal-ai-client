@@ -35,7 +35,7 @@ MOCK_MODE = os.getenv("MOCK_MODE", "false").strip().lower() in {"1", "true", "ye
 OPENAI_MODE = os.getenv("OPENAI_MODE", "live").strip().lower()
 OPENAI_CONFIGURED = bool(os.getenv("OPENAI_API_KEY", "").strip())
 KEEP_OPENAI_FILES = os.getenv("KEEP_OPENAI_FILES", "false").strip().lower() in {"1", "true", "yes", "on"}
-APP_VERSION = os.getenv("APP_VERSION", "4.2.0-operator-pdf")
+APP_VERSION = os.getenv("APP_VERSION", "4.2.1-single-source-dimensions")
 DEPLOY_COMMIT = os.getenv("RAILWAY_GIT_COMMIT_SHA", os.getenv("GIT_COMMIT", "local"))
 
 logging.basicConfig(
@@ -275,6 +275,18 @@ def build_drawing_intelligence(text: str) -> dict[str, Any]:
             value = " ".join(match.group(0).split()).strip(" .,:;")
             if value and value.lower() not in {x.lower() for x in chamfer_tokens}:
                 chamfer_tokens.append(value)
+    axial_segments: list[dict[str, Any]] = []
+    chain_match = re.search(
+        r"(\d+(?:[.,]\d+)?)\s*\+\s*(\d+(?:[.,]\d+)?)\s*\+\s*(\d+(?:[.,]\d+)?)\s*=\s*(\d+(?:[.,]\d+)?)",
+        text or "",
+    )
+    if chain_match:
+        values = [float(value.replace(",", ".")) for value in chain_match.groups()]
+        axial_segments = [
+            {"key": "threadLength", "name": "Резьбовой участок", "length": values[0], "source": "analysis_text"},
+            {"key": "stepLength", "name": "Ступень", "length": values[1], "source": "analysis_text"},
+            {"key": "headLength", "name": "Головка", "length": values[2], "source": "analysis_text"},
+        ]
     return {
         "threads": threads,
         "tolerances": tolerances,
@@ -284,6 +296,7 @@ def build_drawing_intelligence(text: str) -> dict[str, Any]:
         "view_relations": multiview,
         "secondary_features": multiview["secondary_features"],
         "recommended_stock_mode": multiview["recommended_stock_mode"],
+        "axial_segments": axial_segments,
         "notes": [
             "Шаг резьбы без явного указания принимается по стандартному крупному ряду и помечается как предположение.",
             "Неуказанные фаски не создаются автоматически: оператор отмечает их на мини-чертёже.",
