@@ -35,7 +35,7 @@ MOCK_MODE = os.getenv("MOCK_MODE", "false").strip().lower() in {"1", "true", "ye
 OPENAI_MODE = os.getenv("OPENAI_MODE", "live").strip().lower()
 OPENAI_CONFIGURED = bool(os.getenv("OPENAI_API_KEY", "").strip())
 KEEP_OPENAI_FILES = os.getenv("KEEP_OPENAI_FILES", "false").strip().lower() in {"1", "true", "yes", "on"}
-APP_VERSION = os.getenv("APP_VERSION", "4.4.0-universal-multiprocess-cam")
+APP_VERSION = os.getenv("APP_VERSION", "4.4.1-recognition-crop")
 DEPLOY_COMMIT = os.getenv("RAILWAY_GIT_COMMIT_SHA", os.getenv("GIT_COMMIT", "local"))
 
 logging.basicConfig(
@@ -1590,7 +1590,7 @@ def health() -> dict[str, Any]:
         "supported_types": ["JPG", "PNG", "WEBP", "PDF", "SLDDRW"],
         "version": APP_VERSION,
         "deploy_commit": DEPLOY_COMMIT[:12],
-        "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52pty_profile", "drawing_intelligence", "tolerance_detection", "metric_thread_catalog", "chamfer_marker", "multi_operation_route", "contour_mirroring", "history_project_restore", "mobile_history", "multi_operation_picker", "general_tolerance_h14_rule", "stock_mode_radio", "multi_checkbox_setup", "hybrid_turn_mill_mode", "chat_image_upload", "chat_region_selection", "split_chamfer_input", "toggleable_drawing_rules", "full_thread_library", "thread_library_filters", "engineering_layout_overflow_fix", "text_only_stock_plan", "safari_touch_hotfix", "machine_profile_autofill", "multiview_association", "af_flats_detection", "hybrid_stock_removal_split", "operator_pdf", "final_result_snapshot", "sinumerik_shopturn_guide"],
+        "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "drawing_region_selection", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52pty_profile", "drawing_intelligence", "tolerance_detection", "metric_thread_catalog", "chamfer_marker", "multi_operation_route", "contour_mirroring", "history_project_restore", "mobile_history", "multi_operation_picker", "general_tolerance_h14_rule", "stock_mode_radio", "multi_checkbox_setup", "hybrid_turn_mill_mode", "chat_image_upload", "chat_region_selection", "split_chamfer_input", "toggleable_drawing_rules", "full_thread_library", "thread_library_filters", "engineering_layout_overflow_fix", "text_only_stock_plan", "safari_touch_hotfix", "machine_profile_autofill", "multiview_association", "af_flats_detection", "hybrid_stock_removal_split", "operator_pdf", "final_result_snapshot", "sinumerik_shopturn_guide"],
     }
 
 
@@ -2071,6 +2071,7 @@ async def generate_contour_ai(
     blank_diameter: str | None = Form(None),
     blank_length: str | None = Form(None),
     notes: str | None = Form(None),
+    crop_json: str | None = Form(None),
 ) -> dict[str, Any]:
     media_type = detect_media_type(file)
     if media_type not in STANDARD_ALLOWED_TYPES | {SLDDRW_MEDIA_TYPE}:
@@ -2080,15 +2081,22 @@ async def generate_contour_ai(
         raise HTTPException(status_code=400, detail="Файл пуст")
     if len(raw) > MAX_FILE_MB * 1024 * 1024:
         raise HTTPException(status_code=413, detail=f"Файл больше {MAX_FILE_MB} МБ")
+    crop = parse_crop(crop_json)
+    if media_type in {"application/pdf", SLDDRW_MEDIA_TYPE} and crop:
+        crop = None
+    processed_raw = raw
+    processed_type = media_type
+    if crop:
+        processed_raw, processed_type = crop_image(raw, crop)
     if MOCK_MODE:
-        result = build_contour_mock(blank_diameter or "", blank_length or "", raw, file.filename or "file", notes or "")
+        result = build_contour_mock(blank_diameter or "", blank_length or "", processed_raw, file.filename or "file", notes or "")
     else:
         result = contour_with_openai(
-            raw=raw,
+            raw=processed_raw,
             filename=file.filename or "file",
-            media_type=media_type,
+            media_type=processed_type,
             blank_diameter=blank_diameter or "",
             blank_length=blank_length or "",
             notes=notes or "",
         )
-    return {**result, "model": MODEL, "mock": MOCK_MODE}
+    return {**result, "model": MODEL, "mock": MOCK_MODE, "crop": crop}

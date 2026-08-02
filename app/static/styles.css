@@ -278,3 +278,20 @@ body.light .app-toast{color:#176341}
 .cam-scope-notice{margin-bottom:10px}.sim-stage-card .cam-legend{padding:10px 8px 2px}
 button:disabled{opacity:.48;cursor:not-allowed;filter:saturate(.45)}
 @media(max-width:720px){.cam-capability{grid-template-columns:1fr}.cam-capability small{grid-column:auto}.cam-metrics{grid-template-columns:auto 1fr}.cam-legend{gap:9px}.cam-issue span,.cam-capability small{font-size:10px}}
+
+/* v4.4.1 — область распознавания чертежа */
+.recognition-preview{position:relative;isolation:isolate;user-select:none;-webkit-user-select:none}
+.recognition-preview>img{display:block;pointer-events:none;-webkit-user-drag:none}
+.recognition-crop-surface{position:absolute;z-index:3;overflow:hidden;touch-action:none;cursor:crosshair;outline:1px solid rgba(89,205,255,.24);outline-offset:-1px}
+.recognition-crop-hint{position:absolute;left:50%;top:12px;transform:translateX(-50%);max-width:calc(100% - 24px);padding:7px 11px;border:1px solid rgba(119,218,255,.42);border-radius:999px;background:rgba(2,13,26,.72);color:#dff7ff;font-size:11px;font-weight:700;line-height:1.2;text-align:center;white-space:nowrap;pointer-events:none;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 8px 24px rgba(0,0,0,.22)}
+.recognition-selection{position:absolute;z-index:2;border:2px solid #52ddff;background:rgba(48,194,255,.08);box-shadow:0 0 0 9999px rgba(1,8,17,.56),0 0 0 1px rgba(255,255,255,.7) inset,0 0 26px rgba(55,203,255,.64);pointer-events:none}
+.recognition-selection[hidden]{display:none}
+.recognition-selection>i{position:absolute;width:12px;height:12px;border:2px solid #fff;background:#2fd1ff;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.45)}
+.recognition-selection>i:nth-child(1){left:-7px;top:-7px}.recognition-selection>i:nth-child(2){right:-7px;top:-7px}.recognition-selection>i:nth-child(3){right:-7px;bottom:-7px}.recognition-selection>i:nth-child(4){left:-7px;bottom:-7px}
+.recognition-selection>span{position:absolute;left:8px;top:8px;max-width:calc(100% - 16px);padding:5px 8px;border-radius:7px;background:rgba(0,28,48,.82);color:#e8fbff;font-size:10px;font-weight:800;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.recognition-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;padding:10px 12px;border:1px solid var(--glass-border);border-radius:13px;background:var(--glass-subtle)}
+.recognition-toolbar>div{display:grid;gap:3px;min-width:0}.recognition-toolbar b{font-size:10px;letter-spacing:.08em}.recognition-toolbar span{color:var(--muted);font-size:11px;white-space:normal}.recognition-toolbar button{flex:0 0 auto}
+.recognition-help{margin:8px 2px 12px;font-size:10px;line-height:1.45}
+body.light .recognition-crop-hint{background:rgba(242,251,255,.84);color:#08314b;border-color:rgba(0,118,181,.34)}
+body.light .recognition-selection{box-shadow:0 0 0 9999px rgba(222,235,244,.62),0 0 0 1px rgba(0,69,104,.44) inset,0 0 24px rgba(0,145,214,.42)}
+@media(max-width:720px){.recognition-crop-hint{top:8px;font-size:10px;white-space:normal;width:max-content}.recognition-selection>span{font-size:9px}.recognition-toolbar{align-items:stretch;flex-direction:column}.recognition-toolbar button{width:100%;min-height:42px}}

@@ -39,6 +39,7 @@ def test_analyze_image_and_history():
     body = response.json()
     assert body["mock"] is True
     assert "Тестовый анализ" in body["response"]
+    assert body["crop"] == {"x": 0.1, "y": 0.1, "width": 0.5, "height": 0.5}
 
     history = client.get("/api/history").json()
     assert any(item["id"] == body["id"] for item in history)
@@ -153,6 +154,28 @@ def test_ai_contour_mock():
     assert body["points"][0]["type"] == "start"
 
 
+def test_ai_contour_uses_confirmed_recognition_crop():
+    crop = '{"x":0.2,"y":0.15,"width":0.5,"height":0.6}'
+    response = client.post(
+        "/api/contour-ai",
+        data={"blank_diameter": "140", "blank_length": "58", "notes": "selected view", "crop_json": crop},
+        files={"file": ("drawing.png", make_png(), "image/png")},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["crop"] == {"x": 0.2, "y": 0.15, "width": 0.5, "height": 0.6}
+    assert len(body["points"]) >= 2
+
+
+def test_ai_contour_rejects_crop_outside_image():
+    response = client.post(
+        "/api/contour-ai",
+        data={"blank_diameter": "140", "blank_length": "58", "crop_json": '{"x":0.8,"y":0.2,"width":0.4,"height":0.5}'},
+        files={"file": ("drawing.png", make_png(), "image/png")},
+    )
+    assert response.status_code == 400
+
+
 def test_follow_up_chat_mock_and_history():
     analysis = client.post(
         "/api/analyze",
@@ -238,7 +261,7 @@ def test_stock_removal_accepts_shopturn_tool_flow():
 
 def test_health_reports_shopturn_feature():
     body = client.get("/api/health").json()
-    assert body["version"] == "4.4.0-universal-multiprocess-cam"
+    assert body["version"] == "4.4.1-recognition-crop"
     assert "shopturn_tool_flow" in body["features"]
 
 
@@ -544,7 +567,7 @@ def test_index_disables_browser_cache():
     response = client.get("/")
     assert response.status_code == 200
     assert "no-store" in response.headers.get("cache-control", "")
-    assert response.headers.get("x-app-version") == "4.4.0-universal-multiprocess-cam"
+    assert response.headers.get("x-app-version") == "4.4.1-recognition-crop"
 
 
 def test_static_assets_require_revalidation():
