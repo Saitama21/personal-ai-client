@@ -1,4 +1,4 @@
-# Personal AI Client PRO v4.0.2 Functional Simulation
+# Personal AI Client PRO v4.0.3 Functional Simulation
 
 Полностью новый frontend, построенный заново как последовательный CNC-мастер из 10 этапов: Анализ → Проверка → Заготовка → Контур X/Z → AF-контур → Инструменты → Техпроцесс → Stock Removal → Симуляция → Экспорт.
 

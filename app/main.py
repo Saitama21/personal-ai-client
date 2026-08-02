@@ -34,7 +34,7 @@ MOCK_MODE = os.getenv("MOCK_MODE", "false").strip().lower() in {"1", "true", "ye
 OPENAI_MODE = os.getenv("OPENAI_MODE", "live").strip().lower()
 OPENAI_CONFIGURED = bool(os.getenv("OPENAI_API_KEY", "").strip())
 KEEP_OPENAI_FILES = os.getenv("KEEP_OPENAI_FILES", "false").strip().lower() in {"1", "true", "yes", "on"}
-APP_VERSION = os.getenv("APP_VERSION", "4.0.2-compact-functional-nav")
+APP_VERSION = os.getenv("APP_VERSION", "4.0.3-dynamic-geometry")
 DEPLOY_COMMIT = os.getenv("RAILWAY_GIT_COMMIT_SHA", os.getenv("GIT_COMMIT", "local"))
 
 logging.basicConfig(
@@ -1435,16 +1435,35 @@ def contour_with_openai(*, raw: bytes, filename: str, media_type: str, blank_dia
     from openai import OpenAI
     client = OpenAI(api_key=api_key)
     uploaded_file_id: str | None = None
-    prompt = f"""Проанализируй все виды технического чертежа и предложи ориентировочный наружный токарный контур X/Z для Stock Removal.
-Заготовка: диаметр {blank_diameter or 'не указан'} мм, длина {blank_length or 'не указана'} мм.
-Примечания: {notes or 'нет'}.
-X указывай в диаметрах. Z0 считать на правом торце, рабочее направление Z отрицательное.
-Свяжи главный, торцевой и дополнительные виды. Диаметр распознавай только при наличии Ø/⌀ или однозначного осесимметричного контекста.
-Размер по плоскостям/граням (AF), шестигранник и лыски НЕ включай в точки X/Z. Верни их в secondary_features как отдельную фрезерную операцию.
-Проверь цепочку длин и не смешивай длину участка с координатой Z.
-Возвращай ТОЛЬКО JSON без markdown:
-{{"name":"...","confidence":0.0,"recommended_mode":"lathe|hybrid|mill","assumptions":["..."],"secondary_features":[{{"type":"flats","designation":"AF 13","dimension":13,"operation":"milling","source_view":"end view"}}],"points":[{{"x":16,"z":0,"type":"start","rv":"—","direction":"—"}},{{"x":16,"z":-4,"type":"lineZ","rv":"—","direction":"по Z"}}]}}
-Допустимые type: start, lineX, lineZ, arcCW, arcCCW, chamfer. Не выдумывай невидимые размеры; сомнительные места перечисли в assumptions.
+    prompt = f"""Проанализируй ТОЛЬКО текущий технический чертёж и построй динамическую структуру геометрии для CNC. Не используй шаблон болта, пальца или любой предыдущей детали.
+Внешние данные о заготовке: диаметр {blank_diameter or 'не подтверждён'} мм, длина {blank_length or 'не подтверждена'} мм. Эти значения являются подсказкой, а не истиной; если они противоречат чертежу, укажи предупреждение.
+Примечания после общего анализа: {notes or 'нет'}.
+
+Правила:
+1. Свяжи главный, разрезы, торцевые и дополнительные виды одной детали.
+2. X задавай в диаметрах. Z0 — правый торец, рабочее направление Z отрицательное.
+3. Различай: diameter, axial_length, thickness, bore_diameter, hole_diameter, bolt_circle, radius, thread, AF/across_flats.
+4. Толщину или осевой размер НИКОГДА не записывай как диаметр заготовки.
+5. AF, шестигранники, лыски, карманы и болтовые отверстия не включай в наружный токарный X/Z; выноси их в secondary_features или holes.
+6. Для фланцев и втулок верни отдельно наружный и внутренние контуры.
+7. Не выдумывай невидимые размеры. Неуверенные места перечисли в assumptions и warnings.
+8. Если однозначный токарный контур построить нельзя, outer_contour может быть пустым, confidence должен быть низким.
+
+Верни ТОЛЬКО JSON без markdown по схеме:
+{{
+  "name":"...",
+  "part_type":"shaft|flange|bushing|plate|prismatic|unknown",
+  "confidence":0.0,
+  "recommended_mode":"lathe|hybrid|mill",
+  "coordinate_system":{{"x_mode":"diameter","z_zero":"right_face"}},
+  "assumptions":["..."],
+  "warnings":["..."],
+  "outer_contour":[{{"x":90,"z":0,"type":"start"}},{{"x":90,"z":-3,"type":"lineZ"}}],
+  "inner_contours":[[{{"x":40,"z":0,"type":"start"}},{{"x":40,"z":-17,"type":"lineZ"}}]],
+  "holes":[{{"designation":"Ø11","diameter":11,"count":3,"pcd":63.22,"thread":""}},{{"designation":"M10×1.5","diameter":10,"count":1,"pcd":null,"thread":"M10×1.5"}}],
+  "secondary_features":[{{"type":"flats|pocket|slot|bolt_circle","designation":"AF13","dimension":13,"operation":"milling","source_view":"end view"}}]
+}}
+Допустимые type точек: start, lineX, lineZ, arcCW, arcCCW, chamfer.
 """
     try:
         if media_type == "application/pdf":
@@ -1486,13 +1505,39 @@ X указывай в диаметрах. Z0 считать на правом т
         recommended = str(value.get("recommended_mode") or ("hybrid" if secondary else "lathe"))
         if recommended not in {"lathe", "mill", "hybrid"}:
             recommended = "hybrid" if secondary else "lathe"
+        outer_raw = value.get("outer_contour", value.get("points", []))
+        outer = validate_contour_points(outer_raw) if isinstance(outer_raw, list) and len(outer_raw) >= 2 else []
+        inner_contours: list[list[dict[str, Any]]] = []
+        for contour in value.get("inner_contours", []) if isinstance(value.get("inner_contours"), list) else []:
+            if isinstance(contour, list) and len(contour) >= 2:
+                try:
+                    inner_contours.append(validate_contour_points(contour))
+                except HTTPException:
+                    continue
+        holes: list[dict[str, Any]] = []
+        for item in value.get("holes", []) if isinstance(value.get("holes"), list) else []:
+            if not isinstance(item, dict):
+                continue
+            holes.append({
+                "designation": str(item.get("designation") or item.get("thread") or "")[:80],
+                "diameter": item.get("diameter"),
+                "count": item.get("count"),
+                "pcd": item.get("pcd"),
+                "thread": str(item.get("thread") or "")[:80],
+            })
         return {
             "name": str(value.get("name") or "AI-контур")[:120],
+            "part_type": str(value.get("part_type") or "unknown")[:40],
             "confidence": max(0.0, min(1.0, float(value.get("confidence") or 0.0))),
+            "coordinate_system": value.get("coordinate_system") if isinstance(value.get("coordinate_system"), dict) else {"x_mode": "diameter", "z_zero": "right_face"},
             "assumptions": [str(x)[:300] for x in value.get("assumptions", []) if isinstance(x, (str, int, float))][:20],
+            "warnings": [str(x)[:300] for x in value.get("warnings", []) if isinstance(x, (str, int, float))][:20],
             "secondary_features": secondary[:20],
+            "holes": holes[:100],
+            "inner_contours": inner_contours[:20],
+            "outer_contour": outer,
             "recommended_mode": recommended,
-            "points": validate_contour_points(value.get("points")),
+            "points": outer,
         }
     except HTTPException:
         raise

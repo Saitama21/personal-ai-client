@@ -26,3 +26,19 @@ def test_v4_responsive_single_dom():
     assert '@media(max-width:720px)' in CSS
     assert 'userAgent' not in JS
     assert 'maxTouchPoints' not in JS
+
+
+def test_dynamic_geometry_frontend_has_no_fixed_bolt_defaults():
+    text = (ROOT / "app" / "static" / "app.js").read_text(encoding="utf-8")
+    assert "buildDynamicGeometry" in text
+    assert "Построй геометрию только по текущему чертежу" in text
+    assert "||31" not in text[text.find("function buildContour"):text.find("function contourSvg")]
+    assert "outerContour" in text
+    assert "innerContours" in text
+
+def test_dynamic_geometry_backend_schema():
+    text = (ROOT / "app" / "main.py").read_text(encoding="utf-8")
+    assert '"outer_contour"' in text
+    assert '"inner_contours"' in text
+    assert '"holes"' in text
+    assert "Толщину или осевой размер НИКОГДА не записывай как диаметр" in text
