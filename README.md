@@ -1,4 +1,4 @@
-# Personal AI Client PRO v4.0.0 Sequential Master
+# Personal AI Client PRO v4.0.1 Functional Simulation
 
 Полностью новый frontend, построенный заново как последовательный CNC-мастер из 10 этапов: Анализ → Проверка → Заготовка → Контур X/Z → AF-контур → Инструменты → Техпроцесс → Stock Removal → Симуляция → Экспорт.
 

@@ -238,7 +238,7 @@ def test_stock_removal_accepts_shopturn_tool_flow():
 
 def test_health_reports_shopturn_feature():
     body = client.get("/api/health").json()
-    assert body["version"] == "4.0.0-sequential-master"
+    assert body["version"] == "4.0.1-functional-simulation"
     assert "shopturn_tool_flow" in body["features"]
 
 
@@ -544,7 +544,7 @@ def test_index_disables_browser_cache():
     response = client.get("/")
     assert response.status_code == 200
     assert "no-store" in response.headers.get("cache-control", "")
-    assert response.headers.get("x-app-version") == "4.0.0-sequential-master"
+    assert response.headers.get("x-app-version") == "4.0.1-functional-simulation"
 
 
 def test_static_assets_require_revalidation():
@@ -588,3 +588,23 @@ def test_stock_prompt_requires_view_association_and_operation_split():
 def test_health_reports_multiview_features():
     body = client.get("/api/health").json()
     assert {"multiview_association", "af_flats_detection", "hybrid_stock_removal_split"} <= set(body["features"])
+
+
+def test_v401_support_modules_and_webgl_stage():
+    html = client.get("/").text
+    assert 'data-support="libraries"' in html
+    assert 'data-support="calculators"' in html
+    assert 'data-support="reference"' in html
+    assert 'data-support="settings"' in html
+    assert 'three.module.min.js' in html
+    js = (Path(__file__).resolve().parents[1] / "app" / "static" / "app.js").read_text(encoding="utf-8")
+    assert 'stock3dViewport' in js
+    assert 'simCurrentOperation' in js
+    assert 'SUPPORT_DATA' in js
+    assert 'window.CNC3D_getData' in js
+
+def test_v401_simulation_engine_reinitializes_after_stage_remount():
+    js = (Path(__file__).resolve().parents[1] / "app" / "static" / "simulation3d.js").read_text(encoding="utf-8")
+    assert "host.contains(sim.renderer.domElement)" in js
+    assert "window.CNC3D_init=init3D" in js
+    assert "cnc-simulation-stage-ready" in js

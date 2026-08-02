@@ -165,7 +165,13 @@
     window.addEventListener('cnc-contour-updated',()=>{if(sim.data)build()});
   }
   function init3D(){
-    if(sim.renderer)return;
+    const host=$s('stock3dViewport');
+    if(!host)return;
+    if(sim.renderer && host.contains(sim.renderer.domElement))return;
+    if(sim.renderer){
+      try{sim.renderer.dispose?.();}catch(_e){}
+      sim.renderer=null;sim.scene=null;sim.camera=null;sim.part=null;sim.tool=null;sim.chuck=null;sim.grid=null;sim.data=null;
+    }
     if(setupScene()){
       bind();
       if($s('simFallback')) $s('simFallback').classList.add('hidden');
@@ -173,5 +179,7 @@
       setTimeout(build,300);
     }
   }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init3D,{once:true}); else init3D();
+  window.CNC3D_init=init3D;
+  window.addEventListener('cnc-simulation-stage-ready',()=>setTimeout(init3D,0));
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',()=>setTimeout(init3D,0),{once:true}); else setTimeout(init3D,0);
 })();
