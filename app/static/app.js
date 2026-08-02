@@ -198,3 +198,27 @@ document.addEventListener('click',e=>{
 $('#themeBtn').onclick=cycleTheme;
 bindPersistentNavigation();
 render();
+
+
+// v4.2.2 Tablet drawer controls. Layout selection is based only on viewport width.
+function isTabletViewport(){return window.matchMedia('(min-width:721px) and (max-width:1199px)').matches}
+function closeTabletPanels(){
+  document.body.classList.remove('tablet-sidebar-open','tablet-inspector-open');
+  document.getElementById('tabletMenuBtn')?.setAttribute('aria-expanded','false');
+  document.getElementById('tabletInspectorBtn')?.setAttribute('aria-expanded','false');
+}
+function toggleTabletPanel(kind){
+  if(!isTabletViewport())return;
+  const sidebar=kind==='sidebar';
+  document.body.classList.toggle('tablet-sidebar-open',sidebar&&!document.body.classList.contains('tablet-sidebar-open'));
+  document.body.classList.toggle('tablet-inspector-open',!sidebar&&!document.body.classList.contains('tablet-inspector-open'));
+  document.getElementById('tabletMenuBtn')?.setAttribute('aria-expanded',String(document.body.classList.contains('tablet-sidebar-open')));
+  document.getElementById('tabletInspectorBtn')?.setAttribute('aria-expanded',String(document.body.classList.contains('tablet-inspector-open')));
+}
+document.getElementById('tabletMenuBtn')?.addEventListener('click',()=>toggleTabletPanel('sidebar'));
+document.getElementById('tabletInspectorBtn')?.addEventListener('click',()=>toggleTabletPanel('inspector'));
+document.getElementById('tabletBackdrop')?.addEventListener('click',closeTabletPanels);
+document.addEventListener('keydown',event=>{if(event.key==='Escape')closeTabletPanels()});
+document.querySelectorAll('#sidebar button').forEach(button=>button.addEventListener('click',()=>{if(isTabletViewport())setTimeout(closeTabletPanels,0)}));
+window.addEventListener('resize',()=>{if(!isTabletViewport())closeTabletPanels()});
+window.addEventListener('orientationchange',closeTabletPanels);
