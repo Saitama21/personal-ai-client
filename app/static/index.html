@@ -18,7 +18,7 @@
     })();
   </script>
   <title>Personal AI Client PRO</title>
-  <link rel="stylesheet" href="/static/styles.css?v=2.8.4-multiview-stock-removal" />
+  <link rel="stylesheet" href="/static/styles.css?v=3.0.1-local-fallback-fix" />
 </head>
 <body>
   <div class="background-orb orb-a"></div><div class="background-orb orb-b"></div><div class="background-orb orb-c"></div>
@@ -42,7 +42,7 @@
         <button class="nav-item" data-view="settings"><span class="nav-icon" aria-hidden="true">⚙</span><span>Настройки</span></button>
       </nav>
       <div class="status-card glass-soft"><span class="status-dot" id="statusDot"></span><div><strong id="statusTitle">Проверка...</strong><small id="statusText">Соединение с сервером</small></div></div>
-      <div class="sidebar-footer creator-glass"><span class="creator-label">Создатель</span><strong>Єрошов Іван</strong><small>Версия 2.8.4 Multi-view Stock Removal</small></div>
+      <div class="sidebar-footer creator-glass"><span class="creator-label">Создатель</span><strong>Єрошов Іван</strong><small>Версия 3.0.1 Local Fallback Fix</small></div>
       <button id="sidebarCollapseBtn" class="sidebar-collapse-button" type="button" aria-expanded="true" title="Свернуть боковую панель"><span aria-hidden="true">‹</span><span class="sidebar-collapse-label">Свернуть панель</span></button>
     </aside>
 
@@ -82,7 +82,7 @@
             <div id="progress" class="progress hidden"><span></span><p>Файл обрабатывается...</p></div>
           </section>
         </div>
-        <section class="panel result-panel glass">
+        <section class="panel result-panel glass" data-stock-stage-panel="result">
           <div class="panel-heading"><div><span class="eyebrow">03 · Результат</span><h2>Ответ ассистента</h2></div><div id="resultMeta" class="result-meta"></div></div>
           <div id="resultEmpty" class="result-empty"><div>✦</div><strong>Здесь появится результат</strong><span>Он сохранится в истории автоматически</span></div>
           <article id="resultContent" class="result-content hidden"></article>
@@ -207,7 +207,22 @@
       </section>
 
       <section id="stockView" class="view">
-        <div class="workspace-grid stock-grid">
+        <section class="stock-workflow-shell glass" aria-label="Единый рабочий процесс Stock Removal">
+          <div class="workflow-title"><span class="eyebrow">UNIFIED CAM WORKFLOW</span><h2>От чертежа до управляющей программы</h2><p>Одна последовательность: проверка данных → контур → инструмент → маршрут → Stock Removal → симуляция → экспорт.</p></div>
+          <div class="workflow-stepper" id="stockWorkflowStepper">
+            <button class="workflow-step active" data-stock-stage="setup"><span>1</span><strong>Заготовка</strong><small>Форма и база</small></button>
+            <button class="workflow-step" data-stock-stage="recognition"><span>2</span><strong>AI-данные</strong><small>Размеры и виды</small></button>
+            <button class="workflow-step" data-stock-stage="contour"><span>3</span><strong>Контур</strong><small>X/Z и особенности</small></button>
+            <button class="workflow-step" data-stock-stage="tools"><span>4</span><strong>Инструмент</strong><small>Оснастка и режимы</small></button>
+            <button class="workflow-step" data-stock-stage="route"><span>5</span><strong>Техпроцесс</strong><small>Порядок операций</small></button>
+            <button class="workflow-step" data-stock-stage="result"><span>6</span><strong>Stock Removal</strong><small>План съёма</small></button>
+            <button class="workflow-step" data-stock-stage="simulation"><span>7</span><strong>3D</strong><small>Проверка движения</small></button>
+            <button class="workflow-step" data-stock-stage="export"><span>8</span><strong>Экспорт</strong><small>SINUMERIK / G-code</small></button>
+          </div>
+          <div class="workflow-progress"><div id="stockWorkflowProgressBar"></div></div>
+          <div class="workflow-status-row"><span id="stockWorkflowStatus">Шаг 1 из 8 · задайте заготовку и базу</span><button id="stockWorkflowPrev" class="small-button" type="button">← Назад</button><button id="stockWorkflowNext" class="primary-button" type="button">Далее →</button></div>
+        </section>
+        <div class="workspace-grid stock-grid" data-stock-stage-panel="setup">
           <section class="panel glass stock-form-panel">
             <div class="panel-heading"><div><span class="eyebrow">ПАРАМЕТРЫ</span><h2>Stock Removal</h2></div><span class="badge" id="stockFileBadge">Нет файла</span></div>
             <fieldset class="stock-choice-section processing-mode-section">
@@ -428,7 +443,30 @@
             </section>
           </div>
 
-          <section class="operation-route glass-soft">
+          <section class="stock-stage-card glass-soft" data-stock-stage-panel="recognition">
+            <div class="panel-heading"><div><span class="eyebrow">AI-КОНТРОЛЬ</span><h3>Что распознано на чертеже</h3></div><span class="badge" id="recognitionStateBadge">Ожидает анализа</span></div>
+            <div class="recognition-grid">
+              <div><span>Материал</span><strong id="recognizedMaterial">—</strong></div>
+              <div><span>Габариты</span><strong id="recognizedDimensions">—</strong></div>
+              <div><span>Резьбы</span><strong id="recognizedThreads">—</strong></div>
+              <div><span>Фаски</span><strong id="recognizedChamfers">—</strong></div>
+              <div><span>Дополнительные виды</span><strong id="recognizedViews">—</strong></div>
+              <div><span>Фрезерные особенности</span><strong id="recognizedMillFeatures">—</strong></div>
+            </div>
+            <div class="stage-note">Размеры по плоскостям AF, лыски и шестигранники не включаются в токарный контур X/Z и передаются в отдельные фрезерные операции.</div>
+          </section>
+
+          <section class="stock-stage-card glass-soft" data-stock-stage-panel="tools">
+            <div class="panel-heading"><div><span class="eyebrow">ИНСТРУМЕНТ</span><h3>Оснастка и режимы текущей операции</h3></div><span class="badge" id="toolStageBadge">По маршруту</span></div>
+            <div class="tool-stage-grid">
+              <div><span>Позиция</span><strong id="activeToolPosition">T1 D1</strong></div>
+              <div><span>Инструмент</span><strong id="activeToolName">Наружный проходной</strong></div>
+              <div><span>Пластина</span><strong id="activeInsertName">CNMG / WNMG</strong></div>
+              <div><span>Режим</span><strong id="activeCuttingMode">S — · F — · ap —</strong></div>
+            </div>
+          </section>
+
+          <section class="operation-route glass-soft" data-stock-stage-panel="route">
             <div class="route-head">
               <div><span class="eyebrow">МАРШРУТ ОБРАБОТКИ</span><h3>Последовательность инструментов и операций</h3></div>
               <div class="button-row compact-buttons"><button id="addOperationBtn" class="secondary-button">＋ Добавить текущую операцию</button><button id="updateOperationBtn" class="small-button">Обновить активную</button><button id="startRouteBtn" class="small-button">▶ Начать маршрут</button><button id="nextRouteOperationBtn" class="small-button">Следующая операция →</button><button id="validateRouteBtn" class="small-button">Проверить порядок</button><button id="exportRouteBtn" class="small-button">Экспорт маршрута</button></div>
@@ -467,7 +505,7 @@
         </section>
 
 
-        <section class="panel glass physics-sim-panel" id="physicsSimulationPanel">
+        <section class="panel glass physics-sim-panel" id="physicsSimulationPanel" data-stock-stage-panel="simulation">
           <div class="panel-heading">
             <div><span class="eyebrow">PHYSICAL 3D</span><h2>Физическая 3D-симуляция съёма металла</h2></div>
             <div class="sim-status"><span class="badge" id="simEngineBadge">WebGL</span><span class="badge" id="simStatusBadge">Готова</span></div>
@@ -481,6 +519,13 @@
             </div>
             <aside class="sim-control-panel glass-soft">
               <div class="mini-heading">Управление симуляцией</div>
+              <div class="sim-operation-card">
+                <div><span>Текущая операция</span><strong id="simCurrentOperation">Не выбрана</strong></div>
+                <div><span>Инструмент</span><strong id="simCurrentTool">—</strong></div>
+                <div class="sim-cutting-grid"><span>Vc <b id="simVc">—</b></span><span>S <b id="simRpm">—</b></span><span>F <b id="simFeed">—</b></span><span>ap <b id="simDepth">—</b></span></div>
+                <div class="remaining-row"><span>Осталось снять</span><strong id="simRemaining">100%</strong></div>
+                <div><span>Следующая операция</span><strong id="simNextOperation">—</strong></div>
+              </div>
               <div class="sim-actions">
                 <button id="simBuildBtn" class="secondary-button">⟳ Построить модель</button>
                 <button id="simPlayBtn" class="primary-button">▶ Пуск</button>
@@ -501,7 +546,7 @@
           </div>
         </section>
 
-        <section class="panel contour-panel glass">
+        <section class="panel contour-panel glass" data-stock-stage-panel="contour">
           <div class="panel-heading"><div><span class="eyebrow">PRO EDITOR</span><h2>Редактор контура X/Z</h2></div><div class="editor-state"><span id="autosaveState">Автосохранение включено</span><span class="badge" id="validationBadge">Не проверен</span></div></div>
 
           <div class="pro-toolbar glass-soft">
@@ -543,6 +588,18 @@
           </div>
         </section>
       </section>
+
+
+        <section class="panel glass stock-export-panel" data-stock-stage-panel="export">
+          <div class="panel-heading"><div><span class="eyebrow">ЭКСПОРТ</span><h2>Передача результата в производство</h2></div><span class="badge" id="exportReadinessBadge">Требуется проверка</span></div>
+          <div class="export-grid">
+            <button id="v3ExportSinumerik" class="export-card"><strong>SINUMERIK 828D</strong><span>Контур X/Z и маршрут ShopTurn</span></button>
+            <button id="v3ExportGcode" class="export-card"><strong>ISO / G-code</strong><span>Черновой код с предупреждениями</span></button>
+            <button id="v3ExportReport" class="export-card"><strong>PDF-отчёт</strong><span>Техпроцесс, инструмент и проверки</span></button>
+            <button id="v3ExportProject" class="export-card"><strong>Проект JSON</strong><span>Полное состояние для повторной загрузки</span></button>
+          </div>
+          <div class="export-warning">Экспорт открывается после проверки контура, порядка операций и контрольного просмотра симуляции.</div>
+        </section>
 
       <section id="projectsView" class="view"><div class="panel glass"><div class="panel-heading"><div><span class="eyebrow">RAILWAY VOLUME</span><h2>Проекты</h2></div><button id="newProjectBtn" class="small-button">Новый проект</button></div><div class="project-create-row glass-soft"><input id="projectNameInput" placeholder="Название проекта" /><button id="createProjectBtn" class="secondary-button">Создать и сохранить</button></div><div id="projectsList" class="projects-list"></div></div></section>
 
@@ -604,7 +661,7 @@
 
   <div id="pointModal" class="modal hidden"><div class="modal-backdrop" data-close-modal></div><div class="modal-card glass"><div class="modal-head"><h2 id="pointModalTitle">Точка контура</h2><button data-close-modal>×</button></div><div class="modal-grid"><label>X, мм<input id="pointXInput" inputmode="decimal" /></label><label>Z, мм<input id="pointZInput" inputmode="decimal" /></label><label>Тип<select id="pointTypeSelect"><option value="lineX">Прямая по X</option><option value="lineZ">Прямая по Z</option><option value="arcCW">Дуга CW</option><option value="arcCCW">Дуга CCW</option><option value="chamfer">Фаска</option></select></label><label>R / угол<input id="pointRvInput" placeholder="R5 или 2×45°" /></label><label>Направление<input id="pointDirectionInput" placeholder="по X / по Z / CW" /></label><label>Вставить после<select id="pointInsertSelect"></select></label></div><div class="modal-actions"><button data-close-modal>Отмена</button><button id="savePointModalBtn" class="primary-button">Сохранить</button></div></div></div>
   <div id="toast" class="toast"></div>
-  <script src="/static/app.js?v=2.8.4-multiview-stock-removal"></script>
+  <script src="/static/app.js?v=3.0.1-local-fallback-fix"></script>
   <script type="module">
     const badge = document.getElementById("simEngineBadge");
     const fallback = document.getElementById("simFallback");
@@ -612,7 +669,7 @@
       const THREE = await import("https://cdnjs.cloudflare.com/ajax/libs/three.js/0.168.0/three.module.min.js");
       window.THREE = THREE;
       window.dispatchEvent(new Event("three-ready"));
-      await import("/static/simulation3d.js?v=2.8.4-multiview-stock-removal");
+      await import("/static/simulation3d.js?v=3.0.1-local-fallback-fix");
     } catch (error) {
       console.error("Three.js load failed", error);
       if (badge) badge.textContent = "3D-движок не загружен";

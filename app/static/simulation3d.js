@@ -130,7 +130,19 @@
   }
   function build(){
     sim.data=normalizeData(collectData());sim.progress=0;sim.running=false;rebuildPart();
-    $s('simStatusBadge').textContent='Модель построена';
+    $s('simStatusBadge').textContent='Модель построена'; updateTelemetry();
+  }
+  function opText(op){return op?.name||op?.operation||op?.type||'Обработка';}
+  function opTool(op,index){return op?.tool||op?.tool_name||op?.holder||`T${index+1} · ${index===0?'Проходной резец':'Инструмент операции'}`;}
+  function opParam(op,key,fallback){const v=op?.[key]??op?.parameters?.[key];return (v===undefined||v===null||v==='')?fallback:v;}
+  function updateTelemetry(){
+    if(!sim.data)return; const ops=sim.data.ops; const op=ops[Math.min(ops.length-1,sim.currentOp)]||{}; const next=ops[sim.currentOp+1];
+    const set=(id,v)=>{const el=$s(id);if(el)el.textContent=v};
+    set('simCurrentOperation',`${sim.currentOp+1}/${ops.length} · ${opText(op)}`);
+    set('simCurrentTool',opTool(op,sim.currentOp));
+    set('simVc',opParam(op,'vc','—')); set('simRpm',opParam(op,'speed',opParam(op,'rpm','—'))); set('simFeed',opParam(op,'feed','—')); set('simDepth',opParam(op,'depth',opParam(op,'ap','—')));
+    set('simRemaining',`${Math.max(0,Math.round((1-sim.progress)*100))}%`);
+    set('simNextOperation',next?opText(next):'Готовая деталь / экспорт');
   }
   function updateUi(){
     if(!sim.data)return; const pct=Math.round(sim.progress*100),ops=sim.data.ops;
@@ -141,7 +153,7 @@
     $s('simBlankMetric').textContent=`Ø${sim.data.diameter} × ${sim.data.length} мм`;$s('simOpsMetric').textContent=ops.length;
     $s('simVolumeMetric').textContent=`${Math.round(sim.totalRemoved).toLocaleString('ru-RU')} мм³`;
     $s('simTimeMetric').textContent=`≈ ${Math.max(1,Math.round(sim.data.length*ops.length/6))} мин`;
-    $s('simStatusBadge').textContent=sim.running?'Обработка':'Пауза';
+    $s('simStatusBadge').textContent=sim.running?'Обработка':'Пауза'; updateTelemetry();
   }
   function step(delta){ if(!sim.data)build(); const n=sim.data.ops.length;sim.currentOp=clamp(sim.currentOp+delta,0,n-1);sim.progress=(sim.currentOp+(delta>0?1:0))/n;sim.running=false;rebuildPart(); }
   function bind(){

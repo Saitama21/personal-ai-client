@@ -1102,3 +1102,43 @@ window.CNC3D_getData = function CNC3D_getData() {
     material: /aisi\s*304|нержав/i.test(document.getElementById('stockNotes')?.value || '') ? 'AISI 304' : 'Материал детали',
   };
 };
+
+
+// ===== v3.0.1 Unified CAM Workflow =====
+(()=>{
+  const stages=['setup','recognition','contour','tools','route','result','simulation','export'];
+  const labels={setup:'Задайте заготовку и базу',recognition:'Проверьте распознанные размеры и дополнительные виды',contour:'Проверьте контур X/Z',tools:'Подтвердите инструмент и режимы',route:'Проверьте порядок операций',result:'Сформируйте план Stock Removal',simulation:'Просмотрите 3D-симуляцию',export:'Экспортируйте проверенный результат'};
+  let current=0;
+  const stepper=document.getElementById('stockWorkflowStepper');
+  const status=document.getElementById('stockWorkflowStatus');
+  const bar=document.getElementById('stockWorkflowProgressBar');
+  function panelsFor(stage){return [...document.querySelectorAll(`[data-stock-stage-panel="${stage}"]`)];}
+  function render(scroll=false){
+    [...stepper?.querySelectorAll('.workflow-step')||[]].forEach((b,i)=>{b.classList.toggle('active',i===current);b.classList.toggle('done',i<current)});
+    if(status)status.textContent=`Шаг ${current+1} из ${stages.length} · ${labels[stages[current]]}`;
+    if(bar)bar.style.width=`${((current+1)/stages.length)*100}%`;
+    if(scroll){const p=panelsFor(stages[current])[0];p?.scrollIntoView({behavior:'smooth',block:'start'});}
+  }
+  stepper?.addEventListener('click',e=>{const b=e.target.closest('.workflow-step');if(!b)return;current=Math.max(0,stages.indexOf(b.dataset.stockStage));render(true)});
+  document.getElementById('stockWorkflowPrev')?.addEventListener('click',()=>{current=Math.max(0,current-1);render(true)});
+  document.getElementById('stockWorkflowNext')?.addEventListener('click',()=>{current=Math.min(stages.length-1,current+1);render(true)});
+  const exportMap={v3ExportSinumerik:'exportSinumerikBtn',v3ExportProject:'exportJsonBtn'};
+  Object.entries(exportMap).forEach(([a,b])=>document.getElementById(a)?.addEventListener('click',()=>document.getElementById(b)?.click()));
+  document.getElementById('v3ExportGcode')?.addEventListener('click',()=>window.showToast?.('G-code формируется после проверки маршрута и симуляции'));
+  document.getElementById('v3ExportReport')?.addEventListener('click',()=>window.print());
+  function updateRecognition(){
+    const mode=document.querySelector('input[name="stockMode"]:checked')?.value||'lathe';
+    const d=document.getElementById('blankDiameter')?.value||'—'; const l=document.getElementById('blankLength')?.value||'—';
+    const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v};
+    set('recognizedDimensions',mode==='mill'?'Фрезерная заготовка':`Ø${d} × ${l} мм`);
+    set('recognizedThreads',document.querySelectorAll('[data-thread-item].active,input[data-thread-value]:checked').length||'По результату AI');
+    set('recognizedChamfers',document.querySelectorAll('#chamferMarkerList > *').length||'По результату AI');
+    set('recognizedViews',mode==='hybrid'?'Главный + торцевой':'Главный вид');
+    set('recognizedMillFeatures',mode==='hybrid'?'AF / лыски / отверстия':'Не подтверждены');
+    set('recognizedMaterial','По чертежу / примечанию');
+  }
+  ['blankDiameter','blankLength'].forEach(id=>document.getElementById(id)?.addEventListener('input',updateRecognition));
+  document.querySelectorAll('input[name="stockMode"]').forEach(el=>el.addEventListener('change',updateRecognition));
+  window.addEventListener('cnc-contour-updated',()=>{const b=document.getElementById('recognitionStateBadge');if(b)b.textContent='Контур обновлён'});
+  updateRecognition();render(false);
+})();
