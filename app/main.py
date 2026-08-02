@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import io
 import json
+import logging
 import os
 import sqlite3
 import time
@@ -28,11 +29,24 @@ DB_PATH = DATA_DIR / "history.db"
 UPLOAD_DIR = DATA_DIR / "uploads"
 CHAT_UPLOAD_DIR = DATA_DIR / "chat_uploads"
 MAX_FILE_MB = int(os.getenv("MAX_FILE_MB", "20"))
-MODEL = os.getenv("OPENAI_MODEL", "gpt-5-mini")
-MOCK_MODE = os.getenv("MOCK_MODE", "false").lower() in {"1", "true", "yes"}
-KEEP_OPENAI_FILES = os.getenv("KEEP_OPENAI_FILES", "false").lower() in {"1", "true", "yes"}
+MODEL = os.getenv("OPENAI_MODEL", "gpt-5-mini").strip()
+MOCK_MODE = os.getenv("MOCK_MODE", "false").strip().lower() in {"1", "true", "yes", "on"}
+OPENAI_MODE = os.getenv("OPENAI_MODE", "live").strip().lower()
+OPENAI_CONFIGURED = bool(os.getenv("OPENAI_API_KEY", "").strip())
+KEEP_OPENAI_FILES = os.getenv("KEEP_OPENAI_FILES", "false").strip().lower() in {"1", "true", "yes", "on"}
 APP_VERSION = os.getenv("APP_VERSION", "3.0.1-local-fallback-fix")
 DEPLOY_COMMIT = os.getenv("RAILWAY_GIT_COMMIT_SHA", os.getenv("GIT_COMMIT", "local"))
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+)
+logger = logging.getLogger("personal-ai-client")
+
+logger.info(
+    "Startup config | version=%s | model=%s | mock_mode=%s | openai_mode=%s | api_key_configured=%s",
+    APP_VERSION, MODEL, MOCK_MODE, OPENAI_MODE, OPENAI_CONFIGURED,
+)
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 STANDARD_ALLOWED_TYPES = ALLOWED_IMAGE_TYPES | {"application/pdf"}
@@ -851,16 +865,21 @@ def build_mock_response(filename: str, media_type: str, prompt: str, crop: dict[
 def analyze_with_openai(
     *, raw: bytes, filename: str, media_type: str, prompt: str, crop: dict[str, float] | None
 ) -> tuple[str, str]:
-    api_key = os.getenv("OPENAI_API_KEY")
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    logger.info(
+        "OpenAI analysis started | file=%s | type=%s | bytes=%d | model=%s | crop=%s",
+        filename, media_type, len(raw), MODEL, bool(crop),
+    )
     if not api_key:
-        raise HTTPException(
-            status_code=503,
-            detail="OPENAI_API_KEY не настроен. Включите MOCK_MODE=true для проверки интерфейса.",
-        )
+        logger.error("OPENAI_API_KEY is missing")
+        raise HTTPException(status_code=503, detail="OPENAI_API_KEY не настроен.")
+    if OPENAI_MODE != "live":
+        logger.error("OPENAI_MODE is not live | value=%s", OPENAI_MODE)
+        raise HTTPException(status_code=503, detail=f"OPENAI_MODE должен быть live, сейчас: {OPENAI_MODE}")
 
     from openai import OpenAI
 
-    client = OpenAI(api_key=api_key)
+    client = OpenAI(api_key=api_key, timeout=120.0, max_retries=2)
     user_text = augment_drawing_prompt(prompt)
     if crop:
         user_text += "\n\nПользователь специально выделил область. Сосредоточь анализ прежде всего на ней."
@@ -868,10 +887,8 @@ def analyze_with_openai(
     uploaded_file_id: str | None = None
     try:
         if media_type == "application/pdf":
-            uploaded = client.files.create(
-                file=(filename, raw, "application/pdf"),
-                purpose="user_data",
-            )
+            logger.info("Uploading PDF to OpenAI | file=%s", filename)
+            uploaded = client.files.create(file=(filename, raw, "application/pdf"), purpose="user_data")
             uploaded_file_id = uploaded.id
             content: list[dict[str, Any]] = [
                 {"type": "input_text", "text": user_text},
@@ -879,9 +896,7 @@ def analyze_with_openai(
             ]
         elif media_type == SLDDRW_MEDIA_TYPE:
             slddrw_context, preview = build_slddrw_context(raw, filename)
-            content = [
-                {"type": "input_text", "text": user_text + "\n\n" + slddrw_context},
-            ]
+            content = [{"type": "input_text", "text": user_text + "\n\n" + slddrw_context}]
             if preview:
                 preview_raw, preview_type = preview
                 content.append({"type": "input_image", "image_url": image_data_url(preview_raw, preview_type), "detail": "high"})
@@ -892,26 +907,36 @@ def analyze_with_openai(
                 {"type": "input_image", "image_url": image_data_url(processed, processed_type), "detail": "high"},
             ]
 
+        logger.info("Sending request to OpenAI | model=%s | content_items=%d", MODEL, len(content))
         response = client.responses.create(
             model=MODEL,
             instructions=SYSTEM_INSTRUCTIONS,
             input=[{"role": "user", "content": content}],
         )
+        logger.info(
+            "OpenAI response received | response_id=%s | status=%s",
+            getattr(response, "id", "unknown"), getattr(response, "status", "unknown"),
+        )
         text = response.output_text.strip()
+        logger.info("OpenAI output parsed | chars=%d", len(text))
         if not text:
             raise HTTPException(status_code=502, detail="Модель вернула пустой ответ")
         return text, response.id
     except HTTPException:
         raise
-    except Exception as exc:  # SDK exceptions differ by installed version
-        raise HTTPException(status_code=502, detail=f"Ошибка OpenAI API: {exc}") from exc
+    except Exception as exc:
+        logger.exception("OpenAI analysis failed | file=%s | model=%s", filename, MODEL)
+        raise HTTPException(
+            status_code=502,
+            detail=f"Ошибка OpenAI API: {type(exc).__name__}: {exc}",
+        ) from exc
     finally:
         if uploaded_file_id and not KEEP_OPENAI_FILES:
             try:
                 client.files.delete(uploaded_file_id)
+                logger.info("Temporary OpenAI file deleted | file_id=%s", uploaded_file_id)
             except Exception:
-                pass
-
+                logger.exception("Failed to delete temporary OpenAI file | file_id=%s", uploaded_file_id)
 
 
 
@@ -1498,7 +1523,10 @@ def health() -> dict[str, Any]:
         "ok": True,
         "model": MODEL,
         "mock_mode": MOCK_MODE,
-        "api_key_configured": bool(os.getenv("OPENAI_API_KEY")),
+        "openai_mode": OPENAI_MODE,
+        "openai_configured": OPENAI_CONFIGURED,
+        "api_key_configured": OPENAI_CONFIGURED,
+        "live_analysis_enabled": (not MOCK_MODE and OPENAI_MODE == "live" and OPENAI_CONFIGURED),
         "max_file_mb": MAX_FILE_MB,
         "supported_types": ["JPG", "PNG", "WEBP", "PDF", "SLDDRW"],
         "version": APP_VERSION,
@@ -1723,6 +1751,10 @@ async def analyze(
         raise HTTPException(status_code=400, detail="Опишите, что нужно проанализировать")
 
     raw = await file.read()
+    logger.info(
+        "/api/analyze received | file=%s | type=%s | bytes=%d | mock_mode=%s | openai_mode=%s",
+        file.filename or "file", media_type, len(raw), MOCK_MODE, OPENAI_MODE,
+    )
     if not raw:
         raise HTTPException(status_code=400, detail="Файл пуст")
     if len(raw) > MAX_FILE_MB * 1024 * 1024:
@@ -1734,6 +1766,8 @@ async def analyze(
         crop = None
 
     openai_response_id: str | None = None
+    selected_mode = "mock" if MOCK_MODE else "live"
+    logger.info("Analysis routing | selected_mode=%s", selected_mode)
     if MOCK_MODE:
         response_text = build_mock_response(file.filename or "file", media_type, prompt.strip(), crop, raw)
     else:
@@ -1744,6 +1778,11 @@ async def analyze(
             prompt=prompt,
             crop=crop,
         )
+
+    logger.info(
+        "/api/analyze model phase completed | response_id=%s | chars=%d",
+        openai_response_id or "local", len(response_text),
+    )
 
     analysis_id = save_history(
         filename=file.filename or "file",
@@ -1767,6 +1806,10 @@ async def analyze(
     if media_type == SLDDRW_MEDIA_TYPE:
         intelligence_source += "\n" + "\n".join(extract_slddrw_text_hints(raw))
     drawing_intelligence = build_drawing_intelligence(intelligence_source)
+    logger.info(
+        "/api/analyze completed | analysis_id=%s | response_id=%s | mock=%s",
+        analysis_id, openai_response_id or "local", MOCK_MODE,
+    )
     return {
         "id": analysis_id,
         "response": response_text,
