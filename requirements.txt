@@ -5,3 +5,4 @@ Pillow>=10.4,<13
 openai>=1.66,<3
 httpx>=0.27,<1
 pytest>=8,<10
+reportlab>=4.2,<5

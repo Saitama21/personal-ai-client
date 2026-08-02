@@ -21,6 +21,7 @@ from fastapi.staticfiles import StaticFiles
 from PIL import Image, UnidentifiedImageError
 
 from app.thread_library import THREAD_FAMILIES, build_thread_library
+from app.operator_pdf import build_operator_pdf
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 STATIC_DIR = BASE_DIR / "app" / "static"
@@ -34,7 +35,7 @@ MOCK_MODE = os.getenv("MOCK_MODE", "false").strip().lower() in {"1", "true", "ye
 OPENAI_MODE = os.getenv("OPENAI_MODE", "live").strip().lower()
 OPENAI_CONFIGURED = bool(os.getenv("OPENAI_API_KEY", "").strip())
 KEEP_OPENAI_FILES = os.getenv("KEEP_OPENAI_FILES", "false").strip().lower() in {"1", "true", "yes", "on"}
-APP_VERSION = os.getenv("APP_VERSION", "4.0.4-project-history-manager")
+APP_VERSION = os.getenv("APP_VERSION", "4.2.0-operator-pdf")
 DEPLOY_COMMIT = os.getenv("RAILWAY_GIT_COMMIT_SHA", os.getenv("GIT_COMMIT", "local"))
 
 logging.basicConfig(
@@ -1576,7 +1577,7 @@ def health() -> dict[str, Any]:
         "supported_types": ["JPG", "PNG", "WEBP", "PDF", "SLDDRW"],
         "version": APP_VERSION,
         "deploy_commit": DEPLOY_COMMIT[:12],
-        "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52pty_profile", "drawing_intelligence", "tolerance_detection", "metric_thread_catalog", "chamfer_marker", "multi_operation_route", "contour_mirroring", "history_project_restore", "mobile_history", "multi_operation_picker", "general_tolerance_h14_rule", "stock_mode_radio", "multi_checkbox_setup", "hybrid_turn_mill_mode", "chat_image_upload", "chat_region_selection", "split_chamfer_input", "toggleable_drawing_rules", "full_thread_library", "thread_library_filters", "engineering_layout_overflow_fix", "text_only_stock_plan", "safari_touch_hotfix", "machine_profile_autofill", "multiview_association", "af_flats_detection", "hybrid_stock_removal_split"],
+        "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52pty_profile", "drawing_intelligence", "tolerance_detection", "metric_thread_catalog", "chamfer_marker", "multi_operation_route", "contour_mirroring", "history_project_restore", "mobile_history", "multi_operation_picker", "general_tolerance_h14_rule", "stock_mode_radio", "multi_checkbox_setup", "hybrid_turn_mill_mode", "chat_image_upload", "chat_region_selection", "split_chamfer_input", "toggleable_drawing_rules", "full_thread_library", "thread_library_filters", "engineering_layout_overflow_fix", "text_only_stock_plan", "safari_touch_hotfix", "machine_profile_autofill", "multiview_association", "af_flats_detection", "hybrid_stock_removal_split", "operator_pdf", "final_result_snapshot", "sinumerik_shopturn_guide"],
     }
 
 
@@ -2021,6 +2022,34 @@ def delete_project(project_id: int) -> dict[str, bool]:
     if cursor.rowcount == 0:
         raise HTTPException(status_code=404, detail="Проект не найден")
     return {"ok": True}
+
+
+@app.post("/api/export/operator-pdf")
+def export_operator_pdf(payload: dict[str, Any] = Body(...)) -> Response:
+    snapshot = payload.get("snapshot") if isinstance(payload, dict) else None
+    if not isinstance(snapshot, dict):
+        raise HTTPException(status_code=400, detail="Не передан зафиксированный результат проекта")
+    done = snapshot.get("done")
+    if not isinstance(done, list) or len(done) < 9 or not all(bool(x) for x in done[:9]):
+        raise HTTPException(status_code=409, detail="PDF доступен только после завершения этапов 1-9")
+    if not snapshot.get("simulationReviewed"):
+        raise HTTPException(status_code=409, detail="Перед PDF необходимо подтвердить контрольный просмотр симуляции")
+    try:
+        pdf = build_operator_pdf(snapshot)
+    except Exception as exc:
+        logger.exception("Operator PDF generation failed")
+        raise HTTPException(status_code=500, detail=f"Не удалось сформировать PDF: {exc}") from exc
+    project_name = re.sub(r"[^A-Za-z0-9_-]+", "_", str(snapshot.get("projectName") or "project")).strip("_")[:60] or "project"
+    filename = f"{project_name}_SINUMERIK_828D_operator_guide.pdf"
+    logger.info("Operator PDF generated | project=%s | bytes=%d", project_name, len(pdf))
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 @app.post("/api/contour-ai")

@@ -238,7 +238,7 @@ def test_stock_removal_accepts_shopturn_tool_flow():
 
 def test_health_reports_shopturn_feature():
     body = client.get("/api/health").json()
-    assert body["version"] == "4.0.4-project-history-manager"
+    assert body["version"] == "4.2.0-operator-pdf"
     assert "shopturn_tool_flow" in body["features"]
 
 
@@ -544,7 +544,7 @@ def test_index_disables_browser_cache():
     response = client.get("/")
     assert response.status_code == 200
     assert "no-store" in response.headers.get("cache-control", "")
-    assert response.headers.get("x-app-version") == "4.0.4-project-history-manager"
+    assert response.headers.get("x-app-version") == "4.2.0-operator-pdf"
 
 
 def test_static_assets_require_revalidation():
@@ -608,3 +608,44 @@ def test_v401_simulation_engine_reinitializes_after_stage_remount():
     assert "host.contains(sim.renderer.domElement)" in js
     assert "window.CNC3D_init=init3D" in js
     assert "cnc-simulation-stage-ready" in js
+
+
+def test_operator_pdf_requires_completed_snapshot():
+    response = client.post("/api/export/operator-pdf", json={"snapshot": {"done": [True] * 8}})
+    assert response.status_code == 409
+
+
+def test_operator_pdf_download_contains_confirmed_project_data():
+    snapshot = {
+        "projectName": "Контрольная деталь",
+        "finalizedAt": "2026-08-02T18:00:00+03:00",
+        "done": [True] * 10,
+        "simulationReviewed": True,
+        "machine": {"name": "Tengyue CK52PT-Y", "control": "SINUMERIK 828D"},
+        "fields": {
+            "material": "AISI 304", "overallLength": "31", "blankDiameter": "16",
+            "thread": "M8x1.25", "threadLength": "15", "stepDiameter": "10",
+            "stepLength": "12", "headDiameter": "16", "headLength": "4",
+            "af": "13", "chamfer": "0.5x45", "tolerances": "H14", "mode": "hybrid"
+        },
+        "stock": {"allowanceD": "0.5", "allowanceL": "1", "x0": "axis", "z0": "right"},
+        "contour": [[16, 0], [16, -4], [10, -4], [10, -16], [8, -16], [8, -31]],
+        "afContour": [[7.5, 0], [3.75, 6.5]],
+        "geometry": {"warnings": ["Проверить вылет фрезы"], "assumptions": []},
+        "tools": [["1", "CNMG120408", "1", "1800", "0.18", "1.5"], ["2", "16ER 1.25", "2", "900", "0.08", "0.2"]],
+        "route": ["Торцевание", "Черновое точение", "Нарезание M8", "Фрезерование AF13"],
+    }
+    response = client.post("/api/export/operator-pdf", json={"snapshot": snapshot})
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/pdf")
+    assert "attachment" in response.headers["content-disposition"]
+    assert response.content.startswith(b"%PDF")
+    assert len(response.content) > 5000
+
+
+def test_v420_frontend_has_final_snapshot_and_pdf_export():
+    js = (Path(__file__).resolve().parents[1] / "app" / "static" / "app.js").read_text(encoding="utf-8")
+    assert "buildFinalSnapshot" in js
+    assert "downloadOperatorPdf" in js
+    assert "/api/export/operator-pdf" in js
+    assert "PDF ДЛЯ СТОЙКИ 828D" in js
