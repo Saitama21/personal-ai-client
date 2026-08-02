@@ -238,7 +238,7 @@ def test_stock_removal_accepts_shopturn_tool_flow():
 
 def test_health_reports_shopturn_feature():
     body = client.get("/api/health").json()
-    assert body["version"] == "4.2.3-mobile-optimized"
+    assert body["version"] == "4.4.0-universal-multiprocess-cam"
     assert "shopturn_tool_flow" in body["features"]
 
 
@@ -544,7 +544,7 @@ def test_index_disables_browser_cache():
     response = client.get("/")
     assert response.status_code == 200
     assert "no-store" in response.headers.get("cache-control", "")
-    assert response.headers.get("x-app-version") == "4.2.3-mobile-optimized"
+    assert response.headers.get("x-app-version") == "4.4.0-universal-multiprocess-cam"
 
 
 def test_static_assets_require_revalidation():
@@ -606,7 +606,7 @@ def test_v401_support_modules_and_webgl_stage():
 def test_v401_simulation_engine_reinitializes_after_stage_remount():
     js = (Path(__file__).resolve().parents[1] / "app" / "static" / "simulation3d.js").read_text(encoding="utf-8")
     assert "host.contains(sim.renderer.domElement)" in js
-    assert "window.CNC3D_init=init3D" in js
+    assert "window.CNC3D_init = init3D" in js
     assert "cnc-simulation-stage-ready" in js
 
 
@@ -632,6 +632,18 @@ def test_operator_pdf_download_contains_confirmed_project_data():
         "contour": [[16, 0], [16, -4], [10, -4], [10, -16], [8, -16], [8, -31]],
         "afContour": [[7.5, 0], [3.75, 6.5]],
         "geometry": {"warnings": ["Проверить вылет фрезы"], "assumptions": []},
+        "camFeatures": {
+            "threading": {"enabled": True, "designation": "M8x1.25", "pitch": 1.25, "zStart": -16, "zEnd": -31},
+            "drilling": {"enabled": True, "diameter": 4, "depth": 20, "peckDepth": 3},
+            "millingAf": {"enabled": True, "widthAcrossFlats": 13, "sides": 6, "zStart": 0, "zEnd": -4},
+        },
+        "machineSetup": {"confirmed": False, "source": "PASSPORT_REQUIRED"},
+        "camSummary": {
+            "status": "PARTIAL", "operationCount": 12, "moveCount": 74, "estimatedMinutes": 3.2,
+            "collision": {"status": "BLOCKED", "safe": False, "errors": []},
+            "postprocessor": {"status": "BLOCKED", "errors": []},
+            "warnings": [{"message": "Паспорт станка не подтверждён"}], "errors": [],
+        },
         "tools": [["1", "CNMG120408", "1", "1800", "0.18", "1.5"], ["2", "16ER 1.25", "2", "900", "0.08", "0.2"]],
         "route": ["Торцевание", "Черновое точение", "Нарезание M8", "Фрезерование AF13"],
     }
@@ -643,9 +655,19 @@ def test_operator_pdf_download_contains_confirmed_project_data():
     assert len(response.content) > 5000
 
 
+def test_universal_pdf_source_covers_required_sections_and_machine_boundary():
+    source = (Path(__file__).resolve().parents[1] / "app" / "operator_pdf.py").read_text(encoding="utf-8")
+    for marker in [
+        "Статусы и границы данных", "Заготовка", "Контур X/Z", "AF-контур",
+        "Инструменты и коррекции", "Последовательность ввода операций", "Stock Removal и симуляция",
+        "Предупреждения и допущения", "не автоматически безопасная NC-программа",
+    ]:
+        assert marker in source
+
+
 def test_v420_frontend_has_final_snapshot_and_pdf_export():
     js = (Path(__file__).resolve().parents[1] / "app" / "static" / "app.js").read_text(encoding="utf-8")
     assert "buildFinalSnapshot" in js
     assert "downloadOperatorPdf" in js
     assert "/api/export/operator-pdf" in js
-    assert "PDF ДЛЯ СТОЙКИ 828D" in js
+    assert "PDF-КАРТА" in js

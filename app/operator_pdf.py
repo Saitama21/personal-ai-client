@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import reportlab
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.pagesizes import A4
@@ -32,6 +33,7 @@ FONT_BOLD = "Helvetica-Bold"
 
 def _register_fonts() -> None:
     global FONT_REGULAR, FONT_BOLD
+    reportlab_fonts = Path(reportlab.__file__).resolve().parent / "fonts"
     candidates = [
         (
             Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
@@ -40,6 +42,14 @@ def _register_fonts() -> None:
         (
             Path("/usr/share/fonts/dejavu/DejaVuSansCondensed.ttf"),
             Path("/usr/share/fonts/dejavu/DejaVuSansCondensed-Bold.ttf"),
+        ),
+        (
+            Path("/System/Library/Fonts/Supplemental/Arial.ttf"),
+            Path("/System/Library/Fonts/Supplemental/Arial Bold.ttf"),
+        ),
+        (
+            reportlab_fonts / "Vera.ttf",
+            reportlab_fonts / "VeraBd.ttf",
         ),
     ]
     for regular, bold in candidates:
@@ -267,6 +277,35 @@ def _header_footer(canvas, doc):
     canvas.restoreState()
 
 
+def _tool_for_operation(operation: Any, tools: list[Any]) -> Any | None:
+    """Match a route item to its explicitly stated tool purpose, never by row number."""
+    op = _safe(operation, "").lower()
+    if "резьб" in op:
+        needles = ("резьб", "16er", "16ir")
+    elif "сверл" in op:
+        needles = ("сверл", "drill")
+    elif "af" in op or "фрез" in op:
+        needles = ("af", "фрез")
+    elif "чистов" in op:
+        needles = ("чистов",)
+    elif "чернов" in op:
+        needles = ("чернов",)
+    elif "торц" in op:
+        needles = ("торц",)
+    else:
+        return None
+    for tool in tools:
+        if isinstance(tool, dict):
+            searchable = " ".join(_safe(tool.get(key), "") for key in ("name", "tool", "insert", "purpose", "operation")).lower()
+        elif isinstance(tool, (list, tuple)):
+            searchable = " ".join(_safe(value, "") for value in list(tool)[1:3]).lower()
+        else:
+            searchable = _safe(tool, "").lower()
+        if any(needle in searchable for needle in needles):
+            return tool
+    return None
+
+
 def build_operator_pdf(snapshot: dict[str, Any]) -> bytes:
     if not isinstance(snapshot, dict):
         raise ValueError("Snapshot проекта должен быть объектом")
@@ -309,11 +348,22 @@ def build_operator_pdf(snapshot: dict[str, Any]) -> bytes:
     tools = snapshot.get("tools") if isinstance(snapshot.get("tools"), list) else []
     route = snapshot.get("route") if isinstance(snapshot.get("route"), list) else []
     done = snapshot.get("done") if isinstance(snapshot.get("done"), list) else []
+    cam_summary = snapshot.get("camSummary") if isinstance(snapshot.get("camSummary"), dict) else {}
+    cam_features = snapshot.get("camFeatures") if isinstance(snapshot.get("camFeatures"), dict) else {}
+    machine_setup = snapshot.get("machineSetup") if isinstance(snapshot.get("machineSetup"), dict) else {}
+    collision = cam_summary.get("collision") if isinstance(cam_summary.get("collision"), dict) else {}
+    post_summary = cam_summary.get("postprocessor") if isinstance(cam_summary.get("postprocessor"), dict) else {}
+    thread_feature = cam_features.get("threading") if isinstance(cam_features.get("threading"), dict) else {}
+    drill_feature = cam_features.get("drilling") if isinstance(cam_features.get("drilling"), dict) else {}
+    af_feature = cam_features.get("millingAf") if isinstance(cam_features.get("millingAf"), dict) else {}
     warnings = []
     for key in ("warnings", "assumptions"):
         values = geometry.get(key, [])
         if isinstance(values, list):
             warnings.extend(_safe(value) for value in values if _safe(value) != "—")
+    for item in [*cam_summary.get("warnings", []), *cam_summary.get("errors", []), *collision.get("errors", []), *post_summary.get("errors", [])]:
+        if isinstance(item, dict) and item.get("message"):
+            warnings.append(_safe(item.get("message")))
 
     generated = snapshot.get("finalizedAt") or snapshot.get("created_at") or datetime.now(timezone.utc).isoformat()
     machine = snapshot.get("machine") if isinstance(snapshot.get("machine"), dict) else {}
@@ -324,7 +374,7 @@ def build_operator_pdf(snapshot: dict[str, Any]) -> bytes:
     story += [
         Spacer(1, 3 * mm),
         _p("КАРТА ОПЕРАТОРА CNC", styles["title"]),
-        _p("Пошаговая инструкция по переносу подтверждённых результатов проекта в SINUMERIK 828D / ShopTurn", styles["subtitle"]),
+        _p("Универсальная карта инструмента, наладки и ручного ввода подтверждённых данных в SINUMERIK 828D / ShopTurn", styles["subtitle"]),
         _table(
             [
                 ["Проект", _safe(snapshot.get("projectName"), "Новый проект")],
@@ -338,8 +388,22 @@ def build_operator_pdf(snapshot: dict[str, Any]) -> bytes:
         ),
         Spacer(1, 4 * mm),
         _p(
-            "ВАЖНО: документ сформирован из зафиксированного результата проекта. Перед запуском программы оператор обязан проверить чертёж, зажим, вылет инструмента, коррекции, лимиты станка, материал заготовки и безопасный пробный проход.",
+            "ВАЖНО: это карта для ручного ввода, а не автоматически безопасная NC-программа для CK52PT-Y. До пуска оператор обязан сверить чертёж, зажим, вылеты, коррекции, лимиты станка и выполнить Sinutrain / Dry Run / Single Block.",
             styles["warning"],
+        ),
+        _p("Статусы и границы данных", styles["h1"]),
+        _table(
+            [
+                ["Категория", "Статус / граница"],
+                ["Анализ чертежа", "Подтверждён пользователем" if len(done) > 0 and done[0] else "Не подтверждён"],
+                ["Размерная модель", "Подтверждена" if len(done) > 1 and done[1] else "Не подтверждена"],
+                ["Универсальный CAM", f"{_safe(cam_summary.get('status'), 'не рассчитан')}; операций: {_safe(cam_summary.get('operationCount'), '0')}; движений: {_safe(cam_summary.get('moveCount'), '0')}"],
+                ["Машинная коллизия", _safe(collision.get("status"), "НЕ ПОДТВЕРЖДЕНА БЕЗ ПАСПОРТА")],
+                ["SINUMERIK 828D MPF", _safe(post_summary.get("status"), "НЕ СФОРМИРОВАН БЕЗ ПАСПОРТА")],
+                ["Назначение PDF", "Ручная наладка и ввод; не производственный NC-код"],
+            ],
+            widths=[58 * mm, 112 * mm],
+            header=True,
         ),
         _p("1. Подготовка проекта на стойке", styles["h1"]),
         _table(
@@ -363,6 +427,9 @@ def build_operator_pdf(snapshot: dict[str, Any]) -> bytes:
                 ["Диаметр заготовки", _fmt_number(fields.get("blankDiameter"), " мм")],
                 ["Резьба", _safe(fields.get("thread"))],
                 ["Длина резьбы", _fmt_number(fields.get("threadLength"), " мм")],
+                ["CAM резьба", f"{_safe(thread_feature.get('designation'))}; P={_safe(thread_feature.get('pitch'))}; Z={_safe(thread_feature.get('zStart'))}…{_safe(thread_feature.get('zEnd'))}" if thread_feature.get("enabled") else "Не включена"],
+                ["CAM сверление", f"Ø{_safe(drill_feature.get('diameter'))}; глубина {_safe(drill_feature.get('depth'))}; клевок {_safe(drill_feature.get('peckDepth'))}" if drill_feature.get("enabled") else "Не включено"],
+                ["CAM AF", f"AF{_safe(af_feature.get('widthAcrossFlats'))}; {_safe(af_feature.get('sides'))} граней; Z={_safe(af_feature.get('zStart'))}…{_safe(af_feature.get('zEnd'))}" if af_feature.get("enabled") else "Не включено"],
                 ["Ступень", f"Ø{_fmt_number(fields.get('stepDiameter'))}, L={_fmt_number(fields.get('stepLength'), ' мм')}"],
                 ["Головка", f"Ø{_fmt_number(fields.get('headDiameter'))}, L={_fmt_number(fields.get('headLength'), ' мм')}"],
                 ["AF / размер по граням", _safe(fields.get("af"))],
@@ -397,7 +464,7 @@ def build_operator_pdf(snapshot: dict[str, Any]) -> bytes:
                 ["Параметр", "Значение / действие"],
                 ["Размер AF", _safe(fields.get("af"))],
                 ["Геометрия AF", f"{len(af_contour)} точек" if af_contour else "Не зафиксирована"],
-                ["Ось C", "Индексирование по числу граней; проверить C0 и шаг поворота"],
+                ["Ось C", "Только блокирующая индексация по числу граней; проверить C0 и шаг поворота"],
                 ["Приводной инструмент", "Проверить направление вращения, вылет и безопасный подход"],
                 ["Контроль", "AF не включать в токарный X/Z-контур; выполнить отдельной фрезерной операцией"],
             ],
@@ -407,29 +474,29 @@ def build_operator_pdf(snapshot: dict[str, Any]) -> bytes:
         PageBreak(),
         _p("5. Инструменты и коррекции", styles["h1"]),
     ]
-    tool_rows = [["№", "T / D", "Инструмент", "Vc / S", "Подача", "ap", "Что проверить"]]
+    tool_rows = [["Позиция", "Тип инструмента", "Назначение", "S / Vc", "F", "ap", "Обязательно подтвердить"]]
     for idx, tool in enumerate(tools, 1):
         if isinstance(tool, dict):
-            t = _safe(tool.get("t") or tool.get("toolT"), str(idx))
-            d = _safe(tool.get("d") or tool.get("toolD"), str(idx))
+            position = _safe(tool.get("t") or tool.get("toolT"), str(idx))
             name = _safe(tool.get("name") or tool.get("tool") or tool.get("insert"))
+            purpose = _safe(tool.get("purpose") or tool.get("operation"))
             speed = _safe(tool.get("speed") or tool.get("rpm") or tool.get("vc"))
             feed = _safe(tool.get("feed"))
             ap = _safe(tool.get("ap") or tool.get("depth"))
         elif isinstance(tool, (list, tuple)):
             vals = list(tool) + [""] * 7
-            t, name, d, speed, feed, ap = _safe(vals[0], str(idx)), _safe(vals[1]), _safe(vals[2], str(idx)), _safe(vals[3]), _safe(vals[4]), _safe(vals[5])
+            position, name, purpose, speed, feed, ap = _safe(vals[0], str(idx)), _safe(vals[1]), _safe(vals[2]), _safe(vals[3]), _safe(vals[4]), _safe(vals[5])
         else:
-            t, d, name, speed, feed, ap = str(idx), str(idx), _safe(tool), "—", "—", "—"
-        tool_rows.append([str(idx), f"T{t} / D{d}", name, speed, feed, ap, "Ориентация, вылет, радиус пластины, коррекция"])
+            position, name, purpose, speed, feed, ap = str(idx), _safe(tool), "—", "—", "—", "—"
+        tool_rows.append([position, name, purpose, speed, feed, ap, "Тип/размер, ориентация, вылет, геометрия, коррекция D"])
     if len(tool_rows) == 1:
         tool_rows.append(["—", "—", "Инструменты не зафиксированы", "—", "—", "—", "—"])
-    story.append(_table(tool_rows, widths=[9 * mm, 20 * mm, 42 * mm, 23 * mm, 20 * mm, 17 * mm, 39 * mm], header=True))
+    story.append(_table(tool_rows, widths=[17 * mm, 37 * mm, 36 * mm, 18 * mm, 17 * mm, 14 * mm, 31 * mm], header=True))
 
     story += [_p("6. Последовательность ввода операций в ShopTurn", styles["h1"])]
     if route:
         for idx, operation in enumerate(route, 1):
-            tool = tools[idx - 1] if idx - 1 < len(tools) else None
+            tool = _tool_for_operation(operation, tools)
             if isinstance(tool, (list, tuple)):
                 tool_name = _safe(tool[1] if len(tool) > 1 else None)
                 speed = _safe(tool[3] if len(tool) > 3 else None)
@@ -441,7 +508,8 @@ def build_operator_pdf(snapshot: dict[str, Any]) -> bytes:
                 feed = _safe(tool.get("feed"))
                 ap = _safe(tool.get("ap") or tool.get("depth"))
             else:
-                tool_name = speed = feed = ap = "—"
+                tool_name = "НЕ НАЗНАЧЕН - подтвердить инструмент до ввода операции"
+                speed = feed = ap = "—"
             story.append(
                 KeepTogether(
                     [
@@ -471,6 +539,9 @@ def build_operator_pdf(snapshot: dict[str, Any]) -> bytes:
                 ["Заготовка покрывает готовую геометрию", "Проверить по карте съёма"],
                 ["Все операции включены в маршрут", f"{len(route)} операций"],
                 ["Симуляция просмотрена", "Да" if snapshot.get("simulationReviewed") else "Нет"],
+                ["Универсальный CAM-статус", _safe(cam_summary.get("status"))],
+                ["Оценка времени", _fmt_number(cam_summary.get("estimatedMinutes"), " мин")],
+                ["Машинная безопасность", "Подтверждена по оболочкам" if collision.get("safe") else "Не подтверждена; нужен паспорт/обмер"],
                 ["Зависимые этапы завершены", f"{sum(bool(x) for x in done[:9])}/9" if done else "—"],
             ],
             widths=[100 * mm, 70 * mm],

@@ -18,7 +18,7 @@ def test_v4_sequential_dependency_logic():
 def test_v4_af_and_simulation_present():
     assert 'buildAf' in JS
     assert 'af-canvas' in CSS
-    assert 'playSimulation' in JS
+    assert 'CNC3D_canConfirm' in (ROOT/'app/static/simulation3d.js').read_text(encoding='utf-8')
     assert 'simulationReviewed' in JS
 
 def test_v4_responsive_single_dom():
