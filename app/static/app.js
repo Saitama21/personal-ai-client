@@ -39,7 +39,7 @@ function renderInspector(){const f=state.fields;$('#summaryList').innerHTML=[['�
 function renderNextStrip(){$('#nextStrip').innerHTML=`<h3>ЧТО БУДЕТ ДАЛЬШЕ?</h3><div class="next-cards">${STEPS.slice(state.step+1,state.step+7).map((s,i)=>`<div class="next-card"><b>${s}</b>${['Инженерная проверка','Базы и припуски','Токарный профиль','Фрезерный AF','Инструменты','Маршрут обработки'][i]||'Следующий этап'}</div>`).join('')}</div>`;$('#prevBtn').onclick=()=>{if(state.step>0){state.step--;render()}};$('#nextBtn').onclick=()=>{if(state.done[state.step]&&state.step<9){state.step++;render()}else alert('Сначала завершите текущий этап')}}
 function drawStock(){const c=$('#stockCanvas');if(!c)return;const x=c.getContext('2d');x.clearRect(0,0,c.width,c.height);x.fillStyle='#0a1523';x.fillRect(0,0,c.width,c.height);x.fillStyle='#52687d';x.fillRect(100,120,520,180);x.fillStyle='#12a8d5';x.fillRect(100,155,500,110);x.fillStyle='rgba(255,85,104,.55)';x.fillRect(100,120,340,35);x.fillRect(100,265,340,35);x.fillStyle='#d7e6f5';x.font='18px sans-serif';x.fillText('Серый — заготовка',30,35);x.fillText('Голубой — готовая геометрия',250,35);x.fillText('Красный — снимаемый материал',500,35)}
 let simTimer=null;function drawSimulation(){const c=$('#simCanvas');if(!c)return;const x=c.getContext('2d'),p=+($('#simProgress')?.value||0)/100;x.clearRect(0,0,c.width,c.height);x.fillStyle='#07131f';x.fillRect(0,0,c.width,c.height);x.fillStyle='#4b5f73';x.fillRect(100,140,520,140);x.fillStyle='#20b9dc';x.fillRect(100,165,520*p,90);x.fillStyle='#f2b84b';x.beginPath();x.moveTo(90+520*p,130);x.lineTo(120+520*p,180);x.lineTo(60+520*p,180);x.fill();x.fillStyle='#fff';x.font='20px sans-serif';x.fillText(Math.round(p*100)+'%',350,50)}function playSimulation(){pauseSimulation();simTimer=setInterval(()=>{let r=$('#simProgress');if(!r)return pauseSimulation();r.value=Math.min(100,+r.value+2);drawSimulation();if(+r.value>=100){state.simulationReviewed=true;$('#simConfirm').checked=true;pauseSimulation()}},80)}function pauseSimulation(){if(simTimer){clearInterval(simTimer);simTimer=null}}
-function exportProject(type){const payload={version:'4.0.0',created_at:new Date().toISOString(),...state,preview:null,file:null};if(type==='json'){download('project.json',JSON.stringify(payload,null,2),'application/json')}else{const txt=type==='gcode'?`; ROZFOOD Personal AI Client\n; ${state.route.join('\n; ')}\nG54\nM30\n`:`SINUMERIK 828D / ShopTurn\n${state.route.map((r,i)=>`${i+1}. ${r}`).join('\n')}`;download(type==='gcode'?'program.mpf':'shopturn_route.txt',txt,'text/plain')}}function download(name,data,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+function exportProject(type){const payload={version:'4.0.2',created_at:new Date().toISOString(),...state,preview:null,file:null};if(type==='json'){download('project.json',JSON.stringify(payload,null,2),'application/json')}else{const txt=type==='gcode'?`; ROZFOOD Personal AI Client\n; ${state.route.join('\n; ')}\nG54\nM30\n`:`SINUMERIK 828D / ShopTurn\n${state.route.map((r,i)=>`${i+1}. ${r}`).join('\n')}`;download(type==='gcode'?'program.mpf':'shopturn_route.txt',txt,'text/plain')}}function download(name,data,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 
 const SUPPORT_DATA={
   libraries:{title:'БИБЛИОТЕКИ',html:`<div class="support-grid"><section class="card"><h3>Инструменты</h3><input id="supportSearch" placeholder="Поиск: CNMG, фреза Ø8, 16ER…"><div id="supportResults" class="support-list"></div></section><section class="card"><h3>Быстрый выбор</h3><button class="support-item" data-pick-tool="CNMG120408">CNMG120408 · черновое точение</button><button class="support-item" data-pick-tool="CNMG120404">CNMG120404 · чистовое точение</button><button class="support-item" data-pick-tool="16ER 1.25 ISO">16ER 1.25 ISO · M8×1.25</button><button class="support-item" data-pick-tool="Фреза Ø8">Фреза Ø8 · AF-контур</button></section></div>`},
@@ -52,4 +52,33 @@ function openSupport(name){const data=SUPPORT_DATA[name];if(!data)return;let mod
 function bindSupport(name){if(name==='libraries'){const results=document.getElementById('supportResults'),search=document.getElementById('supportSearch');const draw=()=>{const q=(search.value||'').toLowerCase();results.innerHTML=TOOL_LIBRARY.filter(x=>x.toLowerCase().includes(q)).map(x=>`<button class="support-item" data-pick-tool="${esc(x)}">${esc(x)}</button>`).join('')||'<p>Ничего не найдено</p>'};search.oninput=draw;draw();document.querySelectorAll('[data-pick-tool]').forEach(b=>b.onclick=()=>{if(!state.tools.length)defaultTools();state.tools[0][1]=b.dataset.pickTool;persist();alert('Инструмент добавлен в проект: '+b.dataset.pickTool)})}if(name==='calculators'){document.getElementById('calcBtn').onclick=()=>{const vc=+document.getElementById('calcVc').value,d=+document.getElementById('calcD').value,f=+document.getElementById('calcF').value;if(!(vc>0&&d>0&&f>=0))return alert('Проверьте значения');const n=Math.round(1000*vc/(Math.PI*d)),vf=Math.round(n*f);document.getElementById('calcResult').innerHTML=`${n.toLocaleString('ru-RU')} об/мин<br><small>${vf.toLocaleString('ru-RU')} мм/мин</small>`}}if(name==='settings'){document.getElementById('settingsSave').onclick=()=>{document.body.classList.toggle('light',document.getElementById('settingTheme').checked);localStorage.setItem('rozfood_autosave',document.getElementById('settingAutosave').checked?'true':'false');state.projectName=document.getElementById('settingProjectName').value.trim()||'Новый проект';persist();renderInspector();document.getElementById('supportModal').classList.remove('open')}}}
 window.CNC3D_getData=()=>({blankDiameter:+state.fields.blankDiameter||16,blankLength:+state.fields.overallLength||31,xMode:'diameter',contourPoints:(state.contour.length?state.contour:(buildContour(),state.contour)).map(([x,z])=>({x,z})),operations:(state.route.length?state.route:(defaultRoute(),state.route)).map((name,i)=>({name,tool:state.tools[i]?.[1]||`T${i+1}`,speed:state.tools[i]?.[3]||'—',feed:state.tools[i]?.[4]||'—',ap:state.tools[i]?.[5]||'—'})),material:state.fields.material||'AISI 304'});
 
-document.addEventListener('click',e=>{const support=e.target.closest('[data-support]');if(support){openSupport(support.dataset.support);return}const b=e.target.closest('[data-step-jump]');if(b){let i=+b.dataset.stepJump;if(i===0||state.done[i-1]||state.done[i]){state.step=i;render()}}});$('#themeBtn').onclick=()=>document.body.classList.toggle('light');render();
+function activateSupportButton(button){
+  document.querySelectorAll('[data-support]').forEach(b=>b.classList.toggle('active',b===button));
+  openSupport(button.dataset.support);
+}
+function bindPersistentNavigation(){
+  document.querySelectorAll('[data-support]').forEach(button=>{
+    button.type='button';
+    button.onclick=(event)=>{event.preventDefault();event.stopPropagation();activateSupportButton(button)};
+    button.onkeydown=(event)=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();activateSupportButton(button)}};
+  });
+  document.querySelectorAll('[data-nav]').forEach(button=>{
+    button.type='button';
+    button.onclick=()=>{
+      const action=button.dataset.nav;
+      if(action==='new'){if(confirm('Создать новый проект и очистить текущие данные?')){localStorage.removeItem('rozfood_v400_project');location.reload()}return;}
+      if(action==='history'){alert('История анализов доступна в сохранённых проектах Railway.');return;}
+      if(action==='projects'){alert('Откройте сохранённый проект или создайте новый.');return;}
+      if(action==='templates'){alert('Шаблоны техпроцессов будут открыты в библиотеке проекта.');openSupport('libraries');return;}
+    };
+  });
+  const passport=document.querySelector('.machine-card button');
+  if(passport)passport.onclick=()=>openSupport('reference');
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-step-jump]');
+  if(b){let i=+b.dataset.stepJump;if(i===0||state.done[i-1]||state.done[i]){state.step=i;render()}}
+});
+$('#themeBtn').onclick=()=>document.body.classList.toggle('light');
+bindPersistentNavigation();
+render();
