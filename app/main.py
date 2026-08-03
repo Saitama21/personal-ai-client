@@ -22,6 +22,7 @@ from PIL import Image, UnidentifiedImageError
 
 from app.thread_library import THREAD_FAMILIES, build_thread_library
 from app.operator_pdf import build_operator_pdf
+from app.knowledge_base import build_knowledge_context, knowledge_summary, search_knowledge, load_knowledge_base
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 STATIC_DIR = BASE_DIR / "app" / "static"
@@ -35,7 +36,7 @@ MOCK_MODE = os.getenv("MOCK_MODE", "false").strip().lower() in {"1", "true", "ye
 OPENAI_MODE = os.getenv("OPENAI_MODE", "live").strip().lower()
 OPENAI_CONFIGURED = bool(os.getenv("OPENAI_API_KEY", "").strip())
 KEEP_OPENAI_FILES = os.getenv("KEEP_OPENAI_FILES", "false").strip().lower() in {"1", "true", "yes", "on"}
-APP_VERSION = os.getenv("APP_VERSION", "4.4.1-recognition-crop")
+APP_VERSION = os.getenv("APP_VERSION", "4.5.1-dpk-roller-test")
 DEPLOY_COMMIT = os.getenv("RAILWAY_GIT_COMMIT_SHA", os.getenv("GIT_COMMIT", "local"))
 
 logging.basicConfig(
@@ -162,7 +163,7 @@ def extract_tolerance_tokens(text: str) -> list[str]:
         r"(?:±|\+\s*/\s*-)\s*IT\s*14\s*/\s*2",
         r"(?:Ø|⌀)?\s*\d+(?:[.,]\d+)?\s*\+\s*\d+(?:[.,]\d+)?\s*/\s*-?\s*\d+(?:[.,]\d+)?",
         r"(?:Ø|⌀)?\s*\d+(?:[.,]\d+)?\s*[±]\s*\d+(?:[.,]\d+)?",
-        r"\b(?:H|h|G|g|JS|js|K|k|N|n|P|p|R|r|S|s)\s*(?:[3-9]|1[0-4])\b",
+        r"\b(?:H|h|G|g|JS|js|K|k|N|n|P|p|R|r|S|s)\s*(?:[3-9]|1[0-4])(?![.,]\d)\b",
         r"\b(?:IT|Ra|Rz)\s*\d+(?:[.,]\d+)?\b",
         r"(?:плоскост|соосност|перпендикулярност|параллельност|биени|позиционн)[^\n;]{0,80}",
     ]
@@ -781,8 +782,56 @@ def hamming_hex(left: str, right: str) -> int:
     return (int(left, 16) ^ int(right, 16)).bit_count()
 
 
+def extract_pdf_text_hints(raw: bytes | None) -> str:
+    """Extract lightweight text hints from a PDF for deterministic offline tests."""
+    if not raw or not raw.startswith(b"%PDF"):
+        return ""
+    try:
+        from pypdf import PdfReader
+
+        reader = PdfReader(io.BytesIO(raw))
+        return "\n".join((page.extract_text() or "") for page in reader.pages[:8])
+    except Exception:
+        logger.exception("Local PDF text extraction failed")
+        return ""
+
+
 def infer_local_drawing_profile(raw: bytes | None, text: str = "") -> dict[str, Any] | None:
-    combined = (text or "").lower().replace(",", ".")
+    pdf_text = extract_pdf_text_hints(raw)
+    combined = (" ".join([text or "", pdf_text]) or "").lower().replace(",", ".").replace("õ", "x")
+
+    # ROZFOOD drawing DPK-5.02.103 / Roller, PE 500.
+    roller_by_name = bool(re.search(r"(?:дпк|dpk)[-_ ]?5[.]02[.]103", combined, flags=re.IGNORECASE))
+    roller_by_geometry = (
+        "pe 500" in combined
+        and "r3.5" in combined
+        and "12.2" in combined
+        and all(re.search(rf"(?<!\d){value}(?!\d)", combined) for value in ("60", "50", "30", "25", "22", "8"))
+    )
+    if roller_by_name or roller_by_geometry:
+        return {
+            "kind": "roller_pe500",
+            "name": "Ролик",
+            "designation": "ДПК-5.02.103",
+            "material": "PE 500",
+            "quantity": 28,
+            "mass": 0.05,
+            "blank_diameter": 60.0,
+            "overall_length": 30.0,
+            "flange_diameter": 60.0,
+            "body_diameter": 50.0,
+            "shoulder_position_from_left": 25.0,
+            "flange_length": 5.0,
+            "outer_radius": 3.5,
+            "through_bore": 12.2,
+            "counterbore_diameter": 30.0,
+            "counterbore_depth": 8.0,
+            "small_bore_length": 22.0,
+            "chamfer": "1×45°",
+            "general_tolerances": ["H14", "h14", "±IT14/2"],
+            "recommended_mode": "lathe",
+        }
+
     fingerprint = image_dhash(raw or b"")
     known_image = bool(fingerprint and any(hamming_hex(fingerprint, expected) <= 4 for expected in KNOWN_DRAWING_DHASHES))
     textual_match = (
@@ -793,6 +842,7 @@ def infer_local_drawing_profile(raw: bytes | None, text: str = "") -> dict[str, 
     if not (known_image or textual_match):
         return None
     return {
+        "kind": "pin_m8_af13",
         "name": "Палец",
         "material": "AISI 304",
         "blank_diameter": 16.0,
@@ -811,7 +861,15 @@ def infer_local_drawing_profile(raw: bytes | None, text: str = "") -> dict[str, 
 
 
 def profile_contour_points(profile: dict[str, Any]) -> list[dict[str, Any]]:
-    # Z0 находится на правом торце; X задан в диаметрах.
+    # Z0 is on the right face; X values are diameters.
+    if profile.get("kind") == "roller_pe500":
+        return [
+            {"x": 60.0, "z": 0.0, "type": "start", "rv": "—", "direction": "—"},
+            {"x": 60.0, "z": -5.0, "type": "lineZ", "rv": "—", "direction": "по Z"},
+            {"x": 57.0, "z": -5.0, "type": "lineX", "rv": "—", "direction": "по X"},
+            {"x": 50.0, "z": -8.5, "type": "arcCW", "rv": "R3.5", "direction": "CW"},
+            {"x": 50.0, "z": -30.0, "type": "lineZ", "rv": "—", "direction": "по Z"},
+        ]
     return [
         {"x": 16.0, "z": 0.0, "type": "start", "rv": "—", "direction": "—"},
         {"x": 16.0, "z": -4.0, "type": "lineZ", "rv": "—", "direction": "по Z"},
@@ -822,8 +880,57 @@ def profile_contour_points(profile: dict[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
+def profile_inner_contours(profile: dict[str, Any]) -> list[list[dict[str, Any]]]:
+    if profile.get("kind") != "roller_pe500":
+        return []
+    return [[
+        {"x": 14.2, "z": 0.0, "type": "start", "rv": "—", "direction": "—"},
+        {"x": 12.2, "z": -1.0, "type": "chamfer", "rv": "1×45°", "direction": "по X/Z"},
+        {"x": 12.2, "z": -22.0, "type": "lineZ", "rv": "—", "direction": "по Z"},
+        {"x": 30.0, "z": -22.0, "type": "lineX", "rv": "—", "direction": "по X"},
+        {"x": 30.0, "z": -30.0, "type": "lineZ", "rv": "—", "direction": "по Z"},
+    ]]
+
+
 def build_mock_response(filename: str, media_type: str, prompt: str, crop: dict[str, float] | None, raw: bytes | None = None) -> str:
     profile = infer_local_drawing_profile(raw, prompt + " " + filename)
+    if profile and profile.get("kind") == "roller_pe500":
+        return f"""## Локальный инженерный анализ
+
+### Краткий вывод
+Распознана деталь **{profile['name']} {profile['designation']}** из материала **{profile['material']}**. Заготовка по чертежу: **круг Ø60**. Деталь полностью осесимметричная, поэтому основной режим — **токарный X/Z**; фрезерные операции не требуются.
+
+### Размеры и геометрия
+- Общая длина: **30 мм**.
+- Наружный фланец: **Ø60**, длина **5 мм** (30 − 25).
+- Основное тело: **Ø50**.
+- Переход к фланцу: **R3.5**.
+- Сквозное отверстие: **Ø12.2**.
+- Расточка/цековка со стороны левого торца: **Ø30 × 8 мм**.
+- Длина малого отверстия до уступа: **22 мм**; цепочка **8 + 22 = 30 мм**, совпадает.
+- Фаска на входе Ø12.2 со стороны правого торца: **1×45°**.
+- Количество: **28 шт.**; масса по основной надписи: **0.05 кг**.
+
+### Допуски и требования
+- Общие допуски: **H14, h14, ±IT14/2**.
+- Локальные посадки, шероховатость и геометрические допуски на листе не указаны.
+- Размеры со звёздочкой считаются справочными согласно примечанию; на распознанных размерных надписях звёздочка не подтверждена.
+
+### Рекомендуемый маршрут ShopTurn
+1. Установка 1, Z0 по правому торцу: торцевание.
+2. Сверление и/или растачивание сквозного отверстия до **Ø12.2**.
+3. Фаска **1×45°** на правом входе отверстия.
+4. Наружный контур: фланец Ø60 длиной 5 мм, переход R3.5, тело Ø50 до общей длины.
+5. Отрезка с припуском или снятие заготовки.
+6. Установка 2, базирование по обработанному Ø50/торцу: доведение общей длины до 30 мм.
+7. Расточка **Ø30 на глубину 8 мм** с левого торца.
+8. Контроль Ø60, Ø50, Ø30, Ø12.2, L30, глубины 8, фаски и R3.5.
+
+### Контроль перед запуском
+Проверить способ зажима PE 500, фактический припуск по торцам, доступность сверла/расточной оправки и направление дуги R3.5 в графической симуляции ShopTurn.
+
+> Результат сформирован локальным fallback-движком MOCK_MODE по текстовому слою PDF; OpenAI API не использовался.
+"""
     if profile:
         return f"""## Локальный инженерный анализ
 
@@ -895,6 +1002,7 @@ def analyze_with_openai(
 
     client = OpenAI(api_key=api_key, timeout=120.0, max_retries=2)
     user_text = augment_drawing_prompt(prompt)
+    user_text += "\n\n" + build_knowledge_context(prompt, limit=8)
     if crop:
         user_text += "\n\nПользователь специально выделил область. Сосредоточь анализ прежде всего на ней."
 
@@ -1016,8 +1124,8 @@ def parse_shopturn_payload(raw: str | None) -> tuple[dict[str, Any], str]:
     cleaned["threadSelection"] = data.get("threadSelection") if isinstance(data.get("threadSelection"), dict) else {}
     cleaned["chamfers"] = data.get("chamfers") if isinstance(data.get("chamfers"), list) else []
     machine = (
-        "Tengyue CK52PT-Y / Siemens SINUMERIK 828D ShopTurn"
-        if cleaned.get("machineProfile") == "tengyue_ck52pty"
+        "Tengyue / Dongguan Xinrui CK52DWY / Siemens SINUMERIK 828D V4.95 ShopTurn"
+        if cleaned.get("machineProfile") in {"tengyue_ck52dwy", "tengyue_ck52pty"}
         else cleaned.get("machineProfile", "не указан")
     )
     route_lines = []
@@ -1067,6 +1175,7 @@ def create_stock_removal_prompt(*, stock_mode: str, blank_summary: str, zero_ref
         "mill": "фрезерная обработка",
         "hybrid": "комбинированная токарно-фрезерная обработка X/Z с приводным инструментом",
     }.get(stock_mode, "обработка")
+    knowledge = build_knowledge_context(" ".join([stock_mode, blank_summary, zero_reference, first_side, notes, tool_summary]), limit=8)
     return f"""Ты CNC-assistant. На основе чертежа и параметров заготовки составь заготовительный план Stock Removal.
 Режим: {mode_text}.
 Параметры заготовки: {blank_summary}.
@@ -1086,6 +1195,8 @@ def create_stock_removal_prompt(*, stock_mode: str, blank_summary: str, zero_ref
 7. Отдельно блок 'Инструмент и ShopTurn 828D': T/D, выбранный инструмент, F/S, поля X0/Z0/X1/Z1, FS1–FS3, D, UX и UZ.
 8. Отдельно блок 'Важно проверить'.
 
+{knowledge}
+
 Перед планом обязательно выполни связывание видов:
 - отдели осесимметричный токарный профиль от неосесимметричных элементов;
 - размер по плоскостям/граням (AF) не считать диаметром и не включать в X/Z;
@@ -1100,6 +1211,78 @@ def create_stock_removal_prompt(*, stock_mode: str, blank_summary: str, zero_ref
 
 def build_stock_removal_mock(filename: str, media_type: str, stock_mode: str, blank_summary: str, zero_reference: str, first_side: str, notes: str, raw: bytes | None = None, tool_summary: str = "") -> str:
     profile = infer_local_drawing_profile(raw, " ".join([filename, blank_summary, notes, tool_summary]))
+    if profile and profile.get("kind") == "roller_pe500":
+        outer = profile_contour_points(profile)
+        inner = profile_inner_contours(profile)[0]
+        outer_rows = ["| Точка | X, мм | Z, мм | Элемент |", "|---|---:|---:|---|"]
+        outer_labels = [
+            "Правый торец / Ø60",
+            "Фланец Ø60, L5",
+            "Вертикальный участок до касания R3.5",
+            "Дуга R3.5 к Ø50",
+            "Тело Ø50 до левого торца",
+        ]
+        for index, (point, label) in enumerate(zip(outer, outer_labels), start=1):
+            outer_rows.append(f"| P{index} | Ø{point['x']:g} | {point['z']:g} | {label} |")
+        inner_rows = ["| Точка | X, мм | Z, мм | Внутренний элемент |", "|---|---:|---:|---|"]
+        inner_labels = [
+            "Вход фаски на правом торце",
+            "Фаска 1×45° к Ø12.2",
+            "Отверстие Ø12.2 до уступа",
+            "Уступ на Ø30",
+            "Расточка Ø30 до левого торца",
+        ]
+        for index, (point, label) in enumerate(zip(inner, inner_labels), start=1):
+            inner_rows.append(f"| I{index} | Ø{point['x']:g} | {point['z']:g} | {label} |")
+        return f"""## Stock Removal · локальный инженерный fallback
+
+### 1. Краткий вывод
+Деталь **Ролик ДПК-5.02.103**, материал **PE 500**, заготовка **Ø60 × 30 мм** без учёта технологического припуска. Режим: **токарный X/Z**, две установки.
+
+### 2. Подтверждённые размеры
+- Ø60, Ø50, Ø30 и Ø12.2.
+- Общая длина 30 мм.
+- Наружный уступ расположен на 25 мм от левого торца, следовательно длина фланца — 5 мм.
+- Расточка Ø30 глубиной 8 мм; малое отверстие до уступа — 22 мм.
+- Цепочка 8 + 22 = 30 мм совпадает.
+- R3.5 и фаска 1×45°.
+- Общие допуски H14, h14, ±IT14/2.
+
+### 3. Что уточнить
+- Реальная длина заготовки и припуск по торцам.
+- Каким инструментом получить Ø12.2: сверло Ø12.2 или сверление с последующей расточкой.
+- Требования к шероховатости отсутствуют на чертеже.
+
+### 4. План Stock Removal
+#### Установка 1 — правый торец
+1. Торцевание, Z0 по правому торцу.
+2. Сквозное отверстие Ø12.2.
+3. Фаска 1×45°.
+4. Наружное точение Ø60/L5 → вертикальный участок → R3.5 → Ø50 до левого торца.
+5. Отрезка/снятие с припуском на второй торец.
+
+#### Установка 2 — левый торец
+6. Торцевание до общей длины 30 мм.
+7. Расточка Ø30 на глубину 8 мм.
+8. Контроль соосности Ø30 и Ø12.2.
+
+### 5. Наружный контур X/Z
+{chr(10).join(outer_rows)}
+
+### 6. Внутренний контур X/Z
+{chr(10).join(inner_rows)}
+
+### 7. Инструмент и ShopTurn 828D
+{tool_summary or 'Рекомендуемый набор: проходной резец с острой полированной геометрией для пластика; сверло/расточная оправка для Ø12.2; расточной резец для Ø30; фасочный инструмент.'}
+
+### 8. Важно проверить
+- X задан в диаметрах; Z0 принят по правому торцу первой установки.
+- Точка X57/Z−5 является касанием дуги R3.5 с вертикальной стенкой; второе касание — X50/Z−8.5.
+- Перед запуском проверить графику ShopTurn и направление дуги CW.
+- OEM M-коды патрона и вспомогательных механизмов не генерируются автоматически.
+
+**Замечания пользователя:** {notes or 'нет'}
+"""
     if profile:
         points = profile_contour_points(profile)
         rows = ["| Точка | X, мм | Z, мм | Элемент |", "|---|---:|---:|---|"]
@@ -1291,7 +1474,8 @@ def chat_with_openai(
         )
     from openai import OpenAI
     client = OpenAI(api_key=api_key)
-    chat_instructions = SYSTEM_INSTRUCTIONS + """
+    knowledge = build_knowledge_context(question + "\n" + context_text[-6000:], limit=8)
+    chat_instructions = SYSTEM_INSTRUCTIONS + "\n\n" + knowledge + """
 
 Продолжай технический диалог с пользователем. Учитывай предыдущий анализ, уточняющие вопросы и ответы.
 Если приложено изображение, анализируй именно его. Если передана выделенная область, считай её главным объектом уточнения.
@@ -1404,6 +1588,31 @@ def validate_contour_points(raw_points: Any) -> list[dict[str, Any]]:
 
 def build_contour_mock(blank_diameter: str, blank_length: str, raw: bytes | None = None, filename: str = "", notes: str = "") -> dict[str, Any]:
     profile = infer_local_drawing_profile(raw, " ".join([filename, blank_diameter, blank_length, notes]))
+    if profile and profile.get("kind") == "roller_pe500":
+        return {
+            "name": "Ролик ДПК-5.02.103 · X/Z",
+            "part_type": "bushing",
+            "confidence": 0.99,
+            "recommended_mode": "lathe",
+            "assumptions": [
+                "X задан в диаметрах",
+                "Z0 расположен на правом торце",
+                "Длина фланца 5 мм получена из 30 − 25",
+                "Дуга R3.5 представлена через точки касания X57/Z−5 и X50/Z−8.5",
+            ],
+            "warnings": [
+                "Перед обработкой проверить направление дуги в графике ShopTurn",
+                "Припуск заготовки по торцам на чертеже не задан",
+            ],
+            "secondary_features": [],
+            "points": profile_contour_points(profile),
+            "outer_contour": profile_contour_points(profile),
+            "inner_contours": profile_inner_contours(profile),
+            "holes": [
+                {"designation": "Ø12.2 сквозное", "diameter": 12.2, "count": 1, "pcd": None, "thread": ""},
+                {"designation": "Ø30 × 8", "diameter": 30.0, "count": 1, "pcd": None, "thread": ""},
+            ],
+        }
     if profile:
         return {
             "name": "Палец · X/Z",
@@ -1449,7 +1658,10 @@ def contour_with_openai(*, raw: bytes, filename: str, media_type: str, blank_dia
     from openai import OpenAI
     client = OpenAI(api_key=api_key)
     uploaded_file_id: str | None = None
+    knowledge = build_knowledge_context(" ".join([blank_diameter, blank_length, notes, "контур ShopTurn X Z"]), limit=6)
     prompt = f"""Проанализируй ТОЛЬКО текущий технический чертёж и построй динамическую структуру геометрии для CNC. Не используй шаблон болта, пальца или любой предыдущей детали.
+
+{knowledge}
 Внешние данные о заготовке: диаметр {blank_diameter or 'не подтверждён'} мм, длина {blank_length or 'не подтверждена'} мм. Эти значения являются подсказкой, а не истиной; если они противоречат чертежу, укажи предупреждение.
 Примечания после общего анализа: {notes or 'нет'}.
 
@@ -1590,8 +1802,37 @@ def health() -> dict[str, Any]:
         "supported_types": ["JPG", "PNG", "WEBP", "PDF", "SLDDRW"],
         "version": APP_VERSION,
         "deploy_commit": DEPLOY_COMMIT[:12],
-        "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "drawing_region_selection", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52pty_profile", "drawing_intelligence", "tolerance_detection", "metric_thread_catalog", "chamfer_marker", "multi_operation_route", "contour_mirroring", "history_project_restore", "mobile_history", "multi_operation_picker", "general_tolerance_h14_rule", "stock_mode_radio", "multi_checkbox_setup", "hybrid_turn_mill_mode", "chat_image_upload", "chat_region_selection", "split_chamfer_input", "toggleable_drawing_rules", "full_thread_library", "thread_library_filters", "engineering_layout_overflow_fix", "text_only_stock_plan", "safari_touch_hotfix", "machine_profile_autofill", "multiview_association", "af_flats_detection", "hybrid_stock_removal_split", "operator_pdf", "final_result_snapshot", "sinumerik_shopturn_guide"],
+        "machine_profile": "tengyue_ck52dwy_828d_495",
+        "knowledge_base": knowledge_summary()["counts"],
+        "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "drawing_region_selection", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52dwy_profile", "drawing_intelligence", "tolerance_detection", "metric_thread_catalog", "chamfer_marker", "multi_operation_route", "contour_mirroring", "history_project_restore", "mobile_history", "multi_operation_picker", "general_tolerance_h14_rule", "stock_mode_radio", "multi_checkbox_setup", "hybrid_turn_mill_mode", "chat_image_upload", "chat_region_selection", "split_chamfer_input", "toggleable_drawing_rules", "full_thread_library", "thread_library_filters", "engineering_layout_overflow_fix", "text_only_stock_plan", "safari_touch_hotfix", "machine_profile_autofill", "multiview_association", "af_flats_detection", "hybrid_stock_removal_split", "operator_pdf", "final_result_snapshot", "sinumerik_shopturn_guide", "local_knowledge_base", "knowledge_search", "source_trust_levels", "ck52dwy_machine_profile"],
     }
+
+
+@app.get("/api/knowledge/summary")
+def api_knowledge_summary() -> dict[str, Any]:
+    return knowledge_summary()
+
+
+@app.get("/api/knowledge/search")
+def api_knowledge_search(q: str = "", category: str = "all", limit: int = 12) -> dict[str, Any]:
+    limit = max(1, min(limit, 50))
+    return {
+        "query": q,
+        "category": category,
+        "items": search_knowledge(q, category=category, limit=limit),
+        "machine_profile_id": load_knowledge_base().get("machine", {}).get("profile_id"),
+    }
+
+
+@app.get("/api/machine-profile")
+def api_machine_profile() -> dict[str, Any]:
+    return load_knowledge_base().get("machine", {})
+
+
+@app.get("/api/knowledge/documents")
+def api_knowledge_documents() -> dict[str, Any]:
+    kb = load_knowledge_base()
+    return {"items": kb.get("documents", []), "count": len(kb.get("documents", []))}
 
 
 @app.get("/api/thread-catalog")

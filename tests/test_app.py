@@ -214,7 +214,7 @@ def test_follow_up_chat_rejects_empty_message():
 
 def test_stock_removal_accepts_shopturn_tool_flow():
     shopturn = {
-        "machineProfile": "tengyue_ck52pty",
+        "machineProfile": "tengyue_ck52dwy",
         "operation": "od_turn",
         "toolT": "1",
         "toolD": "1",
@@ -256,12 +256,12 @@ def test_stock_removal_accepts_shopturn_tool_flow():
     body = response.json()
     assert body["shopturn"]["toolT"] == "1"
     assert body["shopturn"]["operation"] == "od_turn"
-    assert "Tengyue CK52PT-Y" in body["response"]
+    assert "Tengyue / Dongguan Xinrui CK52DWY" in body["response"]
 
 
 def test_health_reports_shopturn_feature():
     body = client.get("/api/health").json()
-    assert body["version"] == "4.4.1-recognition-crop"
+    assert body["version"] == "4.5.1-dpk-roller-test"
     assert "shopturn_tool_flow" in body["features"]
 
 
@@ -310,7 +310,7 @@ def test_stock_removal_accepts_operation_route():
         {'id': '3', 'enabled': True, 'operation': 'partoff', 'label': 'Part-off', 'toolT': '5', 'toolD': '5', 'toolName': 'Отрезной', 'speed': '350', 'feed': '0.05', 'depth': '1.0'},
     ]
     payload = {
-        'machineProfile': 'tengyue_ck52pty',
+        'machineProfile': 'tengyue_ck52dwy',
         'operation': 'face',
         'toolT': '1', 'toolD': '1', 'toolName': 'Подрезной',
         'speed': '650', 'feed': '0.12', 'depth': '1.0',
@@ -567,7 +567,7 @@ def test_index_disables_browser_cache():
     response = client.get("/")
     assert response.status_code == 200
     assert "no-store" in response.headers.get("cache-control", "")
-    assert response.headers.get("x-app-version") == "4.4.1-recognition-crop"
+    assert response.headers.get("x-app-version") == "4.5.1-dpk-roller-test"
 
 
 def test_static_assets_require_revalidation():
@@ -644,7 +644,7 @@ def test_operator_pdf_download_contains_confirmed_project_data():
         "finalizedAt": "2026-08-02T18:00:00+03:00",
         "done": [True] * 10,
         "simulationReviewed": True,
-        "machine": {"name": "Tengyue CK52PT-Y", "control": "SINUMERIK 828D"},
+        "machine": {"name": "Tengyue / Dongguan Xinrui CK52DWY", "control": "SINUMERIK 828D"},
         "fields": {
             "material": "AISI 304", "overallLength": "31", "blankDiameter": "16",
             "thread": "M8x1.25", "threadLength": "15", "stepDiameter": "10",

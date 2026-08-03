@@ -295,3 +295,20 @@ button:disabled{opacity:.48;cursor:not-allowed;filter:saturate(.45)}
 body.light .recognition-crop-hint{background:rgba(242,251,255,.84);color:#08314b;border-color:rgba(0,118,181,.34)}
 body.light .recognition-selection{box-shadow:0 0 0 9999px rgba(222,235,244,.62),0 0 0 1px rgba(0,69,104,.44) inset,0 0 24px rgba(0,145,214,.42)}
 @media(max-width:720px){.recognition-crop-hint{top:8px;font-size:10px;white-space:normal;width:max-content}.recognition-selection>span{font-size:9px}.recognition-toolbar{align-items:stretch;flex-direction:column}.recognition-toolbar button{width:100%;min-height:42px}}
+
+/* v4.5.0 CK52DWY local knowledge base */
+.kb-layout{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(280px,.8fr);gap:14px}
+.kb-toolbar{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:10px;margin-bottom:10px}
+.kb-toolbar input,.kb-toolbar select{width:100%;min-width:0;padding:12px 13px;border:1px solid var(--glass-border);border-radius:12px;background:var(--input-bg);color:var(--text)}
+.kb-results{display:grid;gap:9px;margin-top:10px;max-height:58vh;overflow:auto;padding-right:4px}
+.kb-item{display:grid;gap:7px;padding:12px;border:1px solid var(--glass-border);border-radius:14px;background:var(--glass-bg-soft)}
+.kb-item-head{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+.kb-item-head b{font-size:14px;line-height:1.3}
+.kb-item-head span{flex:0 0 auto;padding:4px 7px;border-radius:999px;background:rgba(57,145,220,.18);border:1px solid var(--glass-border);font-size:10px;color:var(--muted)}
+.kb-item p{margin:0;line-height:1.45;color:var(--text)}
+.kb-item small{color:var(--muted);line-height:1.35}
+.kb-item.kb-danger{border-color:rgba(255,174,66,.5);background:rgba(105,68,15,.24)}
+body.light .kb-item.kb-danger{background:rgba(255,231,178,.55)}
+.kb-machine,.kb-documents{display:grid;gap:8px}.kb-facts{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:9px 0 14px}.kb-facts span,.kb-doc{padding:9px 10px;border:1px solid var(--glass-border);border-radius:11px;background:var(--glass-bg-soft)}
+.kb-doc{display:grid;gap:4px}.kb-doc span{font-size:11px;color:var(--muted)}
+@media(max-width:900px){.kb-layout{grid-template-columns:1fr}.kb-toolbar{grid-template-columns:1fr}.kb-results{max-height:none}.kb-facts{grid-template-columns:1fr}}

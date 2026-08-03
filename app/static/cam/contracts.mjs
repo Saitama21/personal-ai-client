@@ -53,13 +53,13 @@ export function capabilityMatrix(encountered = {}, results = {}) {
     milling: {
       status: millingStatus,
       encountered: Boolean(encountered.milling),
-      scope: 'Только AF-грани с блокирующей индексацией C и подачами X/Z; непрерывная C/Y не заявляется',
+      scope: 'AF-грани с индексируемой C поддержаны. Физическая Y подтверждена на CK52DWY, но Y-планировщик и непрерывная C пока не реализованы.',
     },
     axes: {
       X: CAM_STATUS.SUPPORTED,
       Z: CAM_STATUS.SUPPORTED,
       C: millingStatus === CAM_STATUS.SUPPORTED ? CAM_STATUS.SUPPORTED_INDEXED : CAM_STATUS.NOT_IMPLEMENTED,
-      Y: CAM_STATUS.NOT_IMPLEMENTED,
+      Y: CAM_STATUS.PARTIAL,
     },
     collision: {
       status: results.collision?.status || CAM_STATUS.BLOCKED,

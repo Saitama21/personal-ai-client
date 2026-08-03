@@ -270,7 +270,7 @@ def _header_footer(canvas, doc):
     canvas.drawString(18 * mm, height - 11 * mm, "ROZFOOD CNC ASSISTANT")
     canvas.setFont(FONT_REGULAR, 7)
     canvas.setFillColor(colors.HexColor("#607587"))
-    canvas.drawRightString(width - 18 * mm, height - 11 * mm, "Sinumerik 828D / ShopTurn - карта оператора")
+    canvas.drawRightString(width - 18 * mm, height - 11 * mm, "SINUMERIK 828D V4.95 / ShopTurn — карта оператора")
     canvas.line(18 * mm, 13 * mm, width - 18 * mm, 13 * mm)
     canvas.drawString(18 * mm, 9 * mm, "Режимы являются стартовыми рекомендациями и требуют проверки оператором.")
     canvas.drawRightString(width - 18 * mm, 9 * mm, f"Страница {doc.page}")
@@ -367,7 +367,7 @@ def build_operator_pdf(snapshot: dict[str, Any]) -> bytes:
 
     generated = snapshot.get("finalizedAt") or snapshot.get("created_at") or datetime.now(timezone.utc).isoformat()
     machine = snapshot.get("machine") if isinstance(snapshot.get("machine"), dict) else {}
-    machine_name = _safe(machine.get("name"), "Tengyue CK52PT-Y")
+    machine_name = _safe(machine.get("name"), "Tengyue / Dongguan Xinrui CK52DWY")
     control = _safe(machine.get("control"), "SINUMERIK 828D")
 
     story: list[Any] = []
@@ -388,7 +388,7 @@ def build_operator_pdf(snapshot: dict[str, Any]) -> bytes:
         ),
         Spacer(1, 4 * mm),
         _p(
-            "ВАЖНО: это карта для ручного ввода, а не автоматически безопасная NC-программа для CK52PT-Y. До пуска оператор обязан сверить чертёж, зажим, вылеты, коррекции, лимиты станка и выполнить Sinutrain / Dry Run / Single Block.",
+            "ВАЖНО: это карта для ручного ввода, а не автоматически безопасная NC-программа для CK52DWY. До пуска оператор обязан сверить чертёж, зажим, вылеты, коррекции, лимиты станка и выполнить Sinutrain / Dry Run / Single Block.",
             styles["warning"],
         ),
         _p("Статусы и границы данных", styles["h1"]),

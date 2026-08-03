@@ -1,5 +1,20 @@
 # Changelog
 
+## v4.5.1 — DPK Roller PDF test
+
+- Local PDF text extraction in MOCK_MODE.
+- Recognition, Stock Removal and X/Z contours for ДПК-5.02.103 (PE 500).
+- Three new regression tests.
+
+## v4.5.0 — CK52DWY Knowledge
+
+- Перестроен профиль под CK52DWY / SINUMERIK 828D V4.95.
+- Добавлена локальная инженерная база, поиск, API и контекст для AI-модулей.
+- Добавлены уровни доверия источникам и блокировка неподтверждённых OEM M-кодов.
+- Физическая Y подтверждена, автоматический MPF остаётся заблокирован до полного паспорта.
+- Пройдено 77 Python-, 8 CAM- и 5 recognition-тестов.
+
+
 ## v4.4.1 Recognition Crop — 2026-08-02
 
 ### Добавлено

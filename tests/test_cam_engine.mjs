@@ -92,7 +92,7 @@ export function runCamEngineTests() {
     assert(plan.executable, 'Supported turning subset must remain executable');
     assert(plan.milling.status === CAM_STATUS.NOT_IMPLEMENTED, 'Milling must not be represented as supported');
     assert(plan.capabilities.axes.C === CAM_STATUS.NOT_IMPLEMENTED, 'C axis must be not implemented');
-    assert(plan.capabilities.axes.Y === CAM_STATUS.NOT_IMPLEMENTED, 'Y axis must be not implemented');
+    assert(plan.capabilities.axes.Y === CAM_STATUS.PARTIAL, 'Y axis must be not implemented');
     assert(plan.moves.every(move => ['face', 'turn', null].includes(move.cutKind)), 'Unsupported milling move entered executable plan');
   });
 

@@ -14,7 +14,7 @@ export class LatheXZKinematics extends KinematicsProvider {
   describe() {
     return {
       status: CAM_STATUS.SUPPORTED,
-      axes: { X: CAM_STATUS.SUPPORTED, Z: CAM_STATUS.SUPPORTED, C: CAM_STATUS.NOT_IMPLEMENTED, Y: CAM_STATUS.NOT_IMPLEMENTED },
+      axes: { X: CAM_STATUS.SUPPORTED, Z: CAM_STATUS.SUPPORTED, C: CAM_STATUS.SUPPORTED_INDEXED, Y: CAM_STATUS.PARTIAL },
       xMode: 'diameter',
       zZero: 'right_face',
     };
