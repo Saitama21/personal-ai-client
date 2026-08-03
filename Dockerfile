@@ -3,7 +3,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY app ./app
-RUN mkdir -p /app/data
+COPY data/knowledge_base ./data/knowledge_base
+RUN mkdir -p /app/data/uploads /app/data/chat_uploads
 ENV DATA_DIR=/app/data
 EXPOSE 8000
 CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
