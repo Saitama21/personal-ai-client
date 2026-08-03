@@ -23,6 +23,8 @@ from PIL import Image, UnidentifiedImageError
 from app.thread_library import THREAD_FAMILIES, build_thread_library
 from app.operator_pdf import build_operator_pdf
 from app.knowledge_base import build_knowledge_context, knowledge_summary, search_knowledge, load_knowledge_base
+from app.digital_twin import load_digital_twin, twin_summary, search_manuals, get_manual_page
+from app.manual_translation import load_cached_translation, save_cached_translation, list_cached_translations, build_translation_pdf
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 STATIC_DIR = BASE_DIR / "app" / "static"
@@ -36,7 +38,7 @@ MOCK_MODE = os.getenv("MOCK_MODE", "false").strip().lower() in {"1", "true", "ye
 OPENAI_MODE = os.getenv("OPENAI_MODE", "live").strip().lower()
 OPENAI_CONFIGURED = bool(os.getenv("OPENAI_API_KEY", "").strip())
 KEEP_OPENAI_FILES = os.getenv("KEEP_OPENAI_FILES", "false").strip().lower() in {"1", "true", "yes", "on"}
-APP_VERSION = os.getenv("APP_VERSION", "4.5.2-knowledge-deploy-fix")
+APP_VERSION = os.getenv("APP_VERSION", "4.6.0-digital-twin")
 DEPLOY_COMMIT = os.getenv("RAILWAY_GIT_COMMIT_SHA", os.getenv("GIT_COMMIT", "local"))
 
 logging.basicConfig(
@@ -1804,7 +1806,7 @@ def health() -> dict[str, Any]:
         "deploy_commit": DEPLOY_COMMIT[:12],
         "machine_profile": "tengyue_ck52dwy_828d_495",
         "knowledge_base": knowledge_summary()["counts"],
-        "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "drawing_region_selection", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52dwy_profile", "drawing_intelligence", "tolerance_detection", "metric_thread_catalog", "chamfer_marker", "multi_operation_route", "contour_mirroring", "history_project_restore", "mobile_history", "multi_operation_picker", "general_tolerance_h14_rule", "stock_mode_radio", "multi_checkbox_setup", "hybrid_turn_mill_mode", "chat_image_upload", "chat_region_selection", "split_chamfer_input", "toggleable_drawing_rules", "full_thread_library", "thread_library_filters", "engineering_layout_overflow_fix", "text_only_stock_plan", "safari_touch_hotfix", "machine_profile_autofill", "multiview_association", "af_flats_detection", "hybrid_stock_removal_split", "operator_pdf", "final_result_snapshot", "sinumerik_shopturn_guide", "local_knowledge_base", "knowledge_search", "source_trust_levels", "ck52dwy_machine_profile"],
+        "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "drawing_region_selection", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52dwy_profile", "drawing_intelligence", "tolerance_detection", "metric_thread_catalog", "chamfer_marker", "multi_operation_route", "contour_mirroring", "history_project_restore", "mobile_history", "multi_operation_picker", "general_tolerance_h14_rule", "stock_mode_radio", "multi_checkbox_setup", "hybrid_turn_mill_mode", "chat_image_upload", "chat_region_selection", "split_chamfer_input", "toggleable_drawing_rules", "full_thread_library", "thread_library_filters", "engineering_layout_overflow_fix", "text_only_stock_plan", "safari_touch_hotfix", "machine_profile_autofill", "multiview_association", "af_flats_detection", "hybrid_stock_removal_split", "operator_pdf", "final_result_snapshot", "sinumerik_shopturn_guide", "local_knowledge_base", "knowledge_search", "source_trust_levels", "ck52dwy_machine_profile", "digital_twin", "manual_page_search", "manual_translation_cache", "translation_pdf_export", "photo_evidence_gallery"],
     }
 
 
@@ -1833,6 +1835,132 @@ def api_machine_profile() -> dict[str, Any]:
 def api_knowledge_documents() -> dict[str, Any]:
     kb = load_knowledge_base()
     return {"items": kb.get("documents", []), "count": len(kb.get("documents", []))}
+
+
+@app.get("/api/digital-twin/summary")
+def api_digital_twin_summary() -> dict[str, Any]:
+    return twin_summary()
+
+
+@app.get("/api/digital-twin/photos")
+def api_digital_twin_photos(category: str = "all") -> dict[str, Any]:
+    items = load_digital_twin().get("photos", [])
+    if category and category != "all":
+        items = [item for item in items if item.get("category") == category]
+    return {"items": items, "count": len(items), "category": category}
+
+
+@app.get("/api/digital-twin/manuals")
+def api_digital_twin_manuals() -> dict[str, Any]:
+    twin = load_digital_twin()
+    return {"items": twin.get("manuals", []), "count": len(twin.get("manuals", [])), "pages": twin.get("counts", {}).get("manual_pages", 0)}
+
+
+@app.get("/api/digital-twin/search")
+def api_digital_twin_search(q: str = "", manual_id: str | None = None, limit: int = 12) -> dict[str, Any]:
+    return {"query": q, "manual_id": manual_id, "items": search_manuals(q, manual_id=manual_id, limit=max(1, min(limit, 50)))}
+
+
+@app.get("/api/digital-twin/page")
+def api_digital_twin_page(manual_id: str, page: int) -> dict[str, Any]:
+    item = get_manual_page(manual_id, page)
+    if not item:
+        raise HTTPException(status_code=404, detail="Страница мануала не найдена")
+    cached = load_cached_translation(DATA_DIR, manual_id, page)
+    return {"page": item, "translation": cached}
+
+
+@app.get("/api/digital-twin/translations")
+def api_digital_twin_translations(manual_id: str | None = None) -> dict[str, Any]:
+    items = list_cached_translations(DATA_DIR, manual_id)
+    return {"items": items, "count": len(items)}
+
+
+@app.post("/api/digital-twin/translate")
+def api_digital_twin_translate(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    manual_id = str(payload.get("manual_id") or "").strip()
+    pages_raw = payload.get("pages")
+    if isinstance(pages_raw, list):
+        pages = sorted({int(p) for p in pages_raw if str(p).isdigit()})
+    else:
+        start = int(payload.get("page_start") or payload.get("page") or 1)
+        end = int(payload.get("page_end") or start)
+        pages = list(range(start, end + 1))
+    if not manual_id or not pages:
+        raise HTTPException(status_code=400, detail="Укажите manual_id и страницы")
+    if len(pages) > 8:
+        raise HTTPException(status_code=400, detail="За один запрос можно перевести не более 8 страниц")
+    twin = load_digital_twin()
+    manual = next((m for m in twin.get("manuals", []) if m.get("id") == manual_id), None)
+    if not manual:
+        raise HTTPException(status_code=404, detail="Мануал не найден")
+    results: list[dict[str, Any]] = []
+    to_translate: list[dict[str, Any]] = []
+    for page in pages:
+        cached = load_cached_translation(DATA_DIR, manual_id, page)
+        if cached and not payload.get("force"):
+            results.append(cached)
+            continue
+        source = get_manual_page(manual_id, page)
+        if source:
+            to_translate.append(source)
+    if to_translate:
+        api_key = os.getenv("OPENAI_API_KEY", "").strip()
+        if not api_key or OPENAI_MODE != "live" or MOCK_MODE:
+            raise HTTPException(status_code=503, detail="Для нового перевода нужен OPENAI_API_KEY и OPENAI_MODE=live. Уже сохранённые переводы доступны без API.")
+        from openai import OpenAI
+        client = OpenAI(api_key=api_key, timeout=180.0, max_retries=2)
+        for source in to_translate:
+            original = str(source.get("text") or "")
+            if not original.strip():
+                translated = "На странице отсутствует извлекаемый текст. Используйте изображение оригинальной страницы."
+                response_id = None
+            else:
+                prompt = f"""Переведи на русский язык страницу технического руководства для станка с ЧПУ.
+Источник: {manual.get('title')} ({manual.get('edition')}), страница {source.get('page')}.
+Требования:
+- переводи полностью и точно, без сокращений и выдумок;
+- сохраняй обозначения G/M-кодов, CYCLE, системных переменных, параметров, названия клавиш и программный код без изменения;
+- предупреждения DANGER/WARNING/CAUTION/NOTICE переводи как ОПАСНО/ПРЕДУПРЕЖДЕНИЕ/ОСТОРОЖНО/ВНИМАНИЕ;
+- таблицы передавай читаемыми строками;
+- если фрагмент повреждён, пометь [неразборчиво];
+- верни только русский перевод страницы.
+
+ОРИГИНАЛ:
+{original[:18000]}"""
+                response = client.responses.create(model=MODEL, input=prompt)
+                translated = (response.output_text or "").strip()
+                response_id = getattr(response, "id", None)
+            item = {
+                "manual_id": manual_id, "manual_title": manual.get("title"), "page": int(source.get("page")),
+                "source_title": source.get("title"), "translation": translated, "model": MODEL,
+                "response_id": response_id, "source_edition": manual.get("edition"), "source_software": manual.get("software"),
+            }
+            save_cached_translation(DATA_DIR, item)
+            results.append(item)
+    results.sort(key=lambda x: int(x.get("page", 0)))
+    return {"manual": manual, "items": results, "count": len(results)}
+
+
+@app.post("/api/digital-twin/export-translation-pdf")
+def api_digital_twin_export_translation_pdf(payload: dict[str, Any] = Body(...)) -> FileResponse:
+    manual_id = str(payload.get("manual_id") or "").strip()
+    pages = payload.get("pages")
+    all_items = list_cached_translations(DATA_DIR, manual_id)
+    if isinstance(pages, list) and pages:
+        wanted = {int(p) for p in pages}
+        all_items = [item for item in all_items if int(item.get("page", 0)) in wanted]
+    if not all_items:
+        raise HTTPException(status_code=404, detail="Сначала переведите нужные страницы")
+    twin = load_digital_twin()
+    manual = next((m for m in twin.get("manuals", []) if m.get("id") == manual_id), None)
+    if not manual:
+        raise HTTPException(status_code=404, detail="Мануал не найден")
+    export_dir = DATA_DIR / "manual_exports"
+    export_dir.mkdir(parents=True, exist_ok=True)
+    output = export_dir / f"{manual_id}_RU_{int(time.time())}.pdf"
+    build_translation_pdf(output, manual=manual, translations=all_items, title=str(payload.get("title") or f"Русский перевод: {manual.get('title')}"))
+    return FileResponse(output, media_type="application/pdf", filename=output.name)
 
 
 @app.get("/api/thread-catalog")

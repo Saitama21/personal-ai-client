@@ -1,0 +1,74 @@
+[
+  {
+    "id": "siemens_nc_495",
+    "filename": "828D_ncprogramming_progr_man_0721_en-US.pdf",
+    "title": "SINUMERIK 828D NC programming - Programming Manual",
+    "edition": "07/2021",
+    "software": "4.95",
+    "language": "en",
+    "trust": "primary_exact",
+    "priority": 1,
+    "pages": 1208,
+    "sha256": "2ab86ace545ee88f304f82b4c3dca1db7a6873a5debabac93e55b3e6c5c07a70"
+  },
+  {
+    "id": "siemens_turning_525",
+    "filename": "828D_turning_op_man_0325_en-US.pdf",
+    "title": "SINUMERIK 828D Turning - Operating Manual",
+    "edition": "03/2025",
+    "software": "5.25",
+    "language": "en",
+    "trust": "workflow_supplement",
+    "priority": 2,
+    "pages": 1068,
+    "sha256": "dcc3bfd577bd5590494ab9846d0f630db752d455113e115a624ec753548968fe"
+  },
+  {
+    "id": "siemens_alarms_525",
+    "filename": "828D_alarms_diagnostics_man_0725_en-US.pdf",
+    "title": "SINUMERIK 828D / SINAMICS Alarms - Diagnostics Manual",
+    "edition": "07/2025",
+    "software": "5.25",
+    "language": "en",
+    "trust": "standard_alarm_reference",
+    "priority": 3,
+    "pages": 1362,
+    "sha256": "09ae1b1fb54a13bc9c60aaeb0d967c034ff92f118b79c64d1618ad6bd08e30f8"
+  },
+  {
+    "id": "siemens_nc_525",
+    "filename": "828D_ncprogramming_progr_man_0725_en-US.pdf",
+    "title": "SINUMERIK 828D NC programming - Programming Manual",
+    "edition": "07/2025",
+    "software": "5.25 SP1",
+    "language": "en",
+    "trust": "newer_supplement",
+    "priority": 4,
+    "pages": 1274,
+    "sha256": "e0e709d39b6ab009a8cb6c0b32d780d2f12a08cfdc3ed4a8f8632cd073797631"
+  },
+  {
+    "id": "siemens_turnmill_cn",
+    "filename": "831974ef7143ea24979d7179b98a6042.pdf",
+    "title": "SINUMERIK 828D turn-mill applications",
+    "edition": "2017",
+    "software": "T55/T65M training",
+    "language": "zh",
+    "trust": "training",
+    "priority": 5,
+    "pages": 19,
+    "sha256": "69829a9856f394f19600c73d9eecef41bad4618242b57c08956510538489a63f"
+  },
+  {
+    "id": "tengyue_syntec",
+    "filename": "TengyueCNC-User Manual Of SYNTEC.pdf",
+    "title": "TengyueCNC Manual of SYNTEC",
+    "edition": "unknown",
+    "software": "SYNTEC",
+    "language": "zh_en",
+    "trust": "mechanical_reference_only",
+    "priority": 6,
+    "pages": 42,
+    "sha256": "f8b0ddd65eb7da2fcce603fea744b94701d41881eaf220f48e299ee6d6273857"
+  }
+]

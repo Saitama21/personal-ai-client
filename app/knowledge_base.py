@@ -6,8 +6,10 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from app.digital_twin import build_twin_context, twin_summary
+
 BASE_DIR = Path(__file__).resolve().parent.parent
-KB_DIR = BASE_DIR / "data" / "knowledge_base"
+KB_DIR = BASE_DIR / "app" / "resources" / "knowledge_base"
 
 _TOKEN_RE = re.compile(r"[A-Za-zА-Яа-яЁё0-9.+~/-]+")
 
@@ -152,6 +154,7 @@ def knowledge_summary() -> dict[str, Any]:
             "oem_m_codes": "blocked until confirmed for CK52DWY",
             "automatic_mpf": machine.get("release_policy", {}).get("automatic_mpf", False),
         },
+        "digital_twin": twin_summary(),
     }
 
 
@@ -178,4 +181,6 @@ def build_knowledge_context(query: str, *, limit: int = 8) -> str:
                 f"{index}. {item.get('title')}: {item.get('summary')} "
                 f"[источник: {source_name}{page_text}; доверие: {item.get('trust')}; безопасность: {item.get('safety')}]"
             )
+    lines.append("")
+    lines.append(build_twin_context(query, limit=5))
     return "\n".join(lines)

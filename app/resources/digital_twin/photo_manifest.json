@@ -1,0 +1,505 @@
+[
+  {
+    "id": "IMG_0476",
+    "filename": "IMG_0476.jpg",
+    "url": "/static/digital_twin/photos/IMG_0476.jpg",
+    "label": "Журнал станка / OEM-идентификация",
+    "category": "control",
+    "width": 1600,
+    "height": 1200,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0477",
+    "filename": "IMG_0477.jpg",
+    "url": "/static/digital_twin/photos/IMG_0477.jpg",
+    "label": "Справочный снимок экрана телефона",
+    "category": "auxiliary",
+    "width": 738,
+    "height": 1600,
+    "evidence_status": "reference_only",
+    "used_for": [
+      "archive"
+    ]
+  },
+  {
+    "id": "IMG_0482",
+    "filename": "IMG_0482.jpg",
+    "url": "/static/digital_twin/photos/IMG_0482.jpg",
+    "label": "Загрузка SINUMERIK 828D",
+    "category": "control",
+    "width": 1600,
+    "height": 1200,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0483",
+    "filename": "IMG_0483.jpg",
+    "url": "/static/digital_twin/photos/IMG_0483.jpg",
+    "label": "Загрузка SINUMERIK 828D",
+    "category": "control",
+    "width": 1600,
+    "height": 1200,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0485",
+    "filename": "IMG_0485.jpg",
+    "url": "/static/digital_twin/photos/IMG_0485.jpg",
+    "label": "Стойка SINUMERIK 828D - общий вид экрана",
+    "category": "control",
+    "width": 1600,
+    "height": 1200,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0486",
+    "filename": "IMG_0486.jpg",
+    "url": "/static/digital_twin/photos/IMG_0486.jpg",
+    "label": "Панель управления - общий вид",
+    "category": "panel",
+    "width": 1600,
+    "height": 1200,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0487",
+    "filename": "IMG_0487.jpg",
+    "url": "/static/digital_twin/photos/IMG_0487.jpg",
+    "label": "Стойка и клавиатура - общий вид",
+    "category": "panel",
+    "width": 1600,
+    "height": 1200,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0488",
+    "filename": "IMG_0488.jpg",
+    "url": "/static/digital_twin/photos/IMG_0488.jpg",
+    "label": "Аппаратная панель: JOG, оси, шпиндель, override",
+    "category": "panel",
+    "width": 1600,
+    "height": 1200,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0489",
+    "filename": "IMG_0489.jpg",
+    "url": "/static/digital_twin/photos/IMG_0489.jpg",
+    "label": "OEM Manufacturer Cycles - список",
+    "category": "oem_cycles",
+    "width": 1600,
+    "height": 1200,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0490",
+    "filename": "IMG_0490.jpg",
+    "url": "/static/digital_twin/photos/IMG_0490.jpg",
+    "label": "OEM Manufacturer Cycles - список",
+    "category": "oem_cycles",
+    "width": 1600,
+    "height": 1200,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0491",
+    "filename": "IMG_0491.jpg",
+    "url": "/static/digital_twin/photos/IMG_0491.jpg",
+    "label": "Version data / OEM - экран 1",
+    "category": "control",
+    "width": 1200,
+    "height": 1600,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0492",
+    "filename": "IMG_0492.jpg",
+    "url": "/static/digital_twin/photos/IMG_0492.jpg",
+    "label": "Version data / OEM - экран 2",
+    "category": "control",
+    "width": 1200,
+    "height": 1600,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0493",
+    "filename": "IMG_0493.jpg",
+    "url": "/static/digital_twin/photos/IMG_0493.jpg",
+    "label": "Version data / OEM - экран 3",
+    "category": "control",
+    "width": 1200,
+    "height": 1600,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0494",
+    "filename": "IMG_0494.jpg",
+    "url": "/static/digital_twin/photos/IMG_0494.jpg",
+    "label": "Version data / OEM - экран 4",
+    "category": "control",
+    "width": 1200,
+    "height": 1600,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0495",
+    "filename": "IMG_0495.jpg",
+    "url": "/static/digital_twin/photos/IMG_0495.jpg",
+    "label": "Version data / OEM - экран 5",
+    "category": "control",
+    "width": 1200,
+    "height": 1600,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0496",
+    "filename": "IMG_0496.jpg",
+    "url": "/static/digital_twin/photos/IMG_0496.jpg",
+    "label": "Version data / OEM - экран 6",
+    "category": "control",
+    "width": 1200,
+    "height": 1600,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0497",
+    "filename": "IMG_0497.jpg",
+    "url": "/static/digital_twin/photos/IMG_0497.jpg",
+    "label": "Version data / OEM - экран 7",
+    "category": "control",
+    "width": 1200,
+    "height": 1600,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0498",
+    "filename": "IMG_0498.jpg",
+    "url": "/static/digital_twin/photos/IMG_0498.jpg",
+    "label": "Version data / OEM - экран 8",
+    "category": "control",
+    "width": 1200,
+    "height": 1600,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0499",
+    "filename": "IMG_0499.jpg",
+    "url": "/static/digital_twin/photos/IMG_0499.jpg",
+    "label": "Version data / OEM - экран 9",
+    "category": "control",
+    "width": 1200,
+    "height": 1600,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0500",
+    "filename": "IMG_0500.jpg",
+    "url": "/static/digital_twin/photos/IMG_0500.jpg",
+    "label": "Version data / System extensions",
+    "category": "control",
+    "width": 1200,
+    "height": 1600,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0501",
+    "filename": "IMG_0501.jpg",
+    "url": "/static/digital_twin/photos/IMG_0501.jpg",
+    "label": "Version data / CNC software components",
+    "category": "control",
+    "width": 1200,
+    "height": 1600,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0502",
+    "filename": "IMG_0502.jpg",
+    "url": "/static/digital_twin/photos/IMG_0502.jpg",
+    "label": "Version data / User cycles",
+    "category": "control",
+    "width": 1200,
+    "height": 1600,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0503",
+    "filename": "IMG_0503.jpg",
+    "url": "/static/digital_twin/photos/IMG_0503.jpg",
+    "label": "Version data / Definitions",
+    "category": "control",
+    "width": 1200,
+    "height": 1600,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0504",
+    "filename": "IMG_0504.jpg",
+    "url": "/static/digital_twin/photos/IMG_0504.jpg",
+    "label": "Version data / Hardware",
+    "category": "control",
+    "width": 1200,
+    "height": 1600,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0505",
+    "filename": "IMG_0505.jpg",
+    "url": "/static/digital_twin/photos/IMG_0505.jpg",
+    "label": "Version data / NCU-PLC",
+    "category": "control",
+    "width": 1200,
+    "height": 1600,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0506",
+    "filename": "IMG_0506.jpg",
+    "url": "/static/digital_twin/photos/IMG_0506.jpg",
+    "label": "Version data / PLC peripheral devices",
+    "category": "control",
+    "width": 1200,
+    "height": 1600,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0507",
+    "filename": "IMG_0507.jpg",
+    "url": "/static/digital_twin/photos/IMG_0507.jpg",
+    "label": "Version data / Drive-Motor",
+    "category": "control",
+    "width": 1200,
+    "height": 1600,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0508",
+    "filename": "IMG_0508.jpg",
+    "url": "/static/digital_twin/photos/IMG_0508.jpg",
+    "label": "Version data / OEM info",
+    "category": "control",
+    "width": 1200,
+    "height": 1600,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0509",
+    "filename": "IMG_0509.jpg",
+    "url": "/static/digital_twin/photos/IMG_0509.jpg",
+    "label": "Version data / PLC user program",
+    "category": "control",
+    "width": 1200,
+    "height": 1600,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0510",
+    "filename": "IMG_0510.jpg",
+    "url": "/static/digital_twin/photos/IMG_0510.jpg",
+    "label": "Version data / CNC software",
+    "category": "control",
+    "width": 1200,
+    "height": 1600,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0511",
+    "filename": "IMG_0511.jpg",
+    "url": "/static/digital_twin/photos/IMG_0511.jpg",
+    "label": "Version data / System extensions",
+    "category": "control",
+    "width": 1200,
+    "height": 1600,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0512",
+    "filename": "IMG_0512.jpg",
+    "url": "/static/digital_twin/photos/IMG_0512.jpg",
+    "label": "Version data / User definitions",
+    "category": "control",
+    "width": 1200,
+    "height": 1600,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0513",
+    "filename": "IMG_0513.jpg",
+    "url": "/static/digital_twin/photos/IMG_0513.jpg",
+    "label": "Экран фактических значений / координаты",
+    "category": "axes",
+    "width": 1200,
+    "height": 1600,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0514",
+    "filename": "IMG_0514.jpg",
+    "url": "/static/digital_twin/photos/IMG_0514.jpg",
+    "label": "Tool List - геометрия и коррекции",
+    "category": "tooling",
+    "width": 1200,
+    "height": 1600,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0515",
+    "filename": "IMG_0515.jpg",
+    "url": "/static/digital_twin/photos/IMG_0515.jpg",
+    "label": "Tool List - позиции и параметры",
+    "category": "tooling",
+    "width": 1200,
+    "height": 1600,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "IMG_0516",
+    "filename": "IMG_0516.jpg",
+    "url": "/static/digital_twin/photos/IMG_0516.jpg",
+    "label": "PLC user program / версия проекта",
+    "category": "control",
+    "width": 1200,
+    "height": 1600,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  }
+]
