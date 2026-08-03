@@ -47,6 +47,16 @@ def test_dpk_pdf_analysis_extracts_geometry():
     assert 'H14' in intel['tolerances']
     assert 'h14' in intel['tolerances']
     assert 'R3' not in intel['tolerances']
+    assert intel['part_name'] == 'Ролик'
+    assert intel['material'] == 'PE 500'
+    assert intel['blank_diameter'] == 60.0
+    assert intel['overall_length'] == 30.0
+    assert intel['thread_applicable'] is False
+    assert intel['af_applicable'] is False
+    assert [item['length'] for item in intel['axial_segments']] == [8.0, 22.0]
+    assert [item['name'] for item in intel['axial_segments']] == ['Расточка Ø30', 'Отверстие Ø12,2 до уступа']
+    assert intel['dimension_chain']['matches'] is True
+    assert intel['tolerance_summary'].startswith('H14 — внутренние')
 
 
 def test_dpk_stock_removal_has_outer_and_inner_coordinates():

@@ -38,7 +38,7 @@ MOCK_MODE = os.getenv("MOCK_MODE", "false").strip().lower() in {"1", "true", "ye
 OPENAI_MODE = os.getenv("OPENAI_MODE", "live").strip().lower()
 OPENAI_CONFIGURED = bool(os.getenv("OPENAI_API_KEY", "").strip())
 KEEP_OPENAI_FILES = os.getenv("KEEP_OPENAI_FILES", "false").strip().lower() in {"1", "true", "yes", "on"}
-APP_VERSION = os.getenv("APP_VERSION", "4.6.0-digital-twin")
+APP_VERSION = os.getenv("APP_VERSION", "4.6.1-engineering-normalization")
 DEPLOY_COMMIT = os.getenv("RAILWAY_GIT_COMMIT_SHA", os.getenv("GIT_COMMIT", "local"))
 
 logging.basicConfig(
@@ -167,7 +167,6 @@ def extract_tolerance_tokens(text: str) -> list[str]:
         r"(?:Ø|⌀)?\s*\d+(?:[.,]\d+)?\s*[±]\s*\d+(?:[.,]\d+)?",
         r"\b(?:H|h|G|g|JS|js|K|k|N|n|P|p|R|r|S|s)\s*(?:[3-9]|1[0-4])(?![.,]\d)\b",
         r"\b(?:IT|Ra|Rz)\s*\d+(?:[.,]\d+)?\b",
-        r"(?:плоскост|соосност|перпендикулярност|параллельност|биени|позиционн)[^\n;]{0,80}",
     ]
     values: list[str] = []
     seen: set[str] = set()
@@ -179,6 +178,10 @@ def extract_tolerance_tokens(text: str) -> list[str]:
             if value and key not in seen:
                 seen.add(key)
                 values.append(value)
+    if any(re.fullmatch(r"(?:±|\+\s*/\s*-)\s*IT\s*14\s*/\s*2", item, flags=re.IGNORECASE) for item in values):
+        values = [item for item in values if not re.fullmatch(r"IT\s*14", item, flags=re.IGNORECASE)]
+    canonical_order = {"H14": 0, "h14": 1, "±IT14/2": 2}
+    values.sort(key=lambda item: canonical_order.get(item.replace(" ", ""), 100))
     return values[:40]
 
 
@@ -279,17 +282,24 @@ def build_drawing_intelligence(text: str) -> dict[str, Any]:
             if value and value.lower() not in {x.lower() for x in chamfer_tokens}:
                 chamfer_tokens.append(value)
     axial_segments: list[dict[str, Any]] = []
+    dimension_chain: dict[str, Any] | None = None
     chain_match = re.search(
-        r"(\d+(?:[.,]\d+)?)\s*\+\s*(\d+(?:[.,]\d+)?)\s*\+\s*(\d+(?:[.,]\d+)?)\s*=\s*(\d+(?:[.,]\d+)?)",
+        r"((?:\d+(?:[.,]\d+)?\s*\+\s*)+\d+(?:[.,]\d+)?)\s*=\s*(\d+(?:[.,]\d+)?)",
         text or "",
     )
     if chain_match:
-        values = [float(value.replace(",", ".")) for value in chain_match.groups()]
+        parts = [float(value.replace(",", ".")) for value in re.findall(r"\d+(?:[.,]\d+)?", chain_match.group(1))]
+        overall = float(chain_match.group(2).replace(",", "."))
         axial_segments = [
-            {"key": "threadLength", "name": "Резьбовой участок", "length": values[0], "source": "analysis_text"},
-            {"key": "stepLength", "name": "Ступень", "length": values[1], "source": "analysis_text"},
-            {"key": "headLength", "name": "Головка", "length": values[2], "source": "analysis_text"},
+            {"key": f"segment{index + 1}", "name": f"Участок {index + 1}", "length": value, "source": "analysis_text"}
+            for index, value in enumerate(parts)
         ]
+        dimension_chain = {
+            "segments": parts,
+            "sum": sum(parts),
+            "overall": overall,
+            "matches": abs(sum(parts) - overall) < 0.01,
+        }
     return {
         "threads": threads,
         "tolerances": tolerances,
@@ -300,12 +310,128 @@ def build_drawing_intelligence(text: str) -> dict[str, Any]:
         "secondary_features": multiview["secondary_features"],
         "recommended_stock_mode": multiview["recommended_stock_mode"],
         "axial_segments": axial_segments,
+        "dimension_chain": dimension_chain,
         "notes": [
             "Шаг резьбы без явного указания принимается по стандартному крупному ряду и помечается как предположение.",
             "Неуказанные фаски не создаются автоматически: оператор отмечает их на мини-чертёже.",
             *multiview["notes"],
         ],
     }
+
+
+def enrich_drawing_intelligence_from_profile(
+    intelligence: dict[str, Any], profile: dict[str, Any] | None
+) -> dict[str, Any]:
+    """Overlay deterministic, source-backed drawing facts onto model prose parsing.
+
+    The profile is derived from the uploaded file itself. It therefore takes priority over
+    free-form AI prose when populating UI fields and the canonical dimension chain.
+    """
+    if not profile:
+        return intelligence
+
+    result = dict(intelligence)
+    tolerances = list(profile.get("general_tolerances") or [])
+    result.update({
+        "part_name": profile.get("name", ""),
+        "designation": profile.get("designation", ""),
+        "material": profile.get("material", ""),
+        "quantity": profile.get("quantity"),
+        "blank_diameter": profile.get("blank_diameter"),
+        "overall_length": profile.get("overall_length"),
+        "recommended_mode": profile.get("recommended_mode", ""),
+        "recommended_stock_mode": profile.get("recommended_mode", ""),
+        "tolerances": tolerances,
+        "tolerance_interpretations": [
+            dict(GENERAL_TOLERANCE_RULES[item])
+            for item in tolerances
+            if item in GENERAL_TOLERANCE_RULES
+        ],
+    })
+
+    if tolerances:
+        result["tolerance_summary"] = (
+            "H14 — внутренние размеры/отверстия; "
+            "h14 — наружные размеры/валы; "
+            "±IT14/2 — остальные линейные размеры."
+        )
+
+    chamfer = profile.get("chamfer")
+    if chamfer:
+        result["chamfers"] = [{"designation": chamfer}]
+        result["chamfers_detected"] = [chamfer]
+        result["requires_chamfer_decision"] = False
+
+    if profile.get("kind") == "roller_pe500":
+        result.update({
+            "thread_applicable": False,
+            "threads": [],
+            "af_applicable": False,
+            "af_features": [],
+            "secondary_features": [],
+            "axial_segments": [
+                {
+                    "key": "counterboreDepth",
+                    "name": "Расточка Ø30",
+                    "length": profile["counterbore_depth"],
+                    "source": "drawing_profile",
+                },
+                {
+                    "key": "smallBoreLength",
+                    "name": "Отверстие Ø12,2 до уступа",
+                    "length": profile["small_bore_length"],
+                    "source": "drawing_profile",
+                },
+            ],
+            "dimension_chain": {
+                "segments": [profile["counterbore_depth"], profile["small_bore_length"]],
+                "sum": profile["counterbore_depth"] + profile["small_bore_length"],
+                "overall": profile["overall_length"],
+                "matches": abs(
+                    profile["counterbore_depth"]
+                    + profile["small_bore_length"]
+                    - profile["overall_length"]
+                ) < 0.01,
+            },
+            "recognized_dimensions": {
+                "body_diameter": profile["body_diameter"],
+                "flange_diameter": profile["flange_diameter"],
+                "through_bore": profile["through_bore"],
+                "counterbore_diameter": profile["counterbore_diameter"],
+                "counterbore_depth": profile["counterbore_depth"],
+                "small_bore_length": profile["small_bore_length"],
+                "outer_radius": profile["outer_radius"],
+            },
+        })
+    elif profile.get("kind") == "pin_m8_af13":
+        result.update({
+            "thread_applicable": True,
+            "threads": [{
+                "designation": "M8",
+                "pitch": 1.25,
+                "pitch_source": "drawing_profile",
+                "display": profile["thread"],
+            }],
+            "af_applicable": True,
+            "af_features": [{"across_flats": profile["af"], "designation": f"AF{profile['af']:g}"}],
+            "axial_segments": [
+                {"key": "threadLength", "name": "Резьбовой участок", "length": profile["thread_length"], "source": "drawing_profile"},
+                {"key": "stepLength", "name": "Ступень Ø10", "length": profile["middle_length"], "source": "drawing_profile"},
+                {"key": "headLength", "name": "Головка", "length": profile["head_length"], "source": "drawing_profile"},
+            ],
+            "dimension_chain": {
+                "segments": [profile["thread_length"], profile["middle_length"], profile["head_length"]],
+                "sum": profile["thread_length"] + profile["middle_length"] + profile["head_length"],
+                "overall": profile["overall_length"],
+                "matches": abs(
+                    profile["thread_length"]
+                    + profile["middle_length"]
+                    + profile["head_length"]
+                    - profile["overall_length"]
+                ) < 0.01,
+            },
+        })
+    return result
 
 
 def augment_drawing_prompt(prompt: str) -> str:
@@ -2234,6 +2360,14 @@ async def analyze(
     if media_type == SLDDRW_MEDIA_TYPE:
         intelligence_source += "\n" + "\n".join(extract_slddrw_text_hints(raw))
     drawing_intelligence = build_drawing_intelligence(intelligence_source)
+    source_profile = infer_local_drawing_profile(
+        raw,
+        " ".join([file.filename or "", intelligence_source]),
+    )
+    drawing_intelligence = enrich_drawing_intelligence_from_profile(
+        drawing_intelligence,
+        source_profile,
+    )
     logger.info(
         "/api/analyze completed | analysis_id=%s | response_id=%s | mock=%s",
         analysis_id, openai_response_id or "local", MOCK_MODE,

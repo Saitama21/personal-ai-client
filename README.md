@@ -1,4 +1,4 @@
-# Personal AI Client PRO v4.6.0 - CK52DWY Digital Twin
+# Personal AI Client PRO v4.6.1 - CK52DWY Engineering Normalization
 
 Эта сборка содержит цифровой двойник станка **CK52DWY / SINUMERIK 828D-TE42 V04.95 + SP03 + HF02** на основании пользовательских фотографий и руководств.
 

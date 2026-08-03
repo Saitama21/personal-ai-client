@@ -5,8 +5,8 @@ ROOT=Path(__file__).resolve().parents[1]
 def test_mobile_version():
     main=(ROOT/'app/main.py').read_text(encoding='utf-8')
     html=(ROOT/'app/static/index.html').read_text(encoding='utf-8')
-    assert '4.6.0-digital-twin' in main
-    assert 'v=4.6.0-digital-twin' in html
+    assert '4.6.1-engineering-normalization' in main
+    assert 'v=4.6.1-engineering-normalization' in html
 
 def test_mobile_layout_contract():
     css=(ROOT/'app/static/styles.css').read_text(encoding='utf-8')

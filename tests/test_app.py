@@ -261,7 +261,7 @@ def test_stock_removal_accepts_shopturn_tool_flow():
 
 def test_health_reports_shopturn_feature():
     body = client.get("/api/health").json()
-    assert body["version"] == "4.6.0-digital-twin"
+    assert body["version"] == "4.6.1-engineering-normalization"
     assert "shopturn_tool_flow" in body["features"]
 
 
@@ -567,7 +567,7 @@ def test_index_disables_browser_cache():
     response = client.get("/")
     assert response.status_code == 200
     assert "no-store" in response.headers.get("cache-control", "")
-    assert response.headers.get("x-app-version") == "4.6.0-digital-twin"
+    assert response.headers.get("x-app-version") == "4.6.1-engineering-normalization"
 
 
 def test_static_assets_require_revalidation():
@@ -694,3 +694,20 @@ def test_v420_frontend_has_final_snapshot_and_pdf_export():
     assert "downloadOperatorPdf" in js
     assert "/api/export/operator-pdf" in js
     assert "PDF-КАРТА" in js
+
+
+def test_negated_geometric_requirements_are_not_tolerances():
+    from app.main import extract_tolerance_tokens
+    text = 'H14, h14, ±IT14/2. Плоскостность, соосность и перпендикулярность отсутствуют (не указаны).'
+    values = extract_tolerance_tokens(text)
+    assert values == ['H14', 'h14', '±IT14/2']
+
+
+def test_profile_enrichment_overrides_free_form_ai_material():
+    from app.main import build_drawing_intelligence, enrich_drawing_intelligence_from_profile, infer_local_drawing_profile
+    profile = infer_local_drawing_profile(None, 'ДПК-5.02.103 PE 500 R3.5 12.2 60 50 30 25 22 8')
+    raw = build_drawing_intelligence('Материал Круг PE 500, заготовка Ø60. Количество 28 шт. Плоскостность и соосность не указаны.')
+    result = enrich_drawing_intelligence_from_profile(raw, profile)
+    assert result['material'] == 'PE 500'
+    assert result['tolerances'] == ['H14', 'h14', '±IT14/2']
+    assert result['dimension_chain'] == {'segments': [8.0, 22.0], 'sum': 30.0, 'overall': 30.0, 'matches': True}
