@@ -17,4 +17,4 @@ def test_operator_pdf_uses_canonical_dimensions():
 def test_backend_exposes_axial_segments():
     source = (ROOT / "app/main.py").read_text(encoding="utf-8")
     assert '"axial_segments": axial_segments' in source
-    assert "4.8.0-sinumerik-simulator" in source
+    assert "4.8.1-dpk-recognition" in source

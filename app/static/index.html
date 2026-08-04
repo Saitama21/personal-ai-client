@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#07111f" id="themeColorMeta">
   <title>CK52PT-Y · SINUMERIK 828D CNC Assistant PRO</title>
-  <link rel="stylesheet" href="/static/styles.css?v=4.8.0-sinumerik-simulator">
+  <link rel="stylesheet" href="/static/styles.css?v=4.8.1-dpk-recognition">
 </head>
 <body class="sinumerik-hmi">
 <div class="hmi-status-strip"><span>SIEMENS</span><b>SINUMERIK 828D</b><span>CK52PT-Y</span><span>JOG / AUTO / SIMULATION</span><span class="hmi-alarm-ok">● READY</span></div>
@@ -45,7 +45,7 @@
       <div class="axis-row"><i></i>X <i></i>Z <i></i>Y <i></i>C°</div>
       <button class="ghost small">Паспорт станка</button>
     </section>
-    <footer>Personal AI Client PRO<br><span>v4.8.0 SINUMERIK Simulator</span></footer>
+    <footer>Personal AI Client PRO<br><span>v4.8.1 DPK Recognition</span></footer>
   </aside>
 
   <main class="workspace">
@@ -97,17 +97,17 @@
     </aside>
   </main>
 </div>
-<script src="/static/app.js?v=4.8.0-sinumerik-simulator" defer></script>
+<script src="/static/app.js?v=4.8.1-dpk-recognition" defer></script>
 <script type="module">
 (async()=>{
 try{
-  window.RecognitionCrop=await import("/static/recognition-crop.mjs?v=4.8.0-sinumerik-simulator");
+  window.RecognitionCrop=await import("/static/recognition-crop.mjs?v=4.8.1-dpk-recognition");
   window.dispatchEvent(new Event("recognition-crop-ready"));
 }catch(error){console.error("Recognition crop load failed",error)}
 try{
-  window.CNC_CAM_API=await import("/static/cam/cam-engine.mjs?v=4.8.0-sinumerik-simulator");
+  window.CNC_CAM_API=await import("/static/cam/cam-engine.mjs?v=4.8.1-dpk-recognition");
   window.THREE=await import("/static/vendor/three.module.min.js");
-  await import("/static/simulation3d.js?v=4.8.0-sinumerik-simulator");
+  await import("/static/simulation3d.js?v=4.8.1-dpk-recognition");
   window.dispatchEvent(new Event("cnc-cam-engine-ready"));
   window.CNC_CAM_renderPreflight?.();
   window.CNC3D_init?.();

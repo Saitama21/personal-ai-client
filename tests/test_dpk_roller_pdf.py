@@ -40,14 +40,14 @@ def test_dpk_pdf_analysis_extracts_geometry():
     assert response.status_code == 200
     body = response.json()
     text = body['response']
-    for expected in ['Ролик', 'PE 500', 'Ø60', 'Ø50', 'Ø30 × 8', 'Ø12.2', 'R3.5', '1×45°', '8 + 22 = 30']:
+    for expected in ['Ролік', 'PE 500', 'Ø60', 'Ø50', 'Ø30 × 8', 'Ø12.2', 'R3.5', '1×45°', '8 + 22 = 30']:
         assert expected in text
     intel = body['drawing_intelligence']
     assert intel['recommended_stock_mode'] == 'lathe'
     assert 'H14' in intel['tolerances']
     assert 'h14' in intel['tolerances']
     assert 'R3' not in intel['tolerances']
-    assert intel['part_name'] == 'Ролик'
+    assert intel['part_name'] == 'Ролік'
     assert intel['material'] == 'PE 500'
     assert intel['blank_diameter'] == 60.0
     assert intel['blank_diameter_exact'] is True
@@ -59,6 +59,17 @@ def test_dpk_pdf_analysis_extracts_geometry():
     assert intel['drilling_applicable'] is True
     assert intel['drilling_diameter'] == 12.2
     assert intel['drilling_depth'] == 30.0
+    assert intel['axisymmetric'] is True
+    assert intel['internal_boring_applicable'] is True
+    assert intel['radial_drilling_applicable'] is False
+    assert intel['milling_applicable'] is False
+    assert intel['pocket_milling_applicable'] is False
+    assert intel['operation_applicability']['radial_drilling']['applicable'] is False
+    assert intel['operation_applicability']['pocket_milling']['applicable'] is False
+    assert intel['cam_autofill']['drilling']['enabled'] is True
+    assert intel['cam_autofill']['drilling']['diameter'] == 12.2
+    assert intel['cam_autofill']['drilling']['depth'] == 30.0
+    assert intel['cam_autofill']['radialDrilling']['enabled'] is False
     assert [item['length'] for item in intel['axial_segments']] == [8.0, 22.0]
     assert [item['name'] for item in intel['axial_segments']] == ['Расточка Ø30', 'Отверстие Ø12,2 до уступа']
     assert intel['dimension_chain']['matches'] is True
@@ -109,3 +120,20 @@ def test_dpk_contour_uses_drawing_profile_even_when_live(monkeypatch):
     assert body['secondary_features'] == []
     assert body['outer_contour'][2] == {'x': 57.0, 'z': -5.0, 'type': 'lineX', 'rv': '—', 'direction': 'по X'}
     assert body['outer_contour'][3] == {'x': 50.0, 'z': -8.5, 'type': 'arcCW', 'rv': 'R3.5', 'direction': 'CW'}
+
+
+def test_uploaded_dpk_pdf_regression_exact_file():
+    path = Path(__file__).parent / 'test_data' / 'DPK-5.02.103-user-regression.pdf'
+    with path.open('rb') as stream:
+        response = client.post('/api/analyze', data={'prompt': 'Проанализируй весь чертёж и не переноси осевые отверстия в радиальное сверление.'}, files={'file': (path.name, stream, 'application/pdf')})
+    assert response.status_code == 200
+    intel = response.json()['drawing_intelligence']
+    assert intel['part_name'] == 'Ролік'
+    assert intel['designation'] == 'ДПК-5.02.103'
+    assert intel['recommended_stock_mode'] == 'lathe'
+    assert intel['cam_autofill']['drilling']['enabled'] is True
+    assert intel['cam_autofill']['drilling']['diameter'] == 12.2
+    assert intel['cam_autofill']['drilling']['depth'] == 30.0
+    assert intel['cam_autofill']['radialDrilling']['enabled'] is False
+    assert intel['cam_autofill']['millingAf']['enabled'] is False
+    assert intel['cam_autofill']['millingPocket']['enabled'] is False

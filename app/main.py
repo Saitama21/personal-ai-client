@@ -38,7 +38,7 @@ MOCK_MODE = os.getenv("MOCK_MODE", "false").strip().lower() in {"1", "true", "ye
 OPENAI_MODE = os.getenv("OPENAI_MODE", "live").strip().lower()
 OPENAI_CONFIGURED = bool(os.getenv("OPENAI_API_KEY", "").strip())
 KEEP_OPENAI_FILES = os.getenv("KEEP_OPENAI_FILES", "false").strip().lower() in {"1", "true", "yes", "on"}
-APP_VERSION = os.getenv("APP_VERSION", "4.8.0-sinumerik-simulator")
+APP_VERSION = os.getenv("APP_VERSION", "4.8.1-dpk-recognition")
 DEPLOY_COMMIT = os.getenv("RAILWAY_GIT_COMMIT_SHA", os.getenv("GIT_COMMIT", "local"))
 
 logging.basicConfig(
@@ -367,15 +367,54 @@ def enrich_drawing_intelligence_from_profile(
 
     if profile.get("kind") == "roller_pe500":
         result.update({
+            "axisymmetric": True,
             "thread_applicable": False,
             "threads": [],
             "drilling_applicable": True,
             "drilling_diameter": profile["through_bore"],
             "drilling_depth": profile["overall_length"],
             "through_bore_is_through": True,
+            "internal_boring_applicable": True,
+            "radial_drilling_applicable": False,
             "af_applicable": False,
+            "milling_applicable": False,
+            "pocket_milling_applicable": False,
             "af_features": [],
             "secondary_features": [],
+            "operation_applicability": {
+                "turning": {"applicable": True, "source": "drawing_profile", "reason": "Деталь осесимметричная; наружный профиль задан диаметрами Ø60/Ø50 и радиусом R3.5."},
+                "axial_drilling": {"applicable": True, "source": "drawing_profile", "reason": "На оси указано сквозное отверстие Ø12.2."},
+                "internal_boring": {"applicable": True, "source": "drawing_profile", "reason": "Со стороны второго торца указана расточка Ø30 на глубину 8 мм."},
+                "radial_drilling": {"applicable": False, "source": "drawing_profile", "reason": "Радиальные отверстия, PCD и угловые размеры C на чертеже отсутствуют."},
+                "af_milling": {"applicable": False, "source": "drawing_profile", "reason": "AF, лыски и многоугольник на чертеже отсутствуют."},
+                "pocket_milling": {"applicable": False, "source": "drawing_profile", "reason": "Карманы, пазы и неосесимметричные элементы на чертеже отсутствуют."},
+            },
+            "cam_autofill": {
+                "drilling": {
+                    "enabled": True,
+                    "orientation": "axial",
+                    "diameter": profile["through_bore"],
+                    "depth": profile["overall_length"],
+                    "peckDepth": 4.0,
+                    "retractZ": 2.0,
+                    "rpm": 800,
+                    "feedRate": 90,
+                    "toolId": "T6",
+                    "parameter_sources": {
+                        "diameter": "drawing",
+                        "depth": "drawing",
+                        "peckDepth": "recommended_for_PE500",
+                        "retractZ": "safe_default",
+                        "rpm": "recommended_start_value",
+                        "feedRate": "recommended_start_value",
+                    },
+                    "note": "Ø12.2 и глубина 30 мм взяты с чертежа; клевок, S и F являются стартовой рекомендацией и должны быть подтверждены оператором.",
+                },
+                "radialDrilling": {"enabled": False, "reason": "На чертеже нет радиальных отверстий."},
+                "millingAf": {"enabled": False, "reason": "На чертеже нет AF/лысок."},
+                "millingPocket": {"enabled": False, "reason": "На чертеже нет карманов и пазов."},
+                "threading": {"enabled": False, "reason": "Резьба на чертеже отсутствует."},
+            },
             "axial_segments": [
                 {
                     "key": "counterboreDepth",
@@ -947,7 +986,7 @@ def infer_local_drawing_profile(raw: bytes | None, text: str = "") -> dict[str, 
     if roller_by_name or roller_by_geometry:
         return {
             "kind": "roller_pe500",
-            "name": "Ролик",
+            "name": "Ролік",
             "designation": "ДПК-5.02.103",
             "material": "PE 500",
             "quantity": 28,
@@ -1373,7 +1412,7 @@ def build_stock_removal_mock(filename: str, media_type: str, stock_mode: str, bl
         return f"""## Stock Removal · локальный инженерный fallback
 
 ### 1. Краткий вывод
-Деталь **Ролик ДПК-5.02.103**, материал **PE 500**, заготовка **Ø60 × 30 мм** без учёта технологического припуска. Режим: **токарный X/Z**, две установки.
+Деталь **Ролік ДПК-5.02.103**, материал **PE 500**, заготовка **Ø60 × 30 мм** без учёта технологического припуска. Режим: **токарный X/Z**, две установки.
 
 ### 2. Подтверждённые размеры
 - Ø60, Ø50, Ø30 и Ø12.2.
@@ -1726,7 +1765,7 @@ def build_contour_mock(blank_diameter: str, blank_length: str, raw: bytes | None
     profile = infer_local_drawing_profile(raw, " ".join([filename, blank_diameter, blank_length, notes]))
     if profile and profile.get("kind") == "roller_pe500":
         return {
-            "name": "Ролик ДПК-5.02.103 · X/Z",
+            "name": "Ролік ДПК-5.02.103 · X/Z",
             "part_type": "bushing",
             "confidence": 0.99,
             "recommended_mode": "lathe",

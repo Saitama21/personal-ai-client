@@ -1,4 +1,4 @@
-# Personal AI Client PRO v4.8.0 — CK52PT-Y SINUMERIK Full Simulator
+# Personal AI Client PRO v4.8.1 — CK52PT-Y SINUMERIK Full Simulator
 
 Специализированный CNC‑клиент под фактическую конфигурацию станка **Zhongshan Tengyue CK52PT‑Y** со стойкой **Siemens SINUMERIK 828D PPU271.4**, CNC‑ПО **V04.95 + SP03 + HF02** и осями **X/Y/Z/C**.
 
@@ -26,7 +26,7 @@
 9. Симулятор CK52PT‑Y.
 10. Экспорт проекта, PDF‑карты и защищённого MPF.
 
-## Симулятор v4.8.0
+## Симулятор v4.8.1
 
 - патрон и заготовка **зафиксированы слева**;
 - 15‑позиционный револьвер расположен **справа**;
