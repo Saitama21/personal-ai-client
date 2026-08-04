@@ -19,14 +19,54 @@ function targetProfile(contour) {
   return contour.map(point => ({ z: point.z, x: point.x }));
 }
 
+export function diameterAtZ(contour = [], z = 0) {
+  if (!Array.isArray(contour) || !contour.length) return null;
+  const ordered = [...contour].sort((a, b) => b.z - a.z);
+  if (z >= ordered[0].z) return ordered[0].x;
+  if (z <= ordered.at(-1).z) return ordered.at(-1).x;
+  for (let index = 0; index < ordered.length - 1; index += 1) {
+    const a = ordered[index]; const b = ordered[index + 1];
+    if (z <= a.z + EPS && z >= b.z - EPS) {
+      const t = (z - a.z) / (b.z - a.z || 1);
+      return a.x + (b.x - a.x) * t;
+    }
+  }
+  return null;
+}
+
+export function clampZoneForInput(input) {
+  const setup = input?.setup || {};
+  if (!setup.enabled || !setup.protectClampZone || !(setup.clampLength > 0)) return null;
+  if (setup.clampSide === 'left') return { zMin: -setup.clampLength, zMax: 0, boundaryZ: -setup.clampLength };
+  return { zMin: -input.blankLength, zMax: -input.blankLength + setup.clampLength, boundaryZ: -input.blankLength + setup.clampLength };
+}
+
+export function exposedTurningProfile(contour = [], input = {}) {
+  const zone = clampZoneForInput(input);
+  if (!zone || !contour.length) return contour.map(point => ({ ...point }));
+  const boundaryX = diameterAtZ(contour, zone.boundaryZ);
+  if (!(boundaryX > 0)) return contour.map(point => ({ ...point }));
+  if (input.setup.clampSide === 'left') {
+    const exposed = [{ x: boundaryX, z: zone.boundaryZ }];
+    for (const point of contour) if (point.z < zone.boundaryZ - EPS || (Math.abs(point.z - zone.boundaryZ) <= EPS && Math.abs(point.x - boundaryX) > EPS)) exposed.push({ ...point });
+    return exposed;
+  }
+  const exposed = [];
+  for (const point of contour) if (point.z > zone.boundaryZ + EPS) exposed.push({ ...point });
+  exposed.push({ x: boundaryX, z: zone.boundaryZ });
+  return exposed;
+}
+
 function appendContourPass(moves, operations, profile, settings) {
   const operationId = settings.operationId;
   const startMove = moves.length;
   const home = { x: settings.clearDiameter, z: settings.zClearance };
   const first = profile[0];
-  const approach = { x: Math.min(settings.clearDiameter, first.x + settings.entryClearanceDiameter), z: settings.zClearance };
-  addMove(moves, operationId, 'rapid', 'safe_approach', home, approach, { passIndex: settings.passIndex });
-  addMove(moves, operationId, 'feed', 'lead_in', approach, first, {
+  const axialApproach = { x: settings.clearDiameter, z: first.z };
+  const approach = { x: Math.min(settings.clearDiameter, first.x + settings.entryClearanceDiameter), z: first.z };
+  addMove(moves, operationId, 'rapid', 'safe_axial_approach_to_clamp_boundary', home, axialApproach, { passIndex: settings.passIndex });
+  addMove(moves, operationId, 'rapid', 'safe_radial_approach', axialApproach, approach, { passIndex: settings.passIndex });
+  addMove(moves, operationId, 'feed', 'lead_in_at_clamp_boundary', approach, first, {
     cutting: true, cutKind: 'turn', feedRate: settings.feedRate, passIndex: settings.passIndex,
   });
   for (let index = 0; index < profile.length - 1; index += 1) {
@@ -104,6 +144,21 @@ export function validateTurningInput(input) {
   if (input.contour.length && input.blankLength > 0 && Math.abs(input.contour.at(-1).z + input.blankLength) > 0.05) {
     warnings.push(issue('CONTOUR_LENGTH_MISMATCH', 'Последняя точка контура не совпадает с длиной заготовки.', 'warning', 'contour'));
   }
+  const setup = input.setup || {};
+  if (setup.enabled) {
+    if (!(setup.clampDiameter > 0)) errors.push(issue('CLAMP_DIAMETER_REQUIRED', 'Укажите диаметр участка, зажатого в патроне.', 'error', 'stock'));
+    if (setup.clampDiameter > input.blankDiameter + EPS) errors.push(issue('CLAMP_DIAMETER_OUTSIDE_STOCK', `Диаметр зажима Ø${setup.clampDiameter} больше заготовки Ø${input.blankDiameter}.`, 'error', 'stock'));
+    if (!(setup.clampLength > 0) || setup.clampLength >= input.blankLength - EPS) errors.push(issue('CLAMP_LENGTH_INVALID', 'Длина зажима должна быть больше 0 и меньше полной длины детали.', 'error', 'stock'));
+    const zone = clampZoneForInput(input);
+    if (setup.protectClampZone && zone) {
+      const boundaryDiameter = diameterAtZ(input.contour, zone.boundaryZ);
+      if (!(boundaryDiameter > 0) || Math.abs(boundaryDiameter - setup.clampDiameter) > 0.15) errors.push(issue('CLAMP_PROFILE_MISMATCH', `На границе защищённой зоны требуется Ø${setup.clampDiameter}, но контур даёт Ø${boundaryDiameter ?? '—'}.`, 'error', 'stock'));
+      const zonePoints = input.contour.filter(point => point.z <= zone.zMax + EPS && point.z > zone.zMin + EPS);
+      if (zonePoints.some(point => Math.abs(point.x - setup.clampDiameter) > 0.15)) errors.push(issue('MACHINING_REQUIRED_INSIDE_CLAMP', 'Целевой наружный контур изменяется внутри зоны зажима. Такой первый установ заблокирован.', 'error', 'stock'));
+      warnings.push(issue('CLAMP_ZONE_PROTECTED', `Зона зажима Ø${setup.clampDiameter} × ${setup.clampLength} мм защищена; точение начинается на Z${zone.boundaryZ}.`, 'warning', 'stock'));
+      if (!setup.confirmed) warnings.push(issue('CLAMP_LENGTH_OPERATOR_CONFIRMATION', 'Длина зажима получена из геометрии детали и должна быть подтверждена оператором по фактическим кулачкам.', 'warning', 'stock'));
+    }
+  }
   return { errors, warnings };
 }
 
@@ -115,7 +170,11 @@ export function planTurning(input) {
   const moves = [];
   const operations = [];
   const stockRadius = input.blankDiameter / 2;
-  const minimumTarget = Math.min(...input.contour.map(point => point.x / 2));
+  const machiningProfile = exposedTurningProfile(input.contour, input);
+  if (machiningProfile.length < 2) {
+    return { status: CAM_STATUS.BLOCKED, errors: [issue('EXPOSED_PROFILE_REQUIRED', 'После исключения зоны зажима не осталось обрабатываемого наружного профиля.', 'error', 'stock')], warnings: validation.warnings, operations: [], moves: [], materialModel: null };
+  }
+  const minimumTarget = Math.min(...machiningProfile.map(point => point.x / 2));
   let ap = input.maxDepth;
   if (!(ap > 0)) {
     ap = 1.5;
@@ -131,7 +190,8 @@ export function planTurning(input) {
   const feedPerRev = input.route.find(item => item.feed > 0)?.feed || 0.15;
   const feedRate = Math.max(20, rpm * feedPerRev);
 
-  if (input.axialAllowance > EPS) appendFacing(moves, operations, { clearDiameter, zClearance, feedRate });
+  if (input.axialAllowance > EPS && !clampZoneForInput(input)) appendFacing(moves, operations, { clearDiameter, zClearance, feedRate });
+  else if (input.axialAllowance > EPS && clampZoneForInput(input)) validation.warnings.push(issue('FACING_SKIPPED_IN_CLAMP', 'Торцевание Z0 пропущено: торец находится внутри защищённой зоны зажима.', 'warning', 'stock'));
 
   const roughLimit = minimumTarget + finishAllowance;
   const roughPassCount = Math.max(0, Math.ceil((stockRadius - roughLimit) / ap));
@@ -145,7 +205,7 @@ export function planTurning(input) {
   }
   for (let pass = 1; pass <= roughPassCount; pass += 1) {
     const level = Math.max(roughLimit, stockRadius - ap * pass);
-    appendContourPass(moves, operations, clampedProfile(input.contour, level, finishAllowance), {
+    appendContourPass(moves, operations, clampedProfile(machiningProfile, level, finishAllowance), {
       operationId: `turn-rough-${pass}`,
       kind: 'rough_turning',
       name: `Черновой проход ${pass}/${roughPassCount}`,
@@ -157,7 +217,7 @@ export function planTurning(input) {
       feedRate,
     });
   }
-  appendContourPass(moves, operations, targetProfile(input.contour), {
+  appendContourPass(moves, operations, targetProfile(machiningProfile), {
     operationId: 'turn-finish-1',
     kind: 'finish_turning',
     name: 'Чистовой проход по утверждённому X/Z-контуру',
@@ -178,7 +238,7 @@ export function planTurning(input) {
     materialModel: createMaterialModel(input),
     parameters: {
       xMode: 'diameter', apRadial: ap, finishAllowanceRadial: finishAllowance,
-      zClearance, radialClearance, clearDiameter, roughPassCount, feedRate, rpm, feedPerRev,
+      zClearance, radialClearance, clearDiameter, roughPassCount, feedRate, rpm, feedPerRev, clampZone: clampZoneForInput(input), processingOrder: input.setup?.processingOrder || 'canonical',
     },
     estimatedMinutes,
   };

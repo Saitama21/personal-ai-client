@@ -156,7 +156,7 @@ export function buildCamPlan(rawInput, providers = {}) {
   const plan = {
     schemaVersion: CAM_SCHEMA_VERSION,
     generatedAt: new Date().toISOString(),
-    input, features,
+    input, setup: input.setup, features,
     machineSetup: features.machineSetup,
     postConfig: features.postprocessor,
     turning, threading, drilling, radialDrilling, millingAf, millingPocket, milling: { af: millingAf, pocket: millingPocket }, cutoff,
@@ -167,7 +167,7 @@ export function buildCamPlan(rawInput, providers = {}) {
     executable: geometryExecutable,
     geometryExecutable,
     kinematics: {
-      model: 'CK52PT_Y_TURN_MILL_XYZC_V2', axes: { X: 'DIAMETER', Z: 'LINEAR', Y: 'LINEAR', C: 'INDEXED_BLOCKING' }, turretStations: 15, view: { chuck: 'LEFT', turret: 'RIGHT' },
+      model: 'CK52PT_Y_TURN_MILL_XYZC_V2', axes: { X: 'DIAMETER', Z: 'LINEAR', Y: 'LINEAR', C: 'INDEXED_BLOCKING' }, turretStations: 15, view: { chuck: 'LEFT', turret: 'RIGHT', clampDiameter: input.setup?.clampDiameter || null, clampLength: input.setup?.clampLength || null, protectedClampZone: Boolean(input.setup?.protectClampZone), processingOrder: input.setup?.processingOrder || 'canonical' },
     },
   };
   plan.featureMaterialModel = createFeatureMaterialModel(plan);

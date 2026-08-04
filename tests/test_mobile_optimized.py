@@ -5,8 +5,8 @@ ROOT=Path(__file__).resolve().parents[1]
 def test_mobile_version():
     main=(ROOT/'app/main.py').read_text(encoding='utf-8')
     html=(ROOT/'app/static/index.html').read_text(encoding='utf-8')
-    assert '4.8.1-dpk-recognition' in main
-    assert 'v=4.8.1-dpk-recognition' in html
+    assert '4.8.2-clamp-setup-simulation' in main
+    assert 'v=4.8.2-clamp-setup-simulation' in html
 
 def test_mobile_layout_contract():
     css=(ROOT/'app/static/styles.css').read_text(encoding='utf-8')

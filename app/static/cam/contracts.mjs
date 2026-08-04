@@ -71,6 +71,26 @@ export function normalizeContour(points = []) {
   return normalized.sort((a, b) => (b.z - a.z) || (a.sourceIndex - b.sourceIndex));
 }
 
+
+export function normalizeSetup(raw = {}, blankDiameter = null, blankLength = null) {
+  const provided = Boolean(raw && typeof raw === 'object' && Object.keys(raw).length);
+  const clampSide = String(raw.clampSide || raw.clamp_side || 'left').toLowerCase() === 'right' ? 'right' : 'left';
+  const clampDiameter = finiteNumber(raw.clampDiameter ?? raw.clamp_diameter, blankDiameter);
+  const clampLength = finiteNumber(raw.clampLength ?? raw.clamp_length, null);
+  return {
+    clampSide,
+    clampDiameter,
+    clampLength,
+    enabled: provided,
+    protectClampZone: provided && raw.protectClampZone !== false && raw.protect_clamp_zone !== false,
+    processingOrder: String(raw.processingOrder || raw.processing_order || 'from_clamp_to_free'),
+    visualMirror: raw.visualMirror !== false && raw.visual_mirror !== false,
+    baseReference: String(raw.baseReference || raw.base_reference || 'clamp_face'),
+    confirmed: Boolean(raw.confirmed),
+    blankLength,
+  };
+}
+
 export function normalizeCamInput(raw = {}) {
   const blankDiameter = finiteNumber(raw.blankDiameter);
   const blankLength = finiteNumber(raw.blankLength);
@@ -94,6 +114,7 @@ export function normalizeCamInput(raw = {}) {
     afContour: Array.isArray(raw.afContour) ? raw.afContour : [],
     material: String(raw.material || 'Не указан'),
     coordinateSystem: raw.coordinateSystem || { xMode: 'diameter', zZero: 'right_face' },
+    setup: normalizeSetup(raw.setup || {}, blankDiameter, blankLength),
   };
 }
 

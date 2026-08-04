@@ -94,7 +94,7 @@
   },
   "source_note": "Profile rebuilt from user-supplied photographs on 2026-08-04. Earlier CK52DWY identification is superseded by the physical CK52PT-Y nameplate.",
   "simulator": {
-    "release": "4.8.1-dpk-recognition",
+    "release": "4.8.2-clamp-setup-simulation",
     "machine_view": {
       "chuck_and_stock": "fixed_left",
       "turret": "fixed_right",

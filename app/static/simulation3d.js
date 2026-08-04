@@ -9,7 +9,7 @@
   const sim = {
     renderer: null, scene: null, camera: null, host: null, plan: null,
     materialMesh: null, targetMesh: null, boreMesh: null, pathRapid: null, pathCut: null,
-    chuck: null, turret: null, turretDisk: null, activeTool: null, collisionGroup: null,
+    chuck: null, clampZoneMesh: null, turret: null, turretDisk: null, activeTool: null, collisionGroup: null,
     resizeObserver: null, running: false, progress: 0, speed: 1, lastFrame: 0,
     lastGeometryProgress: -1, initialVolume: 0, finalVolume: 0, currentVolume: 0,
     view: 'sinumerik', loopGeneration: 0, selectedTool: null, fallbackCanvas: null, fallbackState: null,
@@ -52,15 +52,24 @@
     if ($('camIssueList')) $('camIssueList').innerHTML = [...p.errors, ...p.warnings].map(i => `<div class="cam-issue ${i.severity === 'error' ? 'error' : 'warning'}"><b>${esc(i.code)}</b><span>${esc(i.message)}</span></div>`).join('');
     if ($('camCapabilityList')) $('camCapabilityList').innerHTML = capabilityMarkup(p);
     if ($('stockRemovalBtn')) $('stockRemovalBtn').disabled = !p.executable;
-    if ($('simScopeNotice')) $('simScopeNotice').innerHTML = `<div class="check-card ${p.executable ? 'good' : 'warning'}"><b>CK52PT-Y · XYZC</b><span>Патрон и заготовка слева. 15-позиционный револьвер и активный инструмент справа. Симулируется вся рассчитанная траектория.</span></div>`;
+    if ($('simScopeNotice')) $('simScopeNotice').innerHTML = `<div class="check-card ${p.executable ? 'good' : 'warning'}"><b>CK52PT-Y · XYZC</b><span>Патрон слева зажимает подтверждённый участок Ø${esc(p.input.setup?.clampDiameter || p.input.blankDiameter)} × ${esc(p.input.setup?.clampLength || '—')} мм. Зона зажима защищена. Обработка идёт от границы патрона к свободному торцу; револьвер T1–T15 расположен справа.</span></div>`;
     if ($('simBuildBtn')) $('simBuildBtn').disabled = !p.executable;
     if ($('simPlayBtn')) $('simPlayBtn').disabled = !p.executable;
   }
 
   function centerZ(plan) { return (Number(plan.input.axialAllowance || 0) - Number(plan.input.blankLength || 0)) / 2; }
+  function setupOf(plan) { return plan?.input?.setup || plan?.setup || {}; }
+  function isMirrored(plan) { return setupOf(plan).visualMirror !== false && setupOf(plan).clampSide === 'left'; }
+  function worldXForZ(plan, z = 0) { return isMirrored(plan) ? centerZ(plan) - Number(z || 0) : Number(z || 0) - centerZ(plan); }
+  function clampZone(plan) {
+    const setup = setupOf(plan);
+    if (!setup.enabled || !setup.protectClampZone || !(Number(setup.clampLength) > 0)) return null;
+    const length = Number(setup.clampLength);
+    return setup.clampSide === 'left' ? { z0: 0, z1: -length, boundaryZ: -length } : { z0: -Number(plan.input.blankLength), z1: -Number(plan.input.blankLength) + length, boundaryZ: -Number(plan.input.blankLength) + length };
+  }
   function worldPoint(plan, point = {}, radialOffset = 0) {
     const c = Number(point.c || 0) * Math.PI / 180, radius = Number(point.x || 0) / 2 + radialOffset, y = Number(point.y || 0);
-    return new THREE.Vector3(Number(point.z || 0) - centerZ(plan), radius * Math.cos(c) - y * Math.sin(c), radius * Math.sin(c) + y * Math.cos(c));
+    return new THREE.Vector3(worldXForZ(plan, point.z), radius * Math.cos(c) - y * Math.sin(c), radius * Math.sin(c) + y * Math.cos(c));
   }
   function outerRadius(profile, z) {
     if (!profile.length) return 1;
@@ -78,7 +87,7 @@
       const z = zStart + (zEnd - zStart) * zi / axialSegments, base = outerRadius(profile, z);
       for (let ai = 0; ai <= radialSegments; ai++) {
         const angle = Math.PI * 2 * ai / radialSegments, r = api().radialBoundaryAt(state.features || {}, z, angle, base);
-        positions.push(z - centerZ(sim.plan), r * Math.cos(angle), r * Math.sin(angle));
+        positions.push(worldXForZ(sim.plan, z), r * Math.cos(angle), r * Math.sin(angle));
         normals.push(0, Math.cos(angle), Math.sin(angle)); uvs.push(zi / axialSegments, ai / radialSegments);
       }
     }
@@ -95,16 +104,28 @@
 
   function createThreeJawChuck() {
     const group = new THREE.Group(); group.name = 'REALISTIC_THREE_JAW_CHUCK_LEFT';
-    const body = cylinder(Math.max(28, sim.plan.input.blankDiameter * .72), 22, metal(0x4c5964)); body.position.x = -sim.plan.input.blankLength / 2 - 18; group.add(body);
-    const face = cylinder(Math.max(26, sim.plan.input.blankDiameter * .67), 4, metal(0x89949d)); face.position.x = -sim.plan.input.blankLength / 2 - 5; group.add(face);
-    const bore = cylinder(Math.max(7, sim.plan.input.blankDiameter * .14), 28, new THREE.MeshStandardMaterial({ color: 0x071018, roughness: .8 })); bore.position.x = body.position.x; group.add(bore);
-    const jawRadius = Math.max(17, sim.plan.input.blankDiameter * .42);
+    const plan = sim.plan, setup = setupOf(plan), stockD = Number(plan.input.blankDiameter || 60), clampD = Number(setup.clampDiameter || stockD), zone = clampZone(plan);
+    const partLeft = worldXForZ(plan, setup.clampSide === 'left' ? 0 : -plan.input.blankLength);
+    const bodyR = Math.max(31, stockD * .72), bodyLength = 25;
+    const body = cylinder(bodyR, bodyLength, metal(0x3e4b55)); body.position.x = partLeft - bodyLength / 2 - 4; group.add(body);
+    const face = cylinder(Math.max(29, stockD * .68), 5, metal(0x8a969f)); face.position.x = partLeft - 3; group.add(face);
+    const bore = cylinder(Math.max(8, stockD * .16), bodyLength + 8, new THREE.MeshStandardMaterial({ color: 0x061018, roughness: .85 })); bore.position.x = body.position.x; group.add(bore);
+    const jawRadius = Math.max(clampD / 2 + 7, stockD * .42), gripCenter = zone ? (worldXForZ(plan, zone.z0) + worldXForZ(plan, zone.z1)) / 2 : partLeft + 3;
     for (let i = 0; i < 3; i++) {
-      const a = i * Math.PI * 2 / 3, jaw = new THREE.Group();
-      const base = new THREE.Mesh(new THREE.BoxGeometry(18, 9, 15), metal(0x8d99a2)); base.position.set(-sim.plan.input.blankLength / 2 - 3, jawRadius * Math.cos(a), jawRadius * Math.sin(a)); base.rotation.x = a; jaw.add(base);
-      const soft = new THREE.Mesh(new THREE.BoxGeometry(12, 7, 10), metal(0xb6bec5)); soft.position.set(-sim.plan.input.blankLength / 2 + 5, (jawRadius - 7) * Math.cos(a), (jawRadius - 7) * Math.sin(a)); soft.rotation.x = a; jaw.add(soft); group.add(jaw);
+      const a = i * Math.PI * 2 / 3;
+      const jaw = new THREE.Group(); jaw.name = `CHUCK_JAW_${i + 1}`;
+      const base = new THREE.Mesh(new THREE.BoxGeometry(18, 10, 17), metal(0x78858f)); base.position.set(partLeft - 2, jawRadius * Math.cos(a), jawRadius * Math.sin(a)); base.rotation.x = a; jaw.add(base);
+      const soft = new THREE.Mesh(new THREE.BoxGeometry(Math.max(8, Number(setup.clampLength || 5) + 3), 8, 12), metal(0xb9c2c8)); soft.position.set(gripCenter, (clampD / 2 + 3.5) * Math.cos(a), (clampD / 2 + 3.5) * Math.sin(a)); soft.rotation.x = a; jaw.add(soft);
+      group.add(jaw);
     }
     return group;
+  }
+
+  function createProtectedClampZone() {
+    const zone = clampZone(sim.plan); if (!zone) return null;
+    const setup = setupOf(sim.plan), x0 = worldXForZ(sim.plan, zone.z0), x1 = worldXForZ(sim.plan, zone.z1), length = Math.abs(x1 - x0);
+    const mesh = cylinder(Number(setup.clampDiameter || sim.plan.input.blankDiameter) / 2 + .8, length + .3, new THREE.MeshStandardMaterial({ color: 0xffb12b, transparent: true, opacity: .2, roughness: .8, side: THREE.DoubleSide }));
+    mesh.position.x = (x0 + x1) / 2; mesh.name = 'PROTECTED_CLAMP_ZONE_NO_MACHINING'; return mesh;
   }
 
   function makeTurningTool() {
@@ -188,7 +209,7 @@
       disposeObject(sim.boreMesh); sim.boreMesh = null;
       if (state.features?.drilling?.currentDepth > .01) {
         const hole = state.features.drilling, r = hole.diameter / 2, len = hole.currentDepth;
-        sim.boreMesh = cylinder(r, len + .6, new THREE.MeshStandardMaterial({ color: 0x081018, roughness: .9, side: THREE.DoubleSide })); sim.boreMesh.position.x = sim.plan.input.blankLength / 2 - len / 2; sim.scene.add(sim.boreMesh);
+        sim.boreMesh = cylinder(r, len + .6, new THREE.MeshStandardMaterial({ color: 0x081018, roughness: .9, side: THREE.DoubleSide })); const startZ=Number(hole.startZ||0),direction=Number(hole.direction||-1),boreStart=worldXForZ(sim.plan,startZ),boreEnd=worldXForZ(sim.plan,startZ+direction*len); sim.boreMesh.position.x=(boreStart+boreEnd)/2; sim.scene.add(sim.boreMesh);
       }
     }
     const removed = Math.max(0, sim.initialVolume - sim.currentVolume); if ($('simRemovedLabel')) $('simRemovedLabel').textContent = `Снято: ${fmt(removed, 0)} мм³`; if ($('simVolumeMetric')) $('simVolumeMetric').textContent = `${fmt(Math.max(0, sim.initialVolume - sim.finalVolume), 0)} мм³`;
@@ -250,17 +271,20 @@
   function drawFallbackMachine() {
     const canvas = sim.fallbackCanvas; if (!canvas || !sim.plan) return;
     const ctx = canvas.getContext('2d'), w = canvas.width = Math.max(760, sim.host.clientWidth || 760), h = canvas.height = Math.max(420, sim.host.clientHeight || 420);
-    ctx.clearRect(0,0,w,h); const bg=ctx.createLinearGradient(0,0,0,h);bg.addColorStop(0,'#dfe8ed');bg.addColorStop(1,'#aebdc5');ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
-    ctx.strokeStyle='#71838d';ctx.lineWidth=1;for(let x=0;x<w;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke()}for(let y=0;y<h;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}
-    const cy=h*.52, chuckX=120, bodyR=Math.min(80,h*.22), partX=175, partEnd=w*.58, turretX=w*.79, turretR=Math.min(92,h*.25);
-    ctx.fillStyle='#465660';ctx.beginPath();ctx.arc(chuckX,cy,bodyR,0,Math.PI*2);ctx.fill();ctx.fillStyle='#7c8b94';ctx.beginPath();ctx.arc(chuckX,cy,bodyR*.76,0,Math.PI*2);ctx.fill();ctx.fillStyle='#101a20';ctx.beginPath();ctx.arc(chuckX,cy,bodyR*.2,0,Math.PI*2);ctx.fill();
-    for(let i=0;i<3;i++){const a=i*Math.PI*2/3;ctx.save();ctx.translate(chuckX+Math.cos(a)*bodyR*.48,cy+Math.sin(a)*bodyR*.48);ctx.rotate(a);ctx.fillStyle='#b5c0c6';ctx.fillRect(-12,-10,38,20);ctx.restore()}
-    const state=sim.fallbackState || api().simulateMaterial(sim.plan,sim.progress), profile=api().materialProfile(state).sort((a,b)=>b.z-a.z); const maxR=Math.max(1,sim.plan.input.blankDiameter/2), sx=(partEnd-partX)/Math.max(1,sim.plan.input.blankLength), sy=(h*.34)/maxR;
-    ctx.beginPath(); profile.forEach((pt,i)=>{const px=partEnd+pt.z*sx,py=cy-pt.radius*sy; i?ctx.lineTo(px,py):ctx.moveTo(px,py)}); [...profile].reverse().forEach(pt=>ctx.lineTo(partEnd+pt.z*sx,cy+pt.radius*sy));ctx.closePath();const steel=ctx.createLinearGradient(0,cy-h*.2,0,cy+h*.2);steel.addColorStop(0,'#eef3f5');steel.addColorStop(.48,'#97a7b0');steel.addColorStop(.55,'#667984');steel.addColorStop(1,'#d7e0e4');ctx.fillStyle=steel;ctx.fill();ctx.strokeStyle='#364852';ctx.lineWidth=2;ctx.stroke();
-    ctx.fillStyle='#3c4a53';ctx.beginPath();ctx.arc(turretX,cy,turretR,0,Math.PI*2);ctx.fill();ctx.fillStyle='#6d7d87';ctx.beginPath();ctx.arc(turretX,cy,turretR*.72,0,Math.PI*2);ctx.fill();ctx.fillStyle='#27343c';ctx.beginPath();ctx.arc(turretX,cy,turretR*.28,0,Math.PI*2);ctx.fill();
-    const move=currentMove(),tool=toolNumberForMove(move),n=Number(tool.match(/\d+/)?.[0]||1); for(let i=0;i<15;i++){const a=(i-3)*Math.PI*2/15,x=turretX+Math.cos(a)*turretR*.83,y=cy+Math.sin(a)*turretR*.83;ctx.fillStyle=i===n-1?'#f6c34a':'#d5dde1';ctx.strokeStyle='#1b2a32';ctx.beginPath();ctx.roundRect(x-13,y-10,26,20,3);ctx.fill();ctx.stroke();ctx.fillStyle='#10202a';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText(`T${i+1}`,x,y+3)}
-    const pt=api()?.toolPointAt?.(sim.plan,sim.progress), px=pt?partEnd+Number(pt.z||0)*sx:partEnd+20, py=pt?cy-Number(pt.x||0)/2*sy:cy-bodyR; const kind=move?.toolKind||'turning'; fallbackToolShape(ctx,kind,Math.min(turretX-turretR-10,px+15),py);
-    ctx.fillStyle='#09283a';ctx.font='bold 16px sans-serif';ctx.textAlign='left';ctx.fillText('← ПАТРОН + ЗАГОТОВКА',24,28);ctx.textAlign='right';ctx.fillText('РЕВОЛЬВЕР T1–T15 →',w-24,28);ctx.textAlign='left';ctx.font='13px monospace';ctx.fillText(`${tool} · ${move?.role||'—'} · X${fmt(pt?.x,2)} Y${fmt(pt?.y,2)} Z${fmt(pt?.z,2)} C${fmt(pt?.c,1)}°`,24,h-18);
+    ctx.clearRect(0, 0, w, h); const bg = ctx.createLinearGradient(0, 0, 0, h); bg.addColorStop(0, '#e6eef2'); bg.addColorStop(1, '#b9c6cd'); ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = 'rgba(91,120,137,.28)'; ctx.lineWidth = 1; for (let x = 0; x < w; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); } for (let y = 0; y < h; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+    const cy = h * .53, bodyR = Math.min(82, h * .22), partLeft = Math.max(180, bodyR + 105), partRight = w * .61, span = Math.max(1, partRight - partLeft), turretX = w * .82, turretR = Math.min(94, h * .25), setup = setupOf(sim.plan), blankL = Math.max(1, Number(sim.plan.input.blankLength || 1));
+    const mapZ = z => isMirrored(sim.plan) ? partLeft + (-Number(z || 0) / blankL) * span : partRight + (Number(z || 0) / blankL) * span;
+    const state = sim.fallbackState || api().simulateMaterial(sim.plan, sim.progress), profile = api().materialProfile(state).sort((a, b) => b.z - a.z), maxR = Math.max(1, sim.plan.input.blankDiameter / 2), sy = (h * .34) / maxR;
+    const chuckX = partLeft - 72; ctx.fillStyle = '#35434d'; ctx.beginPath(); ctx.arc(chuckX, cy, bodyR, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#7a8993'; ctx.beginPath(); ctx.arc(chuckX, cy, bodyR * .76, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#0c161d'; ctx.beginPath(); ctx.arc(chuckX, cy, bodyR * .2, 0, Math.PI * 2); ctx.fill();
+    const clampD = Number(setup.clampDiameter || sim.plan.input.blankDiameter), clampL = Number(setup.clampLength || 0), clampEnd = mapZ(-clampL);
+    for (let i = 0; i < 3; i++) { const a = i * Math.PI * 2 / 3; ctx.save(); ctx.translate(chuckX + Math.cos(a) * bodyR * .47, cy + Math.sin(a) * bodyR * .47); ctx.rotate(a); ctx.fillStyle = '#bac4ca'; ctx.fillRect(-9, -10, Math.max(34, partLeft - chuckX + clampL / blankL * span), 20); ctx.restore(); }
+    ctx.beginPath(); profile.forEach((pt, i) => { const px = mapZ(pt.z), py = cy - pt.radius * sy; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }); [...profile].reverse().forEach(pt => ctx.lineTo(mapZ(pt.z), cy + pt.radius * sy)); ctx.closePath(); const steel = ctx.createLinearGradient(0, cy - h * .2, 0, cy + h * .2); steel.addColorStop(0, '#eef3f5'); steel.addColorStop(.48, '#98a8b1'); steel.addColorStop(.55, '#667a85'); steel.addColorStop(1, '#d9e1e5'); ctx.fillStyle = steel; ctx.fill(); ctx.strokeStyle = '#344852'; ctx.lineWidth = 2; ctx.stroke();
+    if (setup.protectClampZone && clampL > 0) { const zx0 = mapZ(0), zx1 = clampEnd, left = Math.min(zx0, zx1), width = Math.abs(zx1 - zx0); ctx.fillStyle = 'rgba(255,169,35,.24)'; ctx.fillRect(left, cy - clampD / 2 * sy - 3, width, clampD * sy + 6); ctx.strokeStyle = '#e88700'; ctx.lineWidth = 2; ctx.strokeRect(left, cy - clampD / 2 * sy - 3, width, clampD * sy + 6); ctx.fillStyle = '#8a4a00'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(`ЗАЖИМ Ø${fmt(clampD, 1)} × ${fmt(clampL, 1)} · НЕ ОБРАБАТЫВАТЬ`, left + width / 2, cy + clampD / 2 * sy + 22); }
+    ctx.fillStyle = '#3c4a53'; ctx.beginPath(); ctx.arc(turretX, cy, turretR, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#6d7d87'; ctx.beginPath(); ctx.arc(turretX, cy, turretR * .72, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#27343c'; ctx.beginPath(); ctx.arc(turretX, cy, turretR * .28, 0, Math.PI * 2); ctx.fill();
+    const move = currentMove(), tool = toolNumberForMove(move), n = Number(tool.match(/\d+/)?.[0] || 1); for (let i = 0; i < 15; i++) { const a = (i - 3) * Math.PI * 2 / 15, x = turretX + Math.cos(a) * turretR * .83, y = cy + Math.sin(a) * turretR * .83; ctx.fillStyle = i === n - 1 ? '#f6c34a' : '#d5dde1'; ctx.strokeStyle = '#1b2a32'; ctx.beginPath(); ctx.roundRect(x - 13, y - 10, 26, 20, 3); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#10202a'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(`T${i + 1}`, x, y + 3); }
+    const timeline = api()?.toolPointAt?.(sim.plan, sim.progress), pt = timeline ? { x: timeline.x, y: timeline.y, z: timeline.z, c: timeline.c } : null, px = pt ? mapZ(pt.z) : partRight + 15, py = pt ? cy - Number(pt.x || 0) / 2 * sy : cy - bodyR; fallbackToolShape(ctx, move?.toolKind || 'turning', Math.min(turretX - turretR - 10, px + 15), py);
+    ctx.fillStyle = '#09283a'; ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'left'; ctx.fillText('← ТРЁХКУЛАЧКОВЫЙ ПАТРОН · Ø60 В ЗАЖИМЕ', 22, 28); ctx.textAlign = 'right'; ctx.fillText('РЕВОЛЬВЕР T1–T15 →', w - 22, 28); ctx.fillStyle = '#0d5f8e'; ctx.textAlign = 'left'; ctx.font = 'bold 13px sans-serif'; ctx.fillText('НАПРАВЛЕНИЕ ЦИКЛА: ОТ ГРАНИЦЫ ЗАЖИМА → К СВОБОДНОМУ ТОРЦУ', partLeft, h - 42); ctx.fillStyle = '#09283a'; ctx.font = '13px monospace'; ctx.fillText(`${tool} · ${move?.role || '—'} · X${fmt(pt?.x, 2)} Y${fmt(pt?.y, 2)} Z${fmt(pt?.z, 2)} C${fmt(pt?.c, 1)}°`, 22, h - 18);
   }
 
   function setupFallback2D(reason='WebGL unavailable') {
@@ -281,6 +305,7 @@
     const grid = new THREE.GridHelper(240, 24, 0x7b9bad, 0xb7c6ce); grid.rotation.x = Math.PI / 2; grid.position.z = -30; sim.scene.add(grid);
     const axis = new THREE.AxesHelper(35); axis.position.set(sim.plan.input.blankLength / 2 + 6, -sim.plan.input.blankDiameter / 2 - 12, 0); sim.scene.add(axis);
     sim.chuck = createThreeJawChuck(); sim.scene.add(sim.chuck);
+    sim.clampZoneMesh = createProtectedClampZone(); if (sim.clampZoneMesh) sim.scene.add(sim.clampZoneMesh);
     sim.turret = createTurret(); sim.scene.add(sim.turret);
     const targetState = api().simulateMaterial(sim.plan, 1); sim.targetMesh = new THREE.LineSegments(new THREE.WireframeGeometry(surfaceGeometry(targetState, 56, 80)), new THREE.LineBasicMaterial({ color: 0x00a7d8, transparent: true, opacity: .35 })); sim.targetMesh.name = 'TARGET_SURFACE'; sim.scene.add(sim.targetMesh);
     sim.pathRapid = createPath(false); sim.pathCut = createPath(true); sim.scene.add(sim.pathRapid, sim.pathCut);
@@ -312,7 +337,7 @@
   function init3D(force = false) {
     const host = $('stock3dViewport'); if (!host) return false;
     if (!force && sim.host === host && sim.renderer && host.contains(sim.renderer.domElement)) return true;
-    sim.loopGeneration++; sim.resizeObserver?.disconnect?.(); disposeObject(sim.scene); sim.renderer?.dispose?.(); Object.assign(sim, { renderer: null, scene: null, camera: null, materialMesh: null, targetMesh: null, boreMesh: null, chuck: null, turret: null, activeTool: null, selectedTool: null, progress: Number($('simProgressRange')?.value || 0) / 1000, lastGeometryProgress: -1, running: false, lastFrame: 0, host, fallbackCanvas: null, fallbackState: null });
+    sim.loopGeneration++; sim.resizeObserver?.disconnect?.(); disposeObject(sim.scene); sim.renderer?.dispose?.(); Object.assign(sim, { renderer: null, scene: null, camera: null, materialMesh: null, targetMesh: null, boreMesh: null, chuck: null, clampZoneMesh: null, turret: null, activeTool: null, selectedTool: null, progress: Number($('simProgressRange')?.value || 0) / 1000, lastGeometryProgress: -1, running: false, lastFrame: 0, host, fallbackCanvas: null, fallbackState: null });
     rebuildPlan();
     if (!sim.plan?.executable) { host.innerHTML = '<div class="sim-fallback warning">CAM-план заблокирован. Откройте CAM-функции и исправьте параметры.</div>'; return false; }
     let sceneReady = false;
@@ -326,11 +351,15 @@
   function renderStockPreview() {
     const canvas = $('stockCanvas'); if (!canvas || !sim.plan) return; const ctx = canvas.getContext('2d'), p = sim.plan; ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = '#dce7ed'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     if (!p.executable) { ctx.fillStyle = '#8d3b1e'; ctx.font = '600 18px sans-serif'; ctx.fillText('CAM-план заблокирован', 36, 60); return; }
-    const initial = api().materialProfile(api().simulateMaterial(p, 0)), target = api().materialProfile(api().simulateMaterial(p, 1)); const zMin = -p.input.blankLength - 35, zMax = 30, maxR = Math.max(p.input.blankDiameter / 2 + 18, 45), mapZ = z => 50 + (z - zMin) / (zMax - zMin) * (canvas.width - 90), mapR = r => canvas.height / 2 - r / maxR * (canvas.height * .42);
+    const initial = api().materialProfile(api().simulateMaterial(p, 0)).sort((a,b)=>b.z-a.z), target = api().materialProfile(api().simulateMaterial(p, 1)).sort((a,b)=>b.z-a.z), setup = setupOf(p), zone = clampZone(p);
+    const maxR = Math.max(p.input.blankDiameter / 2 + 12, 40), cy = canvas.height / 2, partLeft = 190, partRight = canvas.width - 145, span = partRight - partLeft, blankL = Math.max(1, p.input.blankLength), mapZ = z => isMirrored(p) ? partLeft + (-Number(z || 0) / blankL) * span : partRight + (Number(z || 0) / blankL) * span, mapR = r => cy - r / maxR * (canvas.height * .38);
     const poly = (profile, fill, stroke) => { ctx.beginPath(); profile.forEach((pt, i) => ctx[i ? 'lineTo' : 'moveTo'](mapZ(pt.z), mapR(pt.radius))); [...profile].reverse().forEach(pt => ctx.lineTo(mapZ(pt.z), canvas.height - mapR(pt.radius))); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.stroke(); };
+    const chuckX = 88, chuckR = Math.min(72, canvas.height * .28); ctx.fillStyle = '#414f59'; ctx.beginPath(); ctx.arc(chuckX, cy, chuckR, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#87949d'; ctx.beginPath(); ctx.arc(chuckX, cy, chuckR * .72, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#0a151c'; ctx.beginPath(); ctx.arc(chuckX, cy, chuckR * .2, 0, Math.PI * 2); ctx.fill();
+    for(let i=0;i<3;i++){const a=i*Math.PI*2/3;ctx.save();ctx.translate(chuckX+Math.cos(a)*chuckR*.46,cy+Math.sin(a)*chuckR*.46);ctx.rotate(a);ctx.fillStyle='#bac4ca';ctx.fillRect(-8,-8,partLeft-chuckX+20,16);ctx.restore();}
     poly(initial, '#a4b0b8', '#5f707b'); poly(target, 'rgba(26,166,205,.28)', '#009dcc');
-    ctx.fillStyle = '#4b5962'; ctx.fillRect(mapZ(zMin + 8), mapR(maxR * .72), mapZ(-p.input.blankLength - 3) - mapZ(zMin + 8), maxR * .72 / maxR * canvas.height * .84); ctx.fillStyle = '#1a394d'; ctx.font = 'bold 14px sans-serif'; ctx.fillText('ПАТРОН / ЗАГОТОВКА — СЛЕВА', 25, 24); ctx.fillText('РЕВОЛЬВЕР / ИНСТРУМЕНТ — СПРАВА', canvas.width - 330, 24);
-    for (const m of p.moves) { ctx.beginPath(); ctx.moveTo(mapZ(m.from.z), mapR((m.from.x || 0) / 2)); ctx.lineTo(mapZ(m.to.z), mapR((m.to.x || 0) / 2)); ctx.strokeStyle = m.cutting ? '#f19a24' : 'rgba(27,100,180,.45)'; ctx.stroke(); }
+    if(zone){const x0=mapZ(zone.z0),x1=mapZ(zone.z1),left=Math.min(x0,x1),width=Math.abs(x1-x0),r=Number(setup.clampDiameter||p.input.blankDiameter)/2;ctx.fillStyle='rgba(255,169,35,.28)';ctx.fillRect(left,mapR(r)-3,width,(cy-mapR(r))*2+6);ctx.strokeStyle='#e78400';ctx.lineWidth=2;ctx.strokeRect(left,mapR(r)-3,width,(cy-mapR(r))*2+6);ctx.fillStyle='#6f3d00';ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.fillText(`ЗАЩИЩЁННЫЙ ЗАЖИМ Ø${fmt(setup.clampDiameter,1)} × ${fmt(setup.clampLength,1)}`,left+width/2,canvas.height-18);}
+    for (const move of p.moves) { if(move.motion==='index')continue; ctx.beginPath(); ctx.moveTo(mapZ(move.from.z), mapR((move.from.x || 0) / 2)); ctx.lineTo(mapZ(move.to.z), mapR((move.to.x || 0) / 2)); ctx.strokeStyle = move.cutting ? '#f19a24' : 'rgba(27,100,180,.42)'; ctx.lineWidth = move.cutting ? 2 : 1; ctx.stroke(); }
+    ctx.fillStyle = '#15374b'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign='left'; ctx.fillText('ПАТРОН + Ø60 В КУЛАЧКАХ — СЛЕВА', 18, 22); ctx.textAlign='right'; ctx.fillText('РЕВОЛЬВЕР / ИНСТРУМЕНТ — СПРАВА', canvas.width - 18, 22); ctx.fillStyle='#0b6f9e';ctx.textAlign='center';ctx.fillText('ЦИКЛ: ОТ ГРАНИЦЫ ЗАЖИМА → К СВОБОДНОМУ ТОРЦУ', (partLeft+partRight)/2, 42);
   }
 
   function initCamStage() { rebuildPlan(); renderStockPreview(); }

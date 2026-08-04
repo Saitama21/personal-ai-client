@@ -17,7 +17,7 @@ function wrapPi(angle) {
 }
 
 export function createFeatureMaterialModel(plan) {
-  const drilling = plan.drilling?.status === 'SUPPORTED' ? { diameter: plan.drilling.hole.diameter, targetDepth: plan.drilling.hole.depth, startZ: plan.drilling.hole.startZ, tipAngle: plan.drilling.hole.tipAngle } : null;
+  const drilling = plan.drilling?.status === 'SUPPORTED' ? { diameter: plan.drilling.hole.diameter, targetDepth: plan.drilling.hole.depth, startZ: plan.drilling.hole.startZ, direction: plan.drilling.hole.direction || -1, entrySide: plan.drilling.hole.entrySide || 'z0', tipAngle: plan.drilling.hole.tipAngle } : null;
   const radialDrilling = plan.radialDrilling?.status === 'SUPPORTED' ? plan.radialDrilling.holes.map(hole => ({ ...hole, currentDepth: 0 })) : [];
   const thread = plan.threading?.status === 'SUPPORTED' ? { ...plan.threading.helix, depthSamples: samplesBetween(plan.threading.helix.zStart, plan.threading.helix.zEnd, 96, 0), targetDepth: plan.threading.parameters.radialDepth } : null;
   const af = plan.millingAf?.status === 'SUPPORTED' ? {
@@ -49,7 +49,7 @@ export function simulateFeatureMaterial(plan, progress) {
     if (fraction <= 0) break;
     if (move.cutting && move.cutKind === 'drill_axial' && state.drilling) {
       const currentZ = move.from.z + (move.to.z - move.from.z) * fraction;
-      state.drilling.currentDepth = Math.max(state.drilling.currentDepth, state.drilling.startZ - currentZ);
+      state.drilling.currentDepth = Math.max(state.drilling.currentDepth, (currentZ - state.drilling.startZ) * (state.drilling.direction || -1));
     }
     if (move.cutting && move.cutKind === 'drill_radial' && state.radialDrilling[move.holeIndex]) {
       const depth = (move.drilledDepth || 0) * fraction + (move.passIndex > 1 ? Math.max(0, (move.passIndex - 1) * (plan.radialDrilling.feature.peckDepth || 0)) * (1 - fraction) : 0);

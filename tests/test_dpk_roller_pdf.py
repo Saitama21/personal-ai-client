@@ -70,6 +70,13 @@ def test_dpk_pdf_analysis_extracts_geometry():
     assert intel['cam_autofill']['drilling']['diameter'] == 12.2
     assert intel['cam_autofill']['drilling']['depth'] == 30.0
     assert intel['cam_autofill']['radialDrilling']['enabled'] is False
+    assert intel['setup_autofill']['clamp_side'] == 'left'
+    assert intel['setup_autofill']['clamp_diameter'] == 60.0
+    assert intel['setup_autofill']['clamp_length'] == 5.0
+    assert intel['setup_autofill']['axial_allowance'] == 0.0
+    assert intel['setup_autofill']['protect_clamp_zone'] is True
+    assert intel['setup_autofill']['processing_order'] == 'from_clamp_to_free'
+    assert intel['setup_autofill']['visual_mirror'] is True
     assert [item['length'] for item in intel['axial_segments']] == [8.0, 22.0]
     assert [item['name'] for item in intel['axial_segments']] == ['Расточка Ø30', 'Отверстие Ø12,2 до уступа']
     assert intel['dimension_chain']['matches'] is True
@@ -137,3 +144,15 @@ def test_uploaded_dpk_pdf_regression_exact_file():
     assert intel['cam_autofill']['radialDrilling']['enabled'] is False
     assert intel['cam_autofill']['millingAf']['enabled'] is False
     assert intel['cam_autofill']['millingPocket']['enabled'] is False
+    assert intel['setup_autofill'] == {
+        'clamp_side': 'left',
+        'clamp_diameter': 60.0,
+        'clamp_length': 5.0,
+        'axial_allowance': 0.0,
+        'protect_clamp_zone': True,
+        'processing_order': 'from_clamp_to_free',
+        'visual_mirror': True,
+        'base_reference': 'clamp_face',
+        'source': 'user_required_diameter_drawing_inferred_length',
+        'note': 'Ø60 в патроне слева задан пользователем. Длина 5 мм получена из длины фланца на чертеже и должна быть подтверждена по фактическим кулачкам. Обработка открытого профиля начинается у границы зажима и продолжается к свободному торцу.',
+    }

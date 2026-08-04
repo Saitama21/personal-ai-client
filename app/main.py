@@ -38,7 +38,7 @@ MOCK_MODE = os.getenv("MOCK_MODE", "false").strip().lower() in {"1", "true", "ye
 OPENAI_MODE = os.getenv("OPENAI_MODE", "live").strip().lower()
 OPENAI_CONFIGURED = bool(os.getenv("OPENAI_API_KEY", "").strip())
 KEEP_OPENAI_FILES = os.getenv("KEEP_OPENAI_FILES", "false").strip().lower() in {"1", "true", "yes", "on"}
-APP_VERSION = os.getenv("APP_VERSION", "4.8.1-dpk-recognition")
+APP_VERSION = os.getenv("APP_VERSION", "4.8.2-clamp-setup-simulation")
 DEPLOY_COMMIT = os.getenv("RAILWAY_GIT_COMMIT_SHA", os.getenv("GIT_COMMIT", "local"))
 
 logging.basicConfig(
@@ -388,6 +388,18 @@ def enrich_drawing_intelligence_from_profile(
                 "radial_drilling": {"applicable": False, "source": "drawing_profile", "reason": "Радиальные отверстия, PCD и угловые размеры C на чертеже отсутствуют."},
                 "af_milling": {"applicable": False, "source": "drawing_profile", "reason": "AF, лыски и многоугольник на чертеже отсутствуют."},
                 "pocket_milling": {"applicable": False, "source": "drawing_profile", "reason": "Карманы, пазы и неосесимметричные элементы на чертеже отсутствуют."},
+            },
+            "setup_autofill": {
+                "clamp_side": "left",
+                "clamp_diameter": 60.0,
+                "clamp_length": 5.0,
+                "axial_allowance": 0.0,
+                "protect_clamp_zone": True,
+                "processing_order": "from_clamp_to_free",
+                "visual_mirror": True,
+                "base_reference": "clamp_face",
+                "source": "user_required_diameter_drawing_inferred_length",
+                "note": "Ø60 в патроне слева задан пользователем. Длина 5 мм получена из длины фланца на чертеже и должна быть подтверждена по фактическим кулачкам. Обработка открытого профиля начинается у границы зажима и продолжается к свободному торцу.",
             },
             "cam_autofill": {
                 "drilling": {
@@ -1005,6 +1017,9 @@ def infer_local_drawing_profile(raw: bytes | None, text: str = "") -> dict[str, 
             "chamfer": "1×45°",
             "general_tolerances": ["H14", "h14", "±IT14/2"],
             "recommended_mode": "lathe",
+            "recommended_clamp_side": "left",
+            "recommended_clamp_diameter": 60.0,
+            "recommended_clamp_length": 5.0,
         }
 
     fingerprint = image_dhash(raw or b"")
