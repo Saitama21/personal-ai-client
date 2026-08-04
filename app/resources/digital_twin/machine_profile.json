@@ -1,0 +1,87 @@
+{
+  "profile_id": "ck52dwy_sinumerik828d_v1",
+  "name": "CK52DWY / SINUMERIK 828D",
+  "manufacturer": "DONGGUAN XINRUI INTELLIGENT TECHNOLOGY CO., LTD.",
+  "digital_twin_version": "1.0.0",
+  "status": "partial_operational_twin",
+  "control": {
+    "family": "SINUMERIK 828D",
+    "variant": "828D-TE42",
+    "cnc_software": "V04.95 + SP03 + HF02",
+    "internal_version": "04.95.03.02.003",
+    "operate_version": "04.95.03.04",
+    "sinamics": "05.20.73.41"
+  },
+  "plc": {
+    "project": "HT_20250827_SP4.ptp",
+    "date": "2026-03-19",
+    "time": "15:38"
+  },
+  "configuration": {
+    "machine_type": "TC - токарный центр",
+    "axes": {
+      "X": "confirmed",
+      "Z": "confirmed",
+      "Y": "confirmed_in_MCS",
+      "C": "panel_and_OEM_provision_confirmed_limits_unknown",
+      "A": "panel_key_only_not_confirmed",
+      "sixth_axis": "panel_key_only_not_confirmed"
+    },
+    "turret": {
+      "positions": 15,
+      "status": "confirmed_from_tool_list"
+    },
+    "tailstock": {
+      "jog_control": true,
+      "status": "OEM_control_present_commands_unknown"
+    },
+    "driven_tools": {
+      "controls_present": true,
+      "status": "provision_confirmed_limits_unknown"
+    },
+    "tool_probe": {
+      "extend_retract_control": true,
+      "status": "control_present"
+    },
+    "spindle_brake": {
+      "control_present": true,
+      "status": "control_present"
+    }
+  },
+  "evidence_counts": {
+    "photos": 36,
+    "manuals": 6,
+    "manual_pages": 4973
+  },
+  "confirmed_by_photo": [
+    "OEM model CK52DWY",
+    "SINUMERIK 828D-TE42",
+    "CNC V04.95 SP03 HF02",
+    "X/Y/Z machine coordinates",
+    "15 tool locations",
+    "Tailstock Jog button",
+    "C-axis and driven-tool controls",
+    "OEM manufacturer cycles",
+    "SINAMICS runtime"
+  ],
+  "not_confirmed": [
+    "mechanical travel and soft limits",
+    "chuck dimensions and jaw envelope",
+    "turret body envelope",
+    "tailstock stroke/taper/thrust",
+    "spindle and live-tool power/speed limits",
+    "OEM M-codes",
+    "safe tool-change point",
+    "PLC interlocks and collision zones",
+    "full machine interior geometry"
+  ],
+  "release_policy": {
+    "shopturn_guidance": true,
+    "drawing_analysis": true,
+    "knowledge_assistance": true,
+    "automatic_mpf": false,
+    "automatic_oem_mcodes": false,
+    "collision_claims": false
+  },
+  "source_note": "Profile compiled from user-supplied machine photos, version screens and manuals. Unconfirmed values are never promoted to safe executable commands."
+}
