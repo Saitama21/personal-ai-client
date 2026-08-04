@@ -5,8 +5,8 @@ ROOT=Path(__file__).resolve().parents[1]
 def test_mobile_version():
     main=(ROOT/'app/main.py').read_text(encoding='utf-8')
     html=(ROOT/'app/static/index.html').read_text(encoding='utf-8')
-    assert '5.1.0-sinumerik-operate-ui' in main
-    assert 'v=5.1.0-sinumerik-operate-ui' in html
+    assert '6.0.0-professional' in main
+    assert 'v=6.0.0-professional' in html
 
 def test_mobile_layout_contract():
     css=(ROOT/'app/static/styles.css').read_text(encoding='utf-8')

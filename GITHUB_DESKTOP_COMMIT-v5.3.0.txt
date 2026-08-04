@@ -1,0 +1,10 @@
+Summary
+v5.3.0 Personal CNC OS operator center
+
+Description
+- Added Personal CNC OS home dashboard for Ivan
+- Added machine, project, tool and control status cards
+- Added quick actions for Drawing AI, projects, simulation, tools and AI Assistant
+- Added current job progress and personal machine memory
+- Preserved SINUMERIK Operate workflow and CK52PT-Y Digital Twin
+- Updated application branding and version to v5.3.0

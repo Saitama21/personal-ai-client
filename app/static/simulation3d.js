@@ -102,6 +102,28 @@
   function cylinder(radius, length, material, segments = 48) { const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, length, segments), material); mesh.rotation.z = Math.PI / 2; return mesh; }
   function metal(color = 0x697886, roughness = .38, metalness = .72) { return new THREE.MeshStandardMaterial({ color, roughness, metalness }); }
 
+
+  function createMachineInterior() {
+    const group = new THREE.Group(); group.name = 'CK52PT_Y_MACHINE_INTERIOR';
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0xc8d2d8, roughness: .62, metalness: .28, side: THREE.DoubleSide, transparent: true, opacity: .72 });
+    const darkMat = metal(0x23313a, .55, .5);
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(235, 4, 125), wallMat); floor.position.set(0, -52, 0); group.add(floor);
+    const rear = new THREE.Mesh(new THREE.BoxGeometry(235, 100, 4), wallMat); rear.position.set(0, 0, -58); group.add(rear);
+    const headstock = new THREE.Mesh(new THREE.BoxGeometry(42, 94, 98), darkMat); headstock.position.set(-82, -2, 0); group.add(headstock);
+    const slide = new THREE.Mesh(new THREE.BoxGeometry(120, 8, 64), metal(0x6c7c86, .48, .55)); slide.position.set(38, -43, 0); group.add(slide);
+    for (let i = 0; i < 5; i++) { const rail = new THREE.Mesh(new THREE.BoxGeometry(116, 2, 3), metal(0x94a2aa)); rail.position.set(38, -38, -22 + i * 11); group.add(rail); }
+    return group;
+  }
+
+  function createTailstockReference() {
+    const group = new THREE.Group(); group.name = 'HYDRAULIC_TAILSTOCK_REFERENCE';
+    const body = new THREE.Mesh(new THREE.BoxGeometry(38, 46, 46), new THREE.MeshStandardMaterial({ color: 0x53636e, roughness: .55, metalness: .45, transparent: true, opacity: .35 })); group.add(body);
+    const quill = cylinder(8, 25, new THREE.MeshStandardMaterial({ color: 0xb8c2c8, roughness: .3, metalness: .75, transparent: true, opacity: .45 })); quill.position.x = -29; group.add(quill);
+    group.position.set(sim.plan.input.blankLength / 2 + 92, -22, -34);
+    group.visible = false;
+    return group;
+  }
+
   function createThreeJawChuck() {
     const group = new THREE.Group(); group.name = 'REALISTIC_THREE_JAW_CHUCK_LEFT';
     const plan = sim.plan, setup = setupOf(plan), stockD = Number(plan.input.blankDiameter || 60), clampD = Number(setup.clampDiameter || stockD), zone = clampZone(plan);
@@ -171,6 +193,8 @@
     for (let i = 0; i < 15; i++) {
       const a = i * Math.PI * 2 / 15, station = new THREE.Mesh(new THREE.BoxGeometry(9, 7, 8), metal(i % 3 === 0 ? 0x788894 : 0x596873));
       station.position.set(0, 31 * Math.cos(a), 31 * Math.sin(a)); station.rotation.x = a; station.userData.station = i + 1; slide.add(station);
+      const c = document.createElement('canvas'); c.width = 64; c.height = 64; const cx = c.getContext('2d'); cx.fillStyle = '#102b3c'; cx.beginPath(); cx.arc(32,32,25,0,Math.PI*2); cx.fill(); cx.fillStyle = '#e8f7ff'; cx.font = 'bold 26px sans-serif'; cx.textAlign='center'; cx.textBaseline='middle'; cx.fillText(String(i+1),32,34);
+      const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false })); tag.scale.set(7,7,1); tag.position.set(7, 31 * Math.cos(a), 31 * Math.sin(a)); slide.add(tag);
     }
     const labelCanvas = document.createElement('canvas'); labelCanvas.width = 256; labelCanvas.height = 64; const ctx = labelCanvas.getContext('2d'); ctx.fillStyle = '#0a2336'; ctx.fillRect(0, 0, 256, 64); ctx.fillStyle = '#d9f4ff'; ctx.font = 'bold 28px sans-serif'; ctx.fillText('15 POS TURRET', 18, 42);
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(labelCanvas) })); sprite.scale.set(33, 8, 1); sprite.position.set(0, -38, 0); slide.add(sprite);
@@ -318,6 +342,8 @@
     sim.scene.add(new THREE.HemisphereLight(0xffffff, 0x203040, 1.4)); const key = new THREE.DirectionalLight(0xffffff, 1.5); key.position.set(60, 100, 120); sim.scene.add(key);
     const grid = new THREE.GridHelper(240, 24, 0x7b9bad, 0xb7c6ce); grid.rotation.x = Math.PI / 2; grid.position.z = -30; sim.scene.add(grid);
     const axis = new THREE.AxesHelper(35); axis.position.set(sim.plan.input.blankLength / 2 + 6, -sim.plan.input.blankDiameter / 2 - 12, 0); sim.scene.add(axis);
+    sim.scene.add(createMachineInterior());
+    sim.scene.add(createTailstockReference());
     sim.chuck = createThreeJawChuck(); sim.scene.add(sim.chuck);
     sim.clampZoneMesh = createProtectedClampZone(); if (sim.clampZoneMesh) sim.scene.add(sim.clampZoneMesh);
     sim.turret = createTurret(); sim.scene.add(sim.turret);

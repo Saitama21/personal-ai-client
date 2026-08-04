@@ -5,7 +5,7 @@ CSS=(ROOT/"app/static/styles.css").read_text(encoding="utf-8")
 APP=(ROOT/"app/static/app.js").read_text(encoding="utf-8")
 
 def test_operate_shell_sections():
-    for label in ["PROGRAM","DRAWING AI","CAM","TOOLS","STOCK","SIMULATION","MACHINE","DIAGNOSTICS","AI ASSISTANT","LIBRARY","EXPORT"]:
+    for label in ["ПРОГРАММА","ЧЕРТЕЖИ AI","CAM","ИНСТРУМЕНТЫ","ЗАГОТОВКА","СИМУЛЯЦИЯ","СТАНОК","ДИАГНОСТИКА","AI АССИСТЕНТ","БИБЛИОТЕКА","ЭКСПОРТ"]:
         assert label in HTML
 
 def test_operator_navigation_and_softkeys():

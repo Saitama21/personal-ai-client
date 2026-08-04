@@ -7,8 +7,8 @@ def test_clamp_setup_controls_and_version_are_shipped():
     app = (ROOT / 'app/static/app.js').read_text()
     html = (ROOT / 'app/static/index.html').read_text()
     sim = (ROOT / 'app/static/simulation3d.js').read_text()
-    assert '5.1.0-sinumerik-operate-ui' in app
-    assert 'v5.1.0 SINUMERIK Operate UI' in html
+    assert '6.0.0-professional' in app
+    assert 'v6.0.0 Professional' in html
     for token in ['clampDiameter', 'clampLength', 'protectClampZone', 'from_clamp_to_free', 'visualMirror']:
         assert token in app
     assert 'REALISTIC_THREE_JAW_CHUCK_LEFT' in sim

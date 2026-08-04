@@ -1,4 +1,4 @@
-# Personal AI Client PRO v5.1.0 — CK52PT-Y Professional Digital Twin
+# Personal AI Client PRO v5.2.0 — CK52PT-Y Professional Digital Twin
 
 # Personal AI Client PRO v4.8.2 — CK52PT-Y Clamp Setup Simulator
 
