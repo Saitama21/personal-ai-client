@@ -8,7 +8,7 @@ def test_digital_twin_summary_and_assets():
     assert summary["ok"] is True
     assert summary["counts"]["manuals"] == 6
     assert summary["counts"]["manual_pages"] == 4973
-    assert summary["counts"]["photos"] == 36
+    assert summary["counts"]["photos"] == 46
     assert summary["profile"]["configuration"]["turret"]["positions"] == 15
     assert summary["profile"]["release_policy"]["automatic_mpf"] is False
 
@@ -30,4 +30,4 @@ def test_exact_v495_tracyl_page_is_retrievable():
 def test_static_photo_gallery_bundled():
     root = Path(__file__).resolve().parents[1]
     photos = root / "app" / "static" / "digital_twin" / "photos"
-    assert len(list(photos.glob("*.jpg"))) == 36
+    assert len(list(photos.glob("*.jpg"))) == 46

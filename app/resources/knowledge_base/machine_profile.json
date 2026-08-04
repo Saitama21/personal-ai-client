@@ -1,8 +1,8 @@
 {
-  "profile_id": "tengyue_ck52dwy_828d_495",
-  "name": "Tengyue / Dongguan Xinrui CK52DWY",
-  "machine_type": "TC — токарный центр",
-  "manufacturer": "DONGGUAN XINRUI INTELLIGENT TECHNOLOGY CO., LTD.",
+  "profile_id": "tengyue_ck52pty_828d_495",
+  "name": "Zhongshan Tengyue CK52PT-Y",
+  "machine_type": "TCY — токарно-фрезерный центр с осью Y и C",
+  "manufacturer": "ZHONGSHAN TENGYUE NUMERICAL CONTROL TECHNOLOGY CO., LTD.",
   "control": {
     "family": "SINUMERIK 828D",
     "variant": "828D-TE42",
@@ -21,7 +21,8 @@
     "axes_displayed": [
       "X",
       "Y",
-      "Z"
+      "Z",
+      "C"
     ],
     "c_axis_panel_control": true,
     "driven_tool_controls": true,
@@ -45,15 +46,17 @@
       "Subprograms",
       "Workpieces"
     ],
-    "oem_cycles_present": true
+    "oem_cycles_present": true,
+    "tailstock_installed": true,
+    "chuck": "LEILIKA 03K10"
   },
   "capability_status": {
     "X": "confirmed",
     "Z": "confirmed",
     "Y": "confirmed_in_machine_coordinates",
-    "C": "panel_and_turn_mill_provision_confirmed_functional_limits_unknown",
-    "tailstock": "OEM_control_present_commands_unknown",
-    "driven_tools": "OEM_control_present_limits_unknown"
+    "C": "confirmed_in_machine_coordinates_MC1",
+    "tailstock": "installed_confirmed_commands_unknown",
+    "driven_tools": "installed_confirmed_limits_unknown"
   },
   "unknown_required_for_release": [
     "ходы и soft limits X/Z/Y/C",
@@ -72,5 +75,5 @@
     "automatic_mpf": false,
     "reason": "Паспортные лимиты, парковка и OEM M-коды не подтверждены."
   },
-  "evidence": "Составлено по фотографиям Version data, OEM-INFO, Hardware, Tool list и панели управления пользователя."
+  "evidence": "Составлено по шильдику CK52PT-Y, фото станка, PPU271.4, Version data, Tool List, MCS, револьвера, патрона и задней бабки."
 }

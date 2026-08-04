@@ -66,6 +66,18 @@ function applyTurningMove(state, from, to, fraction) {
   }
 }
 
+function applyCutoffMove(state, move, fraction, feature = {}) {
+  const currentDiameter = interpolate(move.from.x, move.to.x, fraction);
+  const cutRadius = Math.max(0, currentDiameter / 2);
+  const zPosition = Number(feature.zPosition ?? move.zPosition ?? move.to.z);
+  const bladeWidth = Math.max(0, Number(feature.bladeWidth ?? move.bladeWidth) || 0);
+  const halfWidth = bladeWidth / 2 + EPS;
+  for (const slice of state.odSlices) {
+    if (Math.abs(slice.z - zPosition) > halfWidth) continue;
+    slice.radius = Math.min(slice.radius, cutRadius);
+  }
+}
+
 function moveFraction(move, progress) {
   if (progress >= move.endProgress) return 1;
   if (progress <= move.startProgress) return 0;
@@ -80,6 +92,7 @@ export function simulateMaterial(plan, progress) {
     if (fraction <= 0) break;
     if (move.cutting && move.cutKind === 'face') applyFaceMove(state, move.from, move.to, fraction);
     if (move.cutting && move.cutKind === 'turn') applyTurningMove(state, move.from, move.to, fraction);
+    if (move.cutting && move.cutKind === 'cutoff') applyCutoffMove(state, move, fraction, plan.features?.cutoff);
     if (fraction < 1) break;
   }
   return state;

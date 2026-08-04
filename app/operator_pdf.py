@@ -356,6 +356,7 @@ def build_operator_pdf(snapshot: dict[str, Any]) -> bytes:
     thread_feature = cam_features.get("threading") if isinstance(cam_features.get("threading"), dict) else {}
     drill_feature = cam_features.get("drilling") if isinstance(cam_features.get("drilling"), dict) else {}
     af_feature = cam_features.get("millingAf") if isinstance(cam_features.get("millingAf"), dict) else {}
+    cutoff_feature = cam_features.get("cutoff") if isinstance(cam_features.get("cutoff"), dict) else {}
     warnings = []
     for key in ("warnings", "assumptions"):
         values = geometry.get(key, [])
@@ -429,6 +430,7 @@ def build_operator_pdf(snapshot: dict[str, Any]) -> bytes:
                 ["Длина резьбы", _fmt_number(fields.get("threadLength"), " мм")],
                 ["CAM резьба", f"{_safe(thread_feature.get('designation'))}; P={_safe(thread_feature.get('pitch'))}; Z={_safe(thread_feature.get('zStart'))}…{_safe(thread_feature.get('zEnd'))}" if thread_feature.get("enabled") else "Не включена"],
                 ["CAM сверление", f"Ø{_safe(drill_feature.get('diameter'))}; глубина {_safe(drill_feature.get('depth'))}; клевок {_safe(drill_feature.get('peckDepth'))}" if drill_feature.get("enabled") else "Не включено"],
+                ["CAM отрезка", f"Z={_safe(cutoff_feature.get('zPosition'))}; ширина {_safe(cutoff_feature.get('bladeWidth'))} мм; до X{_safe(cutoff_feature.get('finalDiameter'))}; S={_safe(cutoff_feature.get('rpm'))}; f={_safe(cutoff_feature.get('feedPerRev'))} мм/об" if cutoff_feature.get("enabled") else "Не включена"],
                 ["CAM AF", f"AF{_safe(af_feature.get('widthAcrossFlats'))}; {_safe(af_feature.get('sides'))} граней; Z={_safe(af_feature.get('zStart'))}…{_safe(af_feature.get('zEnd'))}" if af_feature.get("enabled") else "Не включено"],
                 ["Ступень", f"Ø{_fmt_number(fields.get('stepDiameter'))}, L={_fmt_number(fields.get('stepLength'), ' мм')}"],
                 ["Головка", f"Ø{_fmt_number(fields.get('headDiameter'))}, L={_fmt_number(fields.get('headLength'), ' мм')}"],

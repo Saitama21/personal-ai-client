@@ -256,12 +256,12 @@ def test_stock_removal_accepts_shopturn_tool_flow():
     body = response.json()
     assert body["shopturn"]["toolT"] == "1"
     assert body["shopturn"]["operation"] == "od_turn"
-    assert "Tengyue / Dongguan Xinrui CK52DWY" in body["response"]
+    assert "Zhongshan Tengyue CK52PT-Y" in body["response"]
 
 
 def test_health_reports_shopturn_feature():
     body = client.get("/api/health").json()
-    assert body["version"] == "4.6.2-dpk-cam-safety"
+    assert body["version"] == "4.6.3-cutoff"
     assert "shopturn_tool_flow" in body["features"]
 
 
@@ -567,7 +567,7 @@ def test_index_disables_browser_cache():
     response = client.get("/")
     assert response.status_code == 200
     assert "no-store" in response.headers.get("cache-control", "")
-    assert response.headers.get("x-app-version") == "4.6.2-dpk-cam-safety"
+    assert response.headers.get("x-app-version") == "4.6.3-cutoff"
 
 
 def test_static_assets_require_revalidation():
@@ -644,7 +644,7 @@ def test_operator_pdf_download_contains_confirmed_project_data():
         "finalizedAt": "2026-08-02T18:00:00+03:00",
         "done": [True] * 10,
         "simulationReviewed": True,
-        "machine": {"name": "Tengyue / Dongguan Xinrui CK52DWY", "control": "SINUMERIK 828D"},
+        "machine": {"name": "Zhongshan Tengyue CK52PT-Y", "control": "SINUMERIK 828D"},
         "fields": {
             "material": "AISI 304", "overallLength": "31", "blankDiameter": "16",
             "thread": "M8x1.25", "threadLength": "15", "stepDiameter": "10",

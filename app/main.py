@@ -38,7 +38,7 @@ MOCK_MODE = os.getenv("MOCK_MODE", "false").strip().lower() in {"1", "true", "ye
 OPENAI_MODE = os.getenv("OPENAI_MODE", "live").strip().lower()
 OPENAI_CONFIGURED = bool(os.getenv("OPENAI_API_KEY", "").strip())
 KEEP_OPENAI_FILES = os.getenv("KEEP_OPENAI_FILES", "false").strip().lower() in {"1", "true", "yes", "on"}
-APP_VERSION = os.getenv("APP_VERSION", "4.6.2-dpk-cam-safety")
+APP_VERSION = os.getenv("APP_VERSION", "4.6.3-cutoff")
 DEPLOY_COMMIT = os.getenv("RAILWAY_GIT_COMMIT_SHA", os.getenv("GIT_COMMIT", "local"))
 
 logging.basicConfig(
@@ -1260,7 +1260,7 @@ def parse_shopturn_payload(raw: str | None) -> tuple[dict[str, Any], str]:
     cleaned["threadSelection"] = data.get("threadSelection") if isinstance(data.get("threadSelection"), dict) else {}
     cleaned["chamfers"] = data.get("chamfers") if isinstance(data.get("chamfers"), list) else []
     machine = (
-        "Tengyue / Dongguan Xinrui CK52DWY / Siemens SINUMERIK 828D V4.95 ShopTurn"
+        "Zhongshan Tengyue CK52PT-Y / Siemens SINUMERIK 828D V4.95 ShopTurn"
         if cleaned.get("machineProfile") in {"tengyue_ck52dwy", "tengyue_ck52pty"}
         else cleaned.get("machineProfile", "не указан")
     )
@@ -1938,9 +1938,9 @@ def health() -> dict[str, Any]:
         "supported_types": ["JPG", "PNG", "WEBP", "PDF", "SLDDRW"],
         "version": APP_VERSION,
         "deploy_commit": DEPLOY_COMMIT[:12],
-        "machine_profile": "tengyue_ck52dwy_828d_495",
+        "machine_profile": "tengyue_ck52pty_828d_495",
         "knowledge_base": knowledge_summary()["counts"],
-        "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "drawing_region_selection", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52dwy_profile", "drawing_intelligence", "tolerance_detection", "metric_thread_catalog", "chamfer_marker", "multi_operation_route", "contour_mirroring", "history_project_restore", "mobile_history", "multi_operation_picker", "general_tolerance_h14_rule", "stock_mode_radio", "multi_checkbox_setup", "hybrid_turn_mill_mode", "chat_image_upload", "chat_region_selection", "split_chamfer_input", "toggleable_drawing_rules", "full_thread_library", "thread_library_filters", "engineering_layout_overflow_fix", "text_only_stock_plan", "safari_touch_hotfix", "machine_profile_autofill", "multiview_association", "af_flats_detection", "hybrid_stock_removal_split", "operator_pdf", "final_result_snapshot", "sinumerik_shopturn_guide", "local_knowledge_base", "knowledge_search", "source_trust_levels", "ck52dwy_machine_profile", "digital_twin", "manual_page_search", "manual_translation_cache", "translation_pdf_export", "photo_evidence_gallery"],
+        "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "drawing_region_selection", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52pty_profile", "drawing_intelligence", "tolerance_detection", "metric_thread_catalog", "chamfer_marker", "multi_operation_route", "contour_mirroring", "history_project_restore", "mobile_history", "multi_operation_picker", "general_tolerance_h14_rule", "stock_mode_radio", "multi_checkbox_setup", "hybrid_turn_mill_mode", "chat_image_upload", "chat_region_selection", "split_chamfer_input", "toggleable_drawing_rules", "full_thread_library", "thread_library_filters", "engineering_layout_overflow_fix", "text_only_stock_plan", "safari_touch_hotfix", "machine_profile_autofill", "multiview_association", "af_flats_detection", "hybrid_stock_removal_split", "operator_pdf", "final_result_snapshot", "sinumerik_shopturn_guide", "local_knowledge_base", "knowledge_search", "source_trust_levels", "ck52pty_machine_profile", "digital_twin", "manual_page_search", "manual_translation_cache", "translation_pdf_export", "photo_evidence_gallery"],
     }
 
 

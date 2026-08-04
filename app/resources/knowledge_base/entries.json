@@ -421,5 +421,27 @@
     },
     "trust": "project_policy",
     "safety": "hard_block"
+  },
+  {
+    "id": "cutoff_operation",
+    "category": "shopturn",
+    "title": "Отрезка / Cutoff на токарном станке",
+    "summary": "Отрезка выполняется последней операцией радиальным движением X при фиксированном Z. До расчёта необходимо подтвердить координату Z, ширину пластины, конечный X, обороты, подачу и свободную зону относительно кулачков, задней бабки и державки.",
+    "keywords": [
+      "отрезка",
+      "отрезание",
+      "cutoff",
+      "cut off",
+      "parting",
+      "прорезка",
+      "отрезной резец",
+      "ShopTurn"
+    ],
+    "source": {
+      "type": "project_cam_policy",
+      "profile": "CK52DWY / SINUMERIK 828D V4.95"
+    },
+    "trust": "project_policy",
+    "safety": "operator_confirmation_required"
   }
 ]

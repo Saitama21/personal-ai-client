@@ -100,6 +100,23 @@ function normalizeAf(raw = {}) {
   };
 }
 
+function normalizeCutoff(raw = {}, input) {
+  const defaultZ = input.blankLength > 0 ? -input.blankLength : null;
+  return {
+    enabled: enabled(raw.enabled),
+    zPosition: finiteNumber(raw.zPosition, defaultZ),
+    bladeWidth: finiteNumber(raw.bladeWidth, null),
+    finalDiameter: finiteNumber(raw.finalDiameter, null),
+    sourceDiameter: finiteNumber(raw.sourceDiameter, null),
+    radialClearance: finiteNumber(raw.radialClearance, 2),
+    axialClearance: finiteNumber(raw.axialClearance, 2),
+    rpm: finiteNumber(raw.rpm, null),
+    feedPerRev: finiteNumber(raw.feedPerRev, null),
+    safetyConfirmed: enabled(raw.safetyConfirmed),
+    toolId: String(raw.toolId || 'T7'),
+  };
+}
+
 function normalizeEnvelope(raw = {}, defaults = {}) {
   return {
     radius: finiteNumber(raw.radius, defaults.radius),
@@ -143,6 +160,7 @@ function normalizeMachine(raw = {}, input) {
       threading: normalizeEnvelope(raw.envelopes?.threading, { radius: null, cuttingReach: null, gaugeLength: null }),
       drilling: normalizeEnvelope(raw.envelopes?.drilling, { radius: null, cuttingReach: null, gaugeLength: null }),
       millingAf: normalizeEnvelope(raw.envelopes?.millingAf, { radius: null, cuttingReach: null, gaugeLength: null }),
+      cutoff: normalizeEnvelope(raw.envelopes?.cutoff, { radius: null, cuttingReach: null, gaugeLength: null }),
     },
   };
 }
@@ -172,6 +190,7 @@ export function normalizeFeatureContracts(raw = {}, input) {
     threading: normalizeThread(features.threading || features.thread || {}, input),
     drilling: normalizeDrilling(features.drilling || {}, input),
     millingAf: normalizeAf(features.millingAf || features.af || {}),
+    cutoff: normalizeCutoff(features.cutoff || features.parting || {}, input),
     machineSetup: normalizeMachine(machineRaw, input),
     postprocessor: normalizePost(postRaw),
   };

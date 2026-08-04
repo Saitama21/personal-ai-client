@@ -41,6 +41,8 @@
     finalVolume: 0,
     currentVolume: 0,
     loopGeneration: 0,
+    viewMode: 'shopturn',
+    toolKind: null,
   };
 
   function camApi() {
@@ -101,9 +103,10 @@
       ['Токарное наружное X/Z', plan.capabilities.turningXZ.status, plan.capabilities.turningXZ.scope],
       ['Съём материала', plan.capabilities.materialRemoval.status, plan.capabilities.materialRemoval.scope],
       ['Оси X / Z', `${axes.X} / ${axes.Z}`, 'X в диаметрах, Z0 по правому торцу'],
-      ['Оси C / Y', `${axes.C} / ${axes.Y}`, 'Не участвуют в исполняемом плане'],
+      ['Оси C / Y', `${axes.C} / ${axes.Y}`, 'Используются для индексного фрезерования при наличии валидного маршрута'],
       ['Наружная резьба', plan.capabilities.threading.status, plan.capabilities.threading.scope],
       ['Осевое сверление', plan.capabilities.drilling.status, plan.capabilities.drilling.scope],
+      ['Отрезка / Cutoff', plan.capabilities.cutoff.status, plan.capabilities.cutoff.scope],
       ['Фрезерование / AF', plan.capabilities.milling.status, plan.capabilities.milling.scope],
       ['Коллизии', plan.collision.status, plan.collision.message],
       ['SINUMERIK 828D MPF', plan.postprocessor.status, plan.postprocessor.errors?.map(item => item.message).join(' ') || plan.capabilities.postprocessor.scope],
@@ -319,6 +322,7 @@
       }
       buildThreadHelix(materialState, sim.materialMesh);
       sim.scene.add(sim.materialMesh);
+      if (sim.viewMode === 'xray') setViewMode('xray');
     }
     updateToolAndTelemetry();
   }
@@ -376,20 +380,72 @@
     const chuckMaterial = new THREE.MeshStandardMaterial({ color: 0x283743, metalness: 0.85, roughness: 0.34 });
     sim.chuck = new THREE.Mesh(new THREE.CylinderGeometry(plan.input.blankDiameter * 0.62, plan.input.blankDiameter * 0.62, 16, 48), chuckMaterial);
     sim.chuck.rotation.z = Math.PI / 2;
-    sim.chuck.position.x = -plan.input.blankLength / 2 - 11;
+    sim.chuck.position.x = plan.input.blankLength / 2 + 11;
     sim.scene.add(sim.chuck);
-    const toolGroup = new THREE.Group();
-    const holder = new THREE.Mesh(new THREE.BoxGeometry(25, 6, 7), new THREE.MeshStandardMaterial({ color: 0x354650, metalness: 0.75, roughness: 0.32 }));
-    holder.position.x = 12;
-    const insert = new THREE.Mesh(new THREE.ConeGeometry(3.8, 6.4, 3), new THREE.MeshStandardMaterial({ color: 0xf2b84a, metalness: 0.45, roughness: 0.24 }));
-    insert.rotation.z = Math.PI / 2;
-    insert.position.x = -2.5;
-    toolGroup.add(holder, insert);
-    toolGroup.rotation.z = Math.PI;
-    sim.tool = toolGroup;
-    sim.scene.add(toolGroup);
+    sim.tool = new THREE.Group();
+    sim.scene.add(sim.tool);
+    rebuildToolVisual('turn');
   }
 
+
+  function toolKindForMove(move) {
+    if (!move) return 'turn';
+    if (move.cutKind === 'drill_axial') return 'drill';
+    if (move.cutKind === 'mill_af' || move.motion === 'index') return 'mill';
+    if (move.cutKind === 'cutoff') return 'cutoff';
+    if (move.cutKind === 'thread_external') return 'thread';
+    return 'turn';
+  }
+
+  function clearGroup(group) {
+    if (!group) return;
+    while (group.children.length) disposeObject(group.children[0]);
+  }
+
+  function rebuildToolVisual(kind) {
+    if (!sim.tool || sim.toolKind === kind) return;
+    sim.toolKind = kind;
+    clearGroup(sim.tool);
+    const steel = new THREE.MeshStandardMaterial({ color: 0x354650, metalness: 0.78, roughness: 0.3 });
+    const carbide = new THREE.MeshStandardMaterial({ color: 0xf2b84a, metalness: 0.5, roughness: 0.22 });
+    if (kind === 'drill') {
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.6, 34, 28), steel);
+      body.rotation.z = Math.PI / 2; body.position.x = -12;
+      const tip = new THREE.Mesh(new THREE.ConeGeometry(2.7, 6, 28), carbide);
+      tip.rotation.z = -Math.PI / 2; tip.position.x = 8;
+      sim.tool.add(body, tip);
+    } else if (kind === 'mill') {
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(3.3, 3.3, 28, 32), steel);
+      body.position.y = 12;
+      const cutter = new THREE.Mesh(new THREE.CylinderGeometry(4.1, 4.1, 10, 20), carbide);
+      cutter.position.y = -7;
+      sim.tool.add(body, cutter);
+    } else if (kind === 'cutoff') {
+      const holder = new THREE.Mesh(new THREE.BoxGeometry(24, 7, 8), steel); holder.position.x = 10;
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(11, 1.8, 8), carbide); blade.position.x = -7;
+      sim.tool.add(holder, blade); sim.tool.rotation.z = Math.PI;
+    } else {
+      const holder = new THREE.Mesh(new THREE.BoxGeometry(25, 6, 7), steel); holder.position.x = 12;
+      const insert = new THREE.Mesh(new THREE.ConeGeometry(3.8, 6.4, 3), carbide);
+      insert.rotation.z = Math.PI / 2; insert.position.x = -2.5;
+      sim.tool.add(holder, insert); sim.tool.rotation.z = Math.PI;
+    }
+  }
+
+  function setViewMode(mode) {
+    sim.viewMode = mode;
+    ['simShopTurnView','simOrbitView','simXrayView'].forEach(id => $(id)?.classList.toggle('active',
+      (id === 'simShopTurnView' && mode === 'shopturn') || (id === 'simOrbitView' && mode === 'orbit') || (id === 'simXrayView' && mode === 'xray')));
+    if (mode === 'shopturn') { sim.yaw = 0; sim.pitch = 0.06; sim.distance = 155; }
+    if (mode === 'orbit') { sim.yaw = -0.72; sim.pitch = 0.36; sim.distance = 145; }
+    if (sim.materialMesh) sim.materialMesh.traverse(child => {
+      if (child.material && 'transparent' in child.material) {
+        child.material.transparent = mode === 'xray';
+        child.material.opacity = mode === 'xray' ? 0.42 : 1;
+        child.material.depthWrite = mode !== 'xray';
+      }
+    });
+  }
   function clearSceneRuntime() {
     [sim.materialMesh, sim.targetMesh, sim.rapidPath, sim.cutPath, sim.collisionMarkers, sim.tool, sim.chuck, sim.grid].forEach(disposeObject);
     sim.materialMesh = null;
@@ -492,6 +548,11 @@
 
   function cameraUpdate() {
     if (!sim.camera) return;
+    if (sim.viewMode === 'shopturn') {
+      sim.camera.position.set(0, 2, sim.distance);
+      sim.camera.lookAt(0, 0, 0);
+      return;
+    }
     const cp = Math.cos(sim.pitch);
     sim.camera.position.set(Math.cos(sim.yaw) * cp * sim.distance, Math.sin(sim.pitch) * sim.distance, Math.sin(sim.yaw) * cp * sim.distance);
     sim.camera.lookAt(0, 0, 0);
@@ -516,14 +577,14 @@
     if (!sim.plan?.executable) return;
     const api = camApi();
     const point = api.toolPointAt(sim.plan, sim.progress);
-    if (point && sim.tool) sim.tool.position.copy(worldPoint(sim.plan, point, 0.55));
+    if (point && sim.tool) { rebuildToolVisual(toolKindForMove(point.move)); sim.tool.position.copy(worldPoint(sim.plan, point, 0.55)); }
     const operationIndex = point?.operation ? sim.plan.operations.findIndex(operation => operation.id === point.operation.id) : -1;
     const next = operationIndex >= 0 ? sim.plan.operations[operationIndex + 1] : sim.plan.operations[0];
     const removed = Math.max(0, sim.initialVolume - sim.currentVolume);
     const totalRemoved = Math.max(0, sim.initialVolume - sim.finalVolume);
     const set = (id, value) => { const element = $(id); if (element) element.textContent = value; };
     set('simCurrentOperation', point?.operation?.name || 'Подготовка');
-    set('simCurrentTool', point?.move ? `${point.move.motion === 'rapid' ? 'G0' : 'G1'} · ${point.move.role}` : '—');
+    set('simCurrentTool', point?.move ? `${toolKindForMove(point.move).toUpperCase()} · ${point.move.motion === 'rapid' ? 'G0' : point.move.motion === 'index' ? 'C INDEX' : 'G1'} · ${point.move.role}` : '—');
     set('simVc', point ? fmt(point.x, 2) : '—');
     set('simRpm', point ? fmt(point.z, 2) : '—');
     set('simFeed', point?.move?.feedRate ? `${fmt(point.move.feedRate, 1)} мм/мин` : 'быстрый ход');
@@ -586,6 +647,10 @@
     };
     if ($('simPrevStepBtn')) $('simPrevStepBtn').onclick = () => operationStep(-1);
     if ($('simNextStepBtn')) $('simNextStepBtn').onclick = () => operationStep(1);
+    if ($('simShopTurnView')) $('simShopTurnView').onclick = () => setViewMode('shopturn');
+    if ($('simOrbitView')) $('simOrbitView').onclick = () => setViewMode('orbit');
+    if ($('simXrayView')) $('simXrayView').onclick = () => setViewMode('xray');
+    if ($('simFitView')) $('simFitView').onclick = () => { sim.distance = sim.viewMode === 'shopturn' ? 155 : 145; };
   }
 
   function renderPreflight() {

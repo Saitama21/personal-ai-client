@@ -142,7 +142,7 @@ def build_twin_context(query: str, *, limit: int = 5) -> str:
     control = profile.get("control", {})
     config = profile.get("configuration", {})
     lines = [
-        "ЦИФРОВОЙ ДВОЙНИК CK52DWY / SINUMERIK 828D:",
+        "ЦИФРОВОЙ ДВОЙНИК CK52PT-Y / SINUMERIK 828D:",
         f"- Профиль: {profile.get('name')}; версия двойника {profile.get('digital_twin_version')}; состояние {profile.get('status')}.",
         f"- Стойка: {control.get('family')} {control.get('variant')}, CNC {control.get('cnc_software')}.",
         f"- Оси: {json.dumps(config.get('axes', {}), ensure_ascii=False)}.",

@@ -11,6 +11,7 @@ import { normalizeFeatureContracts } from './feature-contracts.mjs';
 import { planDrilling } from './drilling-planner.mjs';
 import { planThreading } from './threading-planner.mjs';
 import { planAfMilling } from './af-milling-planner.mjs';
+import { planCutoff } from './cutoff-planner.mjs';
 import {
   createFeatureMaterialModel, featureRemovedVolume, radialBoundaryAt,
   simulateFeatureMaterial,
@@ -31,6 +32,7 @@ function encounteredFeatures(input, features, route = []) {
     milling: features.millingAf.enabled || Boolean(input.afContour.length || secondary.length || route.some(item => item.kind === 'milling')),
     drilling: features.drilling.enabled || Boolean(holes.length || route.some(item => item.kind === 'drilling')),
     threading: features.threading.enabled || route.some(item => item.kind === 'threading'),
+    cutoff: features.cutoff.enabled || route.some(item => item.kind === 'cutoff'),
   };
 }
 
@@ -105,7 +107,7 @@ export function materialVolume(state) {
 
 function blockedFeatureErrors(features, results) {
   const errors = [];
-  for (const [key, result] of [['threading', results.threading], ['drilling', results.drilling], ['millingAf', results.millingAf]]) {
+  for (const [key, result] of [['threading', results.threading], ['drilling', results.drilling], ['millingAf', results.millingAf], ['cutoff', results.cutoff]]) {
     if (features[key].enabled && result.status === CAM_STATUS.BLOCKED) errors.push(...result.errors);
   }
   return errors;
@@ -118,23 +120,29 @@ export function buildCamPlan(rawInput, providers = {}) {
   const threading = planThreading(input, features.threading);
   const drilling = planDrilling(input, features.drilling);
   const millingAf = planAfMilling(input, features.millingAf);
-  const plannerResults = { threading, drilling, millingAf };
+  const cutoff = planCutoff(input, features.cutoff);
+  const plannerResults = { threading, drilling, millingAf, cutoff };
   const provisionalRoute = routeCapabilityReport(input.route);
   const encountered = encounteredFeatures(input, features, provisionalRoute);
   const routeReport = routeCapabilityReport(input.route, {
     threading: threading.status === CAM_STATUS.SUPPORTED,
     drilling: drilling.status === CAM_STATUS.SUPPORTED,
     millingAf: millingAf.status === CAM_STATUS.SUPPORTED,
+    cutoff: cutoff.status === CAM_STATUS.SUPPORTED,
   });
   const unsupportedOperations = routeReport.filter(item => item.status === CAM_STATUS.NOT_IMPLEMENTED);
+  const cutoffRouteIndex = routeReport.findIndex(item => item.kind === 'cutoff');
+  const routeOrderErrors = cutoffRouteIndex >= 0 && cutoffRouteIndex !== routeReport.length - 1
+    ? [issue('CUTOFF_MUST_BE_LAST', 'Отрезка должна быть последней операцией технологического маршрута.', 'error', 'route')]
+    : [];
   const featureErrors = blockedFeatureErrors(features, plannerResults);
-  const geometryErrors = [...turning.errors, ...featureErrors];
-  const geometryExecutable = turning.status === CAM_STATUS.SUPPORTED && featureErrors.length === 0;
+  const geometryErrors = [...turning.errors, ...featureErrors, ...routeOrderErrors];
+  const geometryExecutable = turning.status === CAM_STATUS.SUPPORTED && geometryErrors.length === 0;
   const merged = geometryExecutable
-    ? mergeExecutablePlans(input, [turning, threading, drilling, millingAf])
+    ? mergeExecutablePlans(input, [turning, threading, drilling, millingAf, cutoff])
     : { operations: [], moves: [] };
   const warnings = [
-    ...turning.warnings, ...threading.warnings, ...drilling.warnings, ...millingAf.warnings,
+    ...turning.warnings, ...threading.warnings, ...drilling.warnings, ...millingAf.warnings, ...cutoff.warnings,
   ];
   if (unsupportedOperations.length) warnings.push(issue('ROUTE_PARTIALLY_UNSUPPORTED', 'Маршрут содержит операции вне рассчитанного подмножества; выпуск MPF заблокирован.', 'warning', 'route'));
   const plan = {
@@ -143,7 +151,7 @@ export function buildCamPlan(rawInput, providers = {}) {
     input, features,
     machineSetup: features.machineSetup,
     postConfig: features.postprocessor,
-    turning, threading, drilling, millingAf, milling: millingAf,
+    turning, threading, drilling, millingAf, milling: millingAf, cutoff,
     routeReport, unsupportedOperations, warnings, errors: geometryErrors,
     operations: merged.operations, moves: merged.moves,
     materialModel: turning.materialModel,

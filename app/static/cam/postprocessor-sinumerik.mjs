@@ -19,6 +19,7 @@ function toolForOperation(plan, operation) {
   if (operation.kind === 'threading') return plan.threading.feature.toolId;
   if (operation.kind === 'drilling') return plan.drilling.feature.toolId;
   if (operation.kind === 'milling_af') return plan.millingAf.feature.toolId;
+  if (operation.kind === 'cutoff') return plan.cutoff.feature.toolId;
   return operation.kind === 'finish_turning' ? 'T2' : 'T1';
 }
 
@@ -79,7 +80,8 @@ export class Sinumerik828DPostprocessor {
         const rpm = operation.kind === 'threading' ? plan.threading.feature.rpm
           : operation.kind === 'drilling' ? plan.drilling.feature.rpm
             : operation.kind === 'milling_af' ? plan.millingAf.feature.rpm
-              : plan.turning.parameters.rpm;
+              : operation.kind === 'cutoff' ? plan.cutoff.feature.rpm
+                : plan.turning.parameters.rpm;
         if (operation.kind === 'milling_af') {
           emit(config.liveToolOn.replaceAll('{RPM}', ncNumber(rpm, 0)), { role: 'live_tool_on', rpm });
           liveToolActive = true;
@@ -137,6 +139,7 @@ export class Sinumerik828DPostprocessor {
         'G33 longitudinal thread pitch is emitted in K.',
         'C-indexing is emitted with blocking SPOS=AC positioning.',
         'Peck drilling is expanded into deterministic G0/G1 moves to avoid cycle-version ambiguity.',
+        'Cutoff is emitted as a deterministic radial G1 move at a fixed Z and must remain the last route operation.',
       ],
     };
   }

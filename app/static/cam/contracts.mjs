@@ -28,6 +28,7 @@ export function classifyRouteOperation(name = '') {
   if (/фрез|mill|af\b|лыск|шестиг|карман|паз|индексац.*c/.test(value)) return 'milling';
   if (/сверл|drill|расточ.*отверст|метчик|tap/.test(value)) return 'drilling';
   if (/резьб|thread|нарезан/.test(value)) return 'threading';
+  if (/отрез|cut\s*off|cutoff|parting|прорез/.test(value)) return 'cutoff';
   if (/торцев|facing/.test(value)) return 'facing';
   if (/чернов.*точ|rough.*turn|наружн.*чернов/.test(value)) return 'rough_turning';
   if (/чистов.*точ|finish.*turn|наружн.*чистов|фаск|chamfer/.test(value)) return 'finish_turning';
@@ -39,6 +40,7 @@ export function capabilityMatrix(encountered = {}, results = {}) {
   const drillingStatus = results.drilling?.status || (encountered.drilling ? CAM_STATUS.BLOCKED : CAM_STATUS.NOT_IMPLEMENTED);
   const threadingStatus = results.threading?.status || (encountered.threading ? CAM_STATUS.BLOCKED : CAM_STATUS.NOT_IMPLEMENTED);
   const millingStatus = results.millingAf?.status || (encountered.milling ? CAM_STATUS.BLOCKED : CAM_STATUS.NOT_IMPLEMENTED);
+  const cutoffStatus = results.cutoff?.status || (encountered.cutoff ? CAM_STATUS.BLOCKED : CAM_STATUS.NOT_IMPLEMENTED);
   return {
     turningXZ: {
       status: CAM_STATUS.SUPPORTED,
@@ -46,10 +48,11 @@ export function capabilityMatrix(encountered = {}, results = {}) {
     },
     materialRemoval: {
       status: CAM_STATUS.SUPPORTED,
-      scope: 'Детерминированная 3D-модель: X/Z, осевое отверстие, резьба и индексируемые AF-грани',
+      scope: 'Детерминированная 3D-модель: X/Z, осевое отверстие, резьба, отрезка и индексируемые AF-грани',
     },
     drilling: { status: drillingStatus, scope: 'Осевой стружкодробящий цикл; радиальное сверление заблокировано' },
     threading: { status: threadingStatus, scope: 'Наружная метрическая 60°, синхронные X/Z-проходы G33' },
+    cutoff: { status: cutoffStatus, scope: 'Радиальная отрезка/прорезка в фиксированной координате Z; выполняется последней операцией' },
     milling: {
       status: millingStatus,
       encountered: Boolean(encountered.milling),
@@ -122,6 +125,7 @@ export function routeCapabilityReport(route = [], support = {}) {
     }
     const supported = (kind === 'threading' && support.threading)
       || (kind === 'drilling' && support.drilling)
+      || (kind === 'cutoff' && support.cutoff)
       || (kind === 'milling' && support.millingAf && /af(?:\b|\s*\d)|гран|шестиг|лыск/i.test(operation.name));
     if (supported) return { ...operation, kind, status: CAM_STATUS.SUPPORTED };
     return {
@@ -134,6 +138,8 @@ export function routeCapabilityReport(route = [], support = {}) {
           ? 'Не задана или не прошла валидацию модель резьбы'
           : kind === 'drilling'
             ? 'Не задана или не прошла валидацию модель осевого сверления'
+            : kind === 'cutoff'
+              ? 'Не заданы или не подтверждены параметры отрезки'
             : kind === 'inspection'
               ? 'Измерительный цикл и модель щупа не реализованы'
             : 'Тип операции не распознан как поддерживаемое наружное точение',

@@ -11,7 +11,7 @@ def test_knowledge_base_summary_and_machine_profile():
     assert summary["counts"]["total_entries"] >= 130
 
     machine = load_knowledge_base()["machine"]
-    assert "CK52DWY" in machine["name"]
+    assert "CK52PT-Y" in machine["name"]
     assert machine["control"]["family"] == "SINUMERIK 828D"
     assert "V04.95" in machine["control"]["cnc_software"]
     assert machine["release_policy"]["automatic_mpf"] is False

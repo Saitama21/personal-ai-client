@@ -501,5 +501,145 @@
       "digital_twin",
       "machine_profile"
     ]
+  },
+  {
+    "id": "CK52PTY_01_nameplate",
+    "filename": "CK52PTY_01_nameplate.jpg",
+    "url": "/static/digital_twin/photos/CK52PTY_01_nameplate.jpg",
+    "label": "Шильдик станка CK52PT-Y",
+    "category": "machine",
+    "width": 1178,
+    "height": 1571,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "CK52PTY_02_overview",
+    "filename": "CK52PTY_02_overview.jpg",
+    "url": "/static/digital_twin/photos/CK52PTY_02_overview.jpg",
+    "label": "Общий вид станка Tengyue CK52PT-Y",
+    "category": "machine",
+    "width": 1178,
+    "height": 1571,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "CK52PTY_03_ppu271",
+    "filename": "CK52PTY_03_ppu271.jpg",
+    "url": "/static/digital_twin/photos/CK52PTY_03_ppu271.jpg",
+    "label": "Шильдик SINUMERIK 828D PPU271.4",
+    "category": "control",
+    "width": 1152,
+    "height": 1536,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "CK52PTY_04_version",
+    "filename": "CK52PTY_04_version.jpg",
+    "url": "/static/digital_twin/photos/CK52PTY_04_version.jpg",
+    "label": "Версия CNC V04.95 SP03 HF02",
+    "category": "control",
+    "width": 1178,
+    "height": 1571,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "CK52PTY_05_tool_list",
+    "filename": "CK52PTY_05_tool_list.jpg",
+    "url": "/static/digital_twin/photos/CK52PTY_05_tool_list.jpg",
+    "label": "Tool List: 15 позиций револьвера",
+    "category": "tooling",
+    "width": 1178,
+    "height": 1571,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "CK52PTY_06_xyz_g54",
+    "filename": "CK52PTY_06_xyz_g54.jpg",
+    "url": "/static/digital_twin/photos/CK52PTY_06_xyz_g54.jpg",
+    "label": "Экран WCS: X/Y/Z и G54",
+    "category": "axes",
+    "width": 1178,
+    "height": 1571,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "CK52PTY_07_turret",
+    "filename": "CK52PTY_07_turret.jpg",
+    "url": "/static/digital_twin/photos/CK52PTY_07_turret.jpg",
+    "label": "15-позиционный револьвер и приводные блоки",
+    "category": "tooling",
+    "width": 1178,
+    "height": 1571,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "CK52PTY_08_chuck",
+    "filename": "CK52PTY_08_chuck.jpg",
+    "url": "/static/digital_twin/photos/CK52PTY_08_chuck.jpg",
+    "label": "Трёхкулачковый патрон LEILIKA 03K10",
+    "category": "machine",
+    "width": 1178,
+    "height": 1571,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "CK52PTY_09_tailstock",
+    "filename": "CK52PTY_09_tailstock.jpg",
+    "url": "/static/digital_twin/photos/CK52PTY_09_tailstock.jpg",
+    "label": "Задняя бабка",
+    "category": "machine",
+    "width": 1178,
+    "height": 1571,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
+  },
+  {
+    "id": "CK52PTY_10_mcs_caxis",
+    "filename": "CK52PTY_10_mcs_caxis.jpg",
+    "url": "/static/digital_twin/photos/CK52PTY_10_mcs_caxis.jpg",
+    "label": "MCS: X/Y/Z/C и SP2",
+    "category": "axes",
+    "width": 1178,
+    "height": 1571,
+    "evidence_status": "confirmed_by_photo",
+    "used_for": [
+      "digital_twin",
+      "machine_profile"
+    ]
   }
 ]

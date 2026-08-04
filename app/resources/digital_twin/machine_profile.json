@@ -1,79 +1,88 @@
 {
-  "profile_id": "ck52dwy_sinumerik828d_v1",
-  "name": "CK52DWY / SINUMERIK 828D",
-  "manufacturer": "DONGGUAN XINRUI INTELLIGENT TECHNOLOGY CO., LTD.",
-  "digital_twin_version": "1.0.0",
-  "status": "partial_operational_twin",
+  "profile_id": "tengyue_ck52pty_sinumerik828d_v2",
+  "name": "Tengyue CK52PT-Y / SINUMERIK 828D",
+  "manufacturer": "ZHONGSHAN TENGYUE NUMERICAL CONTROL TECHNOLOGY CO., LTD.",
+  "model": "CK52PT-Y",
+  "serial_number": "TY250704F",
+  "manufacture_date": "2025-09-19",
+  "digital_twin_version": "2.0.0",
+  "status": "photo_confirmed_operational_profile",
+  "electrical": {
+    "power_kw": 18,
+    "supply": "380 V, 3-phase AC, 50 Hz",
+    "net_weight_kg": 1600
+  },
   "control": {
     "family": "SINUMERIK 828D",
+    "panel": "PPU271.4",
+    "mlfb": "6FC5370-5AA40-0AA0",
+    "hardware_version": "09",
     "variant": "828D-TE42",
-    "cnc_software": "V04.95 + SP03 + HF02",
-    "internal_version": "04.95.03.02.003",
-    "operate_version": "04.95.03.04",
-    "sinamics": "05.20.73.41"
-  },
-  "plc": {
-    "project": "HT_20250827_SP4.ptp",
-    "date": "2026-03-19",
-    "time": "15:38"
+    "cnc_software": "V04.95 + SP03 + HF02"
   },
   "configuration": {
-    "machine_type": "TC - токарный центр",
+    "machine_type": "TCY — токарно-фрезерный центр с осью Y и C",
     "axes": {
-      "X": "confirmed",
-      "Z": "confirmed",
-      "Y": "confirmed_in_MCS",
-      "C": "panel_and_OEM_provision_confirmed_limits_unknown",
-      "A": "panel_key_only_not_confirmed",
-      "sixth_axis": "panel_key_only_not_confirmed"
+      "X": "confirmed_by_MCS",
+      "Y": "confirmed_by_MCS",
+      "Z": "confirmed_by_MCS",
+      "C": "confirmed_by_MCS_MC1",
+      "SP2": "displayed_as_MSP2_function_not_fully_identified"
     },
     "turret": {
       "positions": 15,
-      "status": "confirmed_from_tool_list"
+      "status": "confirmed_from_tool_list_and_photo",
+      "driven_tooling": "confirmed_by_photo"
     },
     "tailstock": {
-      "jog_control": true,
-      "status": "OEM_control_present_commands_unknown"
+      "installed": true,
+      "status": "confirmed_by_photo",
+      "actuation": "likely_hydraulic_not_yet_documented"
+    },
+    "chuck": {
+      "manufacturer": "LEILIKA",
+      "marking": "03K10",
+      "type": "3-jaw power chuck",
+      "status": "confirmed_by_photo",
+      "diameter_mm": null
     },
     "driven_tools": {
-      "controls_present": true,
-      "status": "provision_confirmed_limits_unknown"
+      "axial_blocks": true,
+      "radial_blocks": true,
+      "status": "confirmed_by_photo_limits_unknown"
     },
-    "tool_probe": {
-      "extend_retract_control": true,
-      "status": "control_present"
-    },
-    "spindle_brake": {
-      "control_present": true,
-      "status": "control_present"
-    }
+    "work_offsets": [
+      "G54"
+    ]
   },
   "evidence_counts": {
-    "photos": 36,
+    "photos": 46,
     "manuals": 6,
     "manual_pages": 4973
   },
   "confirmed_by_photo": [
-    "OEM model CK52DWY",
-    "SINUMERIK 828D-TE42",
+    "OEM model CK52PT-Y",
+    "Zhongshan Tengyue manufacturer plate",
+    "SINUMERIK 828D PPU271.4",
+    "MLFB 6FC5370-5AA40-0AA0",
     "CNC V04.95 SP03 HF02",
-    "X/Y/Z machine coordinates",
-    "15 tool locations",
-    "Tailstock Jog button",
-    "C-axis and driven-tool controls",
-    "OEM manufacturer cycles",
-    "SINAMICS runtime"
+    "X/Y/Z/C machine coordinates",
+    "15-position turret",
+    "driven tool blocks",
+    "LEILIKA 03K10 chuck",
+    "tailstock installed",
+    "18 kW / 1600 kg / 380 V 3-phase"
   ],
   "not_confirmed": [
-    "mechanical travel and soft limits",
-    "chuck dimensions and jaw envelope",
-    "turret body envelope",
-    "tailstock stroke/taper/thrust",
-    "spindle and live-tool power/speed limits",
+    "mechanical travels and soft limits",
+    "chuck diameter and jaw envelope",
+    "turret collision envelope",
+    "tailstock stroke/taper/thrust and exact actuation",
+    "spindle/live-tool speed and power limits",
     "OEM M-codes",
     "safe tool-change point",
     "PLC interlocks and collision zones",
-    "full machine interior geometry"
+    "exact function of MSP2"
   ],
   "release_policy": {
     "shopturn_guidance": true,
@@ -83,5 +92,5 @@
     "automatic_oem_mcodes": false,
     "collision_claims": false
   },
-  "source_note": "Profile compiled from user-supplied machine photos, version screens and manuals. Unconfirmed values are never promoted to safe executable commands."
+  "source_note": "Profile rebuilt from user-supplied photographs on 2026-08-04. Earlier CK52DWY identification is superseded by the physical CK52PT-Y nameplate."
 }

@@ -117,5 +117,81 @@ export function runCamEngineTests() {
     assert(plan.errors.some(error => error.code === 'CONTOUR_REQUIRED'), 'Missing contour warning is absent');
   });
 
+
+  run('cutoff is planned as the final supported X/Z operation', () => {
+    const plan = buildCamPlan(baseInput({
+      operations: [
+        { name: 'Торцевание', speed: 900, feed: 0.16 },
+        { name: 'Черновое наружное точение', speed: 900, feed: 0.16, ap: 2 },
+        { name: 'Чистовое наружное точение', speed: 1100, feed: 0.1 },
+        { name: 'Отрезка в Z-60 до X0', speed: 500, feed: 0.05 },
+      ],
+      features: {
+        cutoff: {
+          enabled: true,
+          zPosition: -60,
+          bladeWidth: 2,
+          finalDiameter: 0,
+          radialClearance: 2,
+          axialClearance: 2,
+          rpm: 500,
+          feedPerRev: 0.05,
+          safetyConfirmed: true,
+          toolId: 'T7',
+        },
+      },
+    }));
+    assert(plan.cutoff.status === CAM_STATUS.SUPPORTED, `Cutoff must be supported, got ${plan.cutoff.status}`);
+    assert(plan.operations.at(-1)?.kind === 'cutoff', 'Cutoff must remain the final planned operation');
+    assert(plan.moves.some(move => move.cutKind === 'cutoff' && move.cutting), 'Cutoff cutting move is missing');
+    assert(plan.routeReport.at(-1)?.status === CAM_STATUS.SUPPORTED, 'Cutoff route item is not marked supported');
+    assert(plan.capabilities.cutoff.status === CAM_STATUS.SUPPORTED, 'Cutoff capability is not reported as supported');
+    const final = simulateMaterial(plan, 1);
+    const cutoffSlice = final.odSlices.find(slice => Math.abs(slice.z + 60) < 1e-6);
+    assert(cutoffSlice && approx(cutoffSlice.radius, 0), 'Cutoff groove did not reach the requested final diameter');
+  });
+
+  run('cutoff route item must remain last', () => {
+    const plan = buildCamPlan(baseInput({
+      operations: [
+        { name: 'Отрезка в Z-60 до X0' },
+        { name: 'Чистовое наружное точение' },
+      ],
+      features: {
+        cutoff: {
+          enabled: true,
+          zPosition: -60,
+          bladeWidth: 2,
+          finalDiameter: 0,
+          rpm: 500,
+          feedPerRev: 0.05,
+          safetyConfirmed: true,
+        },
+      },
+    }));
+    assert(!plan.geometryExecutable, 'A cutoff placed before another operation must block execution');
+    assert(plan.errors.some(error => error.code === 'CUTOFF_MUST_BE_LAST'), 'Missing cutoff route-order error');
+  });
+
+  run('cutoff is blocked until the free zone is confirmed', () => {
+    const plan = buildCamPlan(baseInput({
+      operations: [{ name: 'Отрезка в Z-60 до X0' }],
+      features: {
+        cutoff: {
+          enabled: true,
+          zPosition: -60,
+          bladeWidth: 2,
+          finalDiameter: 0,
+          rpm: 500,
+          feedPerRev: 0.05,
+          safetyConfirmed: false,
+        },
+      },
+    }));
+    assert(plan.cutoff.status === CAM_STATUS.BLOCKED, 'Unconfirmed cutoff safety must block the cutoff planner');
+    assert(!plan.geometryExecutable, 'Blocked cutoff must block executable geometry');
+    assert(plan.errors.some(error => error.code === 'CUTOFF_SAFETY_UNCONFIRMED'), 'Missing cutoff safety error');
+  });
+
   return { passed: tests.length, tests };
 }
