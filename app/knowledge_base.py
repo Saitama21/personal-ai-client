@@ -151,7 +151,7 @@ def knowledge_summary() -> dict[str, Any]:
         "policy": {
             "primary_manual": "SINUMERIK 828D NC Programming V4.95",
             "shopturn_manual": "Turning Operating Manual V5.25 — workflow supplement",
-            "oem_m_codes": "blocked until confirmed for CK52DWY",
+            "oem_m_codes": "blocked until confirmed for CK52PT-Y",
             "automatic_mpf": machine.get("release_policy", {}).get("automatic_mpf", False),
         },
         "digital_twin": twin_summary(),
@@ -164,9 +164,9 @@ def build_knowledge_context(query: str, *, limit: int = 8) -> str:
     found = search_knowledge(query, limit=limit)
     control = machine.get("control", {}) if isinstance(machine, dict) else {}
     lines = [
-        "ЛОКАЛЬНАЯ БАЗА ПРОЕКТА CK52DWY / SINUMERIK 828D:",
-        f"- Станок: {machine.get('name', 'CK52DWY')}; стойка {control.get('family', 'SINUMERIK 828D')} {control.get('cnc_software', 'V4.95')}.",
-        "- Оси X/Z/Y подтверждены по экрану; C, приводной инструмент и задняя бабка предусмотрены OEM, но их пределы и M-коды не подтверждены.",
+        "ЛОКАЛЬНАЯ БАЗА ПРОЕКТА CK52PT-Y / SINUMERIK 828D:",
+        f"- Станок: {machine.get('name', 'CK52PT-Y')}; стойка {control.get('family', 'SINUMERIK 828D')} {control.get('cnc_software', 'V4.95')}.",
+        "- Оси X/Z/Y/C, приводной инструмент и задняя бабка подтверждены по фото и экрану MCS; паспортные пределы, безопасные зоны и OEM M-коды пока не подтверждены.",
         "- Основной источник NC-синтаксиса: Programming Manual V4.95. ShopTurn V5.25 используется только как дополнение по рабочему процессу.",
         "- Неподтверждённые OEM M-коды патрона, C-оси, револьвера, щупа и задней бабки запрещено выдавать как готовые команды.",
     ]

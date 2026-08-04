@@ -296,7 +296,7 @@ body.light .recognition-crop-hint{background:rgba(242,251,255,.84);color:#08314b
 body.light .recognition-selection{box-shadow:0 0 0 9999px rgba(222,235,244,.62),0 0 0 1px rgba(0,69,104,.44) inset,0 0 24px rgba(0,145,214,.42)}
 @media(max-width:720px){.recognition-crop-hint{top:8px;font-size:10px;white-space:normal;width:max-content}.recognition-selection>span{font-size:9px}.recognition-toolbar{align-items:stretch;flex-direction:column}.recognition-toolbar button{width:100%;min-height:42px}}
 
-/* v4.5.0 CK52DWY local knowledge base */
+/* legacy local knowledge base */
 .kb-layout{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(280px,.8fr);gap:14px}
 .kb-toolbar{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:10px;margin-bottom:10px}
 .kb-toolbar input,.kb-toolbar select{width:100%;min-width:0;padding:12px 13px;border:1px solid var(--glass-border);border-radius:12px;background:var(--input-bg);color:var(--text)}
@@ -313,14 +313,117 @@ body.light .kb-item.kb-danger{background:rgba(255,231,178,.55)}
 .kb-doc{display:grid;gap:4px}.kb-doc span{font-size:11px;color:var(--muted)}
 @media(max-width:900px){.kb-layout{grid-template-columns:1fr}.kb-toolbar{grid-template-columns:1fr}.kb-results{max-height:none}.kb-facts{grid-template-columns:1fr}}
 
-/* v4.6.0 — цифровой двойник CK52DWY */
+/* digital twin styles */
 .dt-layout{display:grid;grid-template-columns:minmax(280px,.75fr) minmax(420px,1.3fr);gap:14px}.dt-photo-card{grid-column:1/-1}.dt-hero{display:grid;gap:4px;padding:14px;border:1px solid rgba(55,221,170,.45);border-radius:14px;background:linear-gradient(135deg,rgba(10,105,94,.34),rgba(20,77,112,.22))}.dt-hero strong{font-size:20px}.dt-hero span{color:#79ecc5}.dt-facts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.dt-facts span,.dt-missing span{display:block;padding:9px 10px;border:1px solid var(--glass-border);border-radius:11px;background:var(--glass-bg-soft);font-size:12px;line-height:1.35}.dt-missing{display:grid;gap:7px}.dt-missing span{border-color:rgba(255,174,66,.35);background:rgba(101,65,15,.22)}body.light .dt-missing span{background:rgba(255,232,183,.5)}.dt-searchbar{display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:9px}.dt-searchbar input,.dt-searchbar select,.dt-translate-box input,.dt-translate-box select,.dt-photo-head select{width:100%;min-width:0;padding:11px 12px;border:1px solid var(--glass-border);border-radius:11px;background:var(--input-bg);color:var(--text)}.dt-results{display:grid;gap:9px;max-height:44vh;overflow:auto;margin-top:9px;padding-right:4px}.dt-result{display:grid;gap:7px;padding:12px;border:1px solid var(--glass-border);border-radius:13px;background:var(--glass-bg-soft)}.dt-result>div:first-child{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.dt-result>div:first-child span{font-size:10px;color:var(--muted)}.dt-result p{margin:0;color:var(--text);line-height:1.42;font-size:12px}.dt-result mark{background:rgba(54,213,255,.26);color:inherit;border-radius:3px;padding:0 2px}.dt-translation{white-space:normal}.dt-translation .check-card span{white-space:pre-wrap}.dt-translate-box{display:grid;gap:7px;margin-top:12px;padding:12px;border:1px solid var(--glass-border);border-radius:13px;background:var(--glass-bg-soft)}.dt-translate-box>div{display:grid;grid-template-columns:1.15fr .8fr auto auto;gap:8px}.dt-translate-box small{color:var(--muted);line-height:1.35}.dt-photo-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.dt-photo-head select{max-width:250px}.dt-photo-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;margin-top:10px;max-height:55vh;overflow:auto}.dt-photo-grid figure{margin:0;border:1px solid var(--glass-border);border-radius:12px;overflow:hidden;background:var(--glass-bg-soft)}.dt-photo-grid img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:#050b12}.dt-photo-grid figcaption{display:grid;gap:2px;padding:7px 8px}.dt-photo-grid figcaption b{font-size:10px}.dt-photo-grid figcaption span{font-size:10px;color:var(--muted);line-height:1.25}@media(max-width:1100px){.dt-photo-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.dt-translate-box>div{grid-template-columns:1fr 1fr}}@media(max-width:900px){.dt-layout{grid-template-columns:1fr}.dt-photo-card{grid-column:auto}.dt-searchbar{grid-template-columns:1fr}.dt-photo-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.dt-facts{grid-template-columns:1fr}}@media(max-width:620px){.dt-photo-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.dt-translate-box>div{grid-template-columns:1fr}.dt-result>div:first-child{display:grid}.dt-photo-head{align-items:stretch;flex-direction:column}.dt-photo-head select{max-width:none}}
 .dt-downloads{display:grid;grid-template-columns:1fr;gap:8px;margin:12px 0 16px}.dt-downloads a{text-align:center;text-decoration:none}
-/* v4.8.0 simulation rewrite */
-.sim-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(8,22,38,.72)}
-.sim-toolbar>div:first-child{display:grid;gap:3px}.sim-toolbar small{color:var(--muted)}
-.sim-view-switch{display:flex;flex-wrap:wrap;gap:6px}.sim-view-switch button{padding:7px 10px;border:1px solid var(--line);border-radius:9px;background:rgba(20,39,61,.7);color:var(--text);cursor:pointer}.sim-view-switch button.active{border-color:#35d9ff;background:rgba(31,139,185,.25);box-shadow:inset 0 0 0 1px rgba(53,217,255,.25)}
-.sim-axis-overlay{position:absolute;inset:0;pointer-events:none;z-index:2;font:700 12px system-ui;color:#b8d9ef}.sim-axis-overlay span{position:absolute;padding:4px 7px;border-radius:7px;background:rgba(4,13,23,.66);border:1px solid rgba(105,170,210,.25)}.sim-axis-overlay .axis-z{left:12px;bottom:12px}.sim-axis-overlay .axis-x{left:12px;top:12px}
-.cam-legend .drill:before{background:#7ce6a8}.cam-legend .mill:before{background:#d28cff}
-.sim-primary-controls{position:sticky;bottom:0;z-index:3;padding:8px 0;background:linear-gradient(180deg,transparent,var(--panel) 28%)}
-@media(max-width:760px){.sim-toolbar{align-items:flex-start;flex-direction:column}.sim-view-switch{width:100%}.sim-view-switch button{flex:1}.sim-control-card .telemetry-grid>div{min-height:64px}.sim-layout *{min-width:0}}
+
+/* v4.8.0 — CK52PT-Y / SINUMERIK 828D machine-console interface */
+:root{
+  --hmi-blue:#0b5ea8;
+  --hmi-blue-dark:#063c72;
+  --hmi-cyan:#5fc5ee;
+  --hmi-screen:#d7e4e9;
+  --hmi-screen-2:#b8cbd3;
+  --hmi-ink:#10252f;
+  --hmi-frame:#22282d;
+  --hmi-frame-2:#3c454c;
+  --hmi-key:#7d878d;
+  --hmi-key-edge:#11171b;
+  --hmi-ok:#54d17a;
+  --hmi-warn:#f3c84f;
+}
+body.sinumerik-hmi{
+  padding-top:34px;
+  background:
+    linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px) 0 0/34px 34px,
+    radial-gradient(circle at 64% 10%,rgba(43,126,172,.22),transparent 34%),
+    linear-gradient(145deg,#11171b,#22292e 54%,#0c1114);
+}
+.hmi-status-strip{
+  position:fixed;z-index:120;inset:0 0 auto 0;height:34px;
+  display:grid;grid-template-columns:auto auto auto 1fr auto;align-items:center;gap:16px;
+  padding:0 14px;border-bottom:2px solid #06090b;
+  background:linear-gradient(#4f5a60,#262d31 54%,#161b1e);
+  box-shadow:0 2px 12px rgba(0,0,0,.52);font:600 11px/1.1 Arial,sans-serif;letter-spacing:.45px;color:#eef6f9;
+}
+.hmi-status-strip>span:first-child{font-size:15px;font-weight:900;letter-spacing:1.1px}
+.hmi-status-strip b{padding:5px 12px;border:1px solid #6f8793;background:linear-gradient(#2f83bb,#07538c);box-shadow:inset 0 1px rgba(255,255,255,.28)}
+.hmi-alarm-ok{justify-self:end;color:#9df5b7;text-shadow:0 0 8px rgba(77,225,123,.45)}
+.sinumerik-hmi .app-shell{min-height:calc(100vh - 34px);background:linear-gradient(90deg,#20272b 0,#121719 200px,transparent 200px)}
+.sinumerik-hmi .sidebar{
+  top:34px;height:calc(100vh - 34px);padding:13px 9px 12px;border-right:3px ridge #596268;border-radius:0;
+  background:linear-gradient(110deg,#323a3f,#161c1f 46%,#252c30);box-shadow:inset -5px 0 16px rgba(0,0,0,.46);
+}
+.sinumerik-hmi .brand{padding:9px 8px 13px;border:1px solid #59656b;background:linear-gradient(#1c5e8d,#083b65);box-shadow:inset 0 1px rgba(255,255,255,.22)}
+.sinumerik-hmi .brand-mark{color:#e7f6ff;background:none;-webkit-text-fill-color:initial}
+.sinumerik-hmi .brand span{color:#d6efff}
+.sinumerik-hmi .main-nav button{
+  min-height:34px;border:1px solid #101619;border-bottom-color:#5f6b71;border-radius:2px;
+  background:linear-gradient(#6c777d,#3a4449 48%,#252d31);color:#f1f6f8;text-shadow:0 1px #000;box-shadow:inset 0 1px rgba(255,255,255,.16),0 1px 1px rgba(0,0,0,.7);
+}
+.sinumerik-hmi .main-nav button:hover,.sinumerik-hmi .main-nav button.active{background:linear-gradient(#3c9bd0,#0b639f 52%,#064477);color:#fff;border-color:#83c9ee}
+.sinumerik-hmi .machine-card{border:2px ridge #66747b;border-radius:2px;background:linear-gradient(#dce9ed,#adc2ca);color:#102731;box-shadow:inset 0 0 0 2px #edf5f7}
+.sinumerik-hmi .machine-card small,.sinumerik-hmi .machine-card span,.sinumerik-hmi .axis-row{color:#27434e}
+.sinumerik-hmi .axis-row i{background:#2fc665;box-shadow:0 0 7px rgba(47,198,101,.75)}
+.sinumerik-hmi .machine-card .ghost{background:linear-gradient(#f0f5f7,#a9bbc2);color:#132a34;border-color:#5c7079}
+.sinumerik-hmi .workspace{padding-right:114px;padding-bottom:82px}
+.sinumerik-hmi .topbar{padding:8px 10px;border:2px ridge #68747a;border-radius:0;background:linear-gradient(#dce7ea,#b3c5cb);color:var(--hmi-ink);box-shadow:inset 0 0 0 2px #eff5f6,0 6px 18px rgba(0,0,0,.25)}
+.sinumerik-hmi .topbar h1{color:#0b3854;font-family:Arial,sans-serif;font-weight:800}
+.sinumerik-hmi .topbar p{color:#34515d}
+.sinumerik-hmi .topbar .icon-btn,.sinumerik-hmi .topbar .ghost{background:linear-gradient(#737f85,#3f494e);color:#fff;border:1px solid #1a2226;border-radius:2px}
+.sinumerik-hmi .user-chip{border-radius:1px;border:1px solid #677e89;background:#eef4f5;color:#1a3540}
+.sinumerik-hmi .stepper{padding:7px;border:2px ridge #5f6a70;border-radius:0;background:#1e2529}
+.sinumerik-hmi .step-num{border-radius:2px;background:linear-gradient(#6c777d,#364046);border-color:#87959b}
+.sinumerik-hmi .step.done .step-num{background:linear-gradient(#59bf7b,#197745)}
+.sinumerik-hmi .step.current .step-num{background:linear-gradient(#46a7da,#0963a1);box-shadow:0 0 0 3px rgba(87,190,239,.25)}
+.sinumerik-hmi .stage-panel,.sinumerik-hmi .summary-card,.sinumerik-hmi .progress-card,.sinumerik-hmi .next-strip{
+  border:3px ridge #667178;border-radius:1px;background:linear-gradient(145deg,#dbe8ec,#b5c7ce);color:var(--hmi-ink);box-shadow:inset 0 0 0 2px #edf5f6,0 12px 28px rgba(0,0,0,.38)
+}
+.sinumerik-hmi .stage-title{padding:7px 9px;margin:-4px -4px 12px;border-bottom:2px solid #6a7e87;background:linear-gradient(90deg,var(--hmi-blue-dark),var(--hmi-blue));color:#fff}
+.sinumerik-hmi .stage-title p{color:#d9eff8}
+.sinumerik-hmi .card,.sinumerik-hmi .hmi-screen-card{
+  border:2px solid #687c84;border-radius:1px;background:linear-gradient(#e2ecef,#c1d2d8);color:var(--hmi-ink);box-shadow:inset 0 0 0 1px #f6fbfc
+}
+.sinumerik-hmi .card h3{color:#103b53;border-bottom:1px solid #7e959e;padding-bottom:6px}
+.sinumerik-hmi .field-row{border-color:#8ba0a8}.sinumerik-hmi .field-row label,.sinumerik-hmi .muted{color:#405f6b}
+.sinumerik-hmi input,.sinumerik-hmi select,.sinumerik-hmi textarea{background:#f5fafb!important;color:#10252f!important;border:1px inset #6d818a!important;border-radius:1px!important}
+.sinumerik-hmi .ghost,.sinumerik-hmi .primary,.sinumerik-hmi .danger{
+  border-radius:2px;border:1px solid #131a1e;color:#fff;background:linear-gradient(#768289,#3f494e 52%,#2a3236);box-shadow:inset 0 1px rgba(255,255,255,.2),0 1px 2px rgba(0,0,0,.55);text-shadow:0 1px #000
+}
+.sinumerik-hmi .primary{background:linear-gradient(#399bd0,#075e9b 55%,#054372)}
+.sinumerik-hmi .warning{background:#fff0b3;color:#5b4300;border-color:#9f7a13}.sinumerik-hmi .good{background:#d8f6df;color:#155b2c;border-color:#3d9d59}
+.hmi-right-softkeys{
+  position:fixed;z-index:95;top:70px;right:7px;bottom:82px;width:94px;display:grid;grid-template-rows:repeat(8,minmax(44px,1fr));gap:5px;padding:6px;
+  border:3px ridge #5f696e;background:linear-gradient(90deg,#293034,#111619);box-shadow:-8px 0 18px rgba(0,0,0,.37)
+}
+.hmi-right-softkeys button,.hmi-bottom-softkeys button,.hmi-softkeys button,.sim-view-toolbar button{
+  border:1px solid #080c0e;border-bottom-color:#77848a;border-radius:2px;background:linear-gradient(#78838a,#465055 50%,#2a3236);color:#fff;font:700 10px Arial,sans-serif;text-shadow:0 1px #000;box-shadow:inset 0 1px rgba(255,255,255,.22),0 1px 2px rgba(0,0,0,.8);cursor:pointer
+}
+.hmi-right-softkeys button:hover,.hmi-bottom-softkeys button:hover,.hmi-softkeys button:hover,.sim-view-toolbar button:hover,.sim-view-toolbar button.active{background:linear-gradient(#46a5d5,#09619d 55%,#064170);border-color:#91d3f3}
+.hmi-bottom-softkeys{
+  position:fixed;z-index:96;left:205px;right:106px;bottom:5px;height:67px;display:grid;grid-template-columns:repeat(8,1fr);gap:5px;padding:6px;
+  border:3px ridge #606a70;background:linear-gradient(#343d42,#151a1d);box-shadow:0 -7px 20px rgba(0,0,0,.38)
+}
+.hmi-operation-grid{display:grid;grid-template-columns:repeat(3,minmax(250px,1fr));gap:10px}
+.hmi-screen-card{min-width:0}.sinumerik-screen-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 10px;margin:-14px -14px 12px;border-bottom:2px solid #41677a;background:linear-gradient(90deg,#0b4e81,#1782bd);color:#fff}
+.sinumerik-sim-layout{align-items:start}.sim-view-toolbar{display:flex;gap:5px;margin:0 0 7px}.sim-view-toolbar button{padding:7px 12px}
+.sinumerik-viewport{min-height:570px;border:6px ridge #66747a;border-radius:0;background:linear-gradient(#d9e7ea,#afc1c8);box-shadow:inset 0 0 28px rgba(0,0,0,.32)}
+.sinumerik-viewport canvas{min-height:570px;background:linear-gradient(#dbe9ed,#b8c9cf)}
+.machine-layout-labels{display:flex;justify-content:space-between;gap:10px;padding:7px 10px;background:#0b538a;color:#fff;font:700 11px Arial,sans-serif}
+.hmi-control-card{border:3px ridge #68747a!important;background:linear-gradient(#d9e5e9,#b0c1c8)!important}
+.hmi-telemetry{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}.hmi-telemetry>div{padding:8px;border:1px inset #7e929b;background:#edf4f6;color:#18323c}.hmi-telemetry small{display:block;color:#4b6772}.hmi-telemetry b{font:700 16px Consolas,monospace;color:#0a4265}
+.hmi-softkeys{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:10px}.hmi-softkeys button{min-height:42px}
+.turret-map{display:grid;grid-template-columns:repeat(5,minmax(80px,1fr));gap:7px;margin-top:12px}.turret-station{min-height:64px;padding:7px;border:2px outset #81939a;background:linear-gradient(#e5eef1,#adbec5);color:#203942;text-align:center}.turret-station b{display:block;color:#0d5b8d}.turret-station.loaded{background:linear-gradient(#d7f1df,#9bc8aa);border-color:#4f8e64}
+.sim-control-card input[type=range]{accent-color:#0b69aa}
+.sinumerik-hmi .summary-card dt,.sinumerik-hmi .progress-card li{color:#3c5a66}.sinumerik-hmi .summary-card dd{color:#10252f}.sinumerik-hmi .progress-card li{border-color:#899ba3}.sinumerik-hmi .progress-card li.current{background:#d5effc;color:#07548a}.sinumerik-hmi .progress-card li.done{color:#176a39}
+@media(max-width:1300px){.hmi-operation-grid{grid-template-columns:repeat(2,minmax(240px,1fr))}}
+@media(max-width:1199px){
+  body.sinumerik-hmi{padding-top:34px}.sinumerik-hmi .workspace{padding-right:16px;padding-bottom:88px}.hmi-right-softkeys{display:none}.hmi-bottom-softkeys{left:10px;right:10px}.sinumerik-hmi .sidebar{top:42px;height:auto}.hmi-operation-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:720px){
+  .hmi-status-strip{grid-template-columns:auto 1fr auto;gap:8px;font-size:9px}.hmi-status-strip span:nth-of-type(2),.hmi-status-strip span:nth-of-type(3){display:none}.hmi-status-strip b{padding:4px 7px}
+  .sinumerik-hmi .workspace{padding:8px 8px 142px}.hmi-bottom-softkeys{display:none}.hmi-operation-grid{grid-template-columns:1fr}.sinumerik-viewport,.sinumerik-viewport canvas{min-height:390px}.turret-map{grid-template-columns:repeat(3,minmax(70px,1fr))}.hmi-telemetry{grid-template-columns:repeat(2,minmax(0,1fr))}.sinumerik-hmi .stage-panel{padding:10px}.sinumerik-screen-header{margin:-10px -10px 10px}
+}
+
+/* Functional simulator fallback for devices without WebGL. */
+.sim-fallback-canvas{display:block;width:100%;height:100%;min-height:420px;background:#dfe8ed;border:1px solid #72838d}

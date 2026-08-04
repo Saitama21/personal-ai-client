@@ -90,9 +90,9 @@ export function runCamEngineTests() {
     }));
     assert(plan.status === CAM_STATUS.PARTIAL, `Hybrid plan must be PARTIAL, got ${plan.status}`);
     assert(plan.executable, 'Supported turning subset must remain executable');
-    assert(plan.milling.status === CAM_STATUS.NOT_IMPLEMENTED, 'Milling must not be represented as supported');
-    assert(plan.capabilities.axes.C === CAM_STATUS.NOT_IMPLEMENTED, 'C axis must be not implemented');
-    assert(plan.capabilities.axes.Y === CAM_STATUS.PARTIAL, 'Y axis must be not implemented');
+    assert(plan.millingAf.status === CAM_STATUS.NOT_IMPLEMENTED, 'AF milling must require explicit feature data');
+    assert(plan.capabilities.axes.C === CAM_STATUS.NOT_EVALUATED, 'C axis must remain not evaluated without an enabled feature');
+    assert(plan.capabilities.axes.Y === CAM_STATUS.NOT_EVALUATED, 'Y axis must remain not evaluated without an enabled feature');
     assert(plan.moves.every(move => ['face', 'turn', null].includes(move.cutKind)), 'Unsupported milling move entered executable plan');
   });
 
@@ -195,3 +195,5 @@ export function runCamEngineTests() {
 
   return { passed: tests.length, tests };
 }
+
+if (import.meta.url === `file://${process.argv[1]}`) console.log(JSON.stringify(runCamEngineTests(), null, 2));

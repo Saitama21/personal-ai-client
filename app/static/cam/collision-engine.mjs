@@ -65,7 +65,7 @@ export class BoundedCollisionProvider {
     if (setupValidation.errors.length) {
       return {
         status: CAM_STATUS.BLOCKED, safe: false, provider: 'BoundedCollisionProvider',
-        model: 'CONFIGURED_ENVELOPES_V1', checkedBodies: [], collisions: [],
+        model: 'CK52PT_Y_CONFIGURED_ENVELOPES_V2', checkedBodies: [], collisions: [],
         errors: setupValidation.errors, samplesChecked: 0,
         message: 'Коллизионная проверка заблокирована: конфигурация станка не подтверждена.',
       };
@@ -105,12 +105,13 @@ export class BoundedCollisionProvider {
         const insidePartZ = point.z <= EPS && point.z >= -plan.input.blankLength - EPS;
         const outwardRetraction = /(?:radial_retract|drill_safe_retract)/.test(move.role)
           && (move.to.x || 0) >= (move.from.x || 0) && Math.abs((move.to.z || 0) - (move.from.z || 0)) < EPS;
-        const rapidInsideClearedHole = move.role === 'drill_return_to_peck' || move.role === 'drill_chip_retract';
+        const rapidInsideClearedHole = /(?:drill_return_to_peck|drill_chip_retract|radial_drill_return_to_peck|radial_drill_chip_retract|pocket_radial_retract|face_pocket_axial_retract)/.test(move.role);
         if (move.motion === 'rapid' && insidePartZ && radial < outerRadiusAt(plan, point.z) - clearance && !rapidInsideClearedHole && !outwardRetraction) {
           collisions.push(collisionRecord('RAPID_STOCK', 'tool_tip', 'stock', move, point, 'Быстрое перемещение входит в оболочку заготовки.'));
           break;
         }
-        if (insidePartZ && point.z < -clearance && holderCenterRadius - holderRadius < outerRadiusAt(plan, point.z) && move.toolKind !== 'drilling') {
+        const liveCuttingTool = ['drilling','radialDrilling','millingAf','millingPocket'].includes(move.toolKind);
+        if (insidePartZ && point.z < -clearance && holderCenterRadius - holderRadius < outerRadiusAt(plan, point.z) && !liveCuttingTool) {
           collisions.push(collisionRecord('HOLDER_STOCK', 'tool_holder', 'stock', move, point, 'Оболочка державки пересекает наружную оболочку детали.'));
           break;
         }
@@ -133,7 +134,7 @@ export class BoundedCollisionProvider {
     return {
       status: unique.length ? CAM_STATUS.BLOCKED : CAM_STATUS.EVALUATED_LIMITED,
       safe: unique.length === 0,
-      provider: 'BoundedCollisionProvider', model: 'CONFIGURED_ENVELOPES_V1',
+      provider: 'BoundedCollisionProvider', model: 'CK52PT_Y_CONFIGURED_ENVELOPES_V2',
       checkedBodies: ['stock', 'chuck', 'jaws_envelope', 'tool_tip', 'tool_holder', 'axis_limits', ...machine.restrictedZones.map(zone => zone.id)],
       collisions: unique, errors: unique.map(item => issue(item.code, item.message, 'error', 'collision')),
       samplesChecked, trace,

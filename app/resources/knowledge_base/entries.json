@@ -2,15 +2,16 @@
   {
     "id": "machine_identity",
     "category": "machine",
-    "title": "Идентификация станка CK52DWY",
-    "summary": "В OEM-INFO указано CK52DWY. Установлена SINUMERIK 828D-TE42 V04.95 SP03 HF02; производитель Dongguan Xinrui.",
+    "title": "Идентификация станка CK52PT-Y",
+    "summary": "По физическому шильдику подтверждён Zhongshan Tengyue CK52PT-Y. Установлена SINUMERIK 828D-TE42 V04.95 SP03 HF02, панель PPU271.4.",
     "keywords": [
-      "CK52DWY",
+      "CK52PT-Y",
+      "Zhongshan Tengyue",
       "828D-TE42",
+      "PPU271.4",
       "4.95",
       "SP03",
       "HF02",
-      "Dongguan Xinrui",
       "станок",
       "версия"
     ],
@@ -355,7 +356,7 @@
     "id": "oem_mcode_policy",
     "category": "safety",
     "title": "Политика OEM M-кодов",
-    "summary": "Коды патрона, тормоза, C-оси, приводного инструмента, задней бабки, датчика и револьвера нельзя переносить из SYNTEC или таблицы без подтверждения PLC/паспорта CK52DWY.",
+    "summary": "Коды патрона, тормоза, C-оси, приводного инструмента, задней бабки, датчика и револьвера нельзя переносить из SYNTEC или таблицы без подтверждения PLC/паспорта CK52PT-Y.",
     "keywords": [
       "M10",
       "M11",
@@ -439,7 +440,7 @@
     ],
     "source": {
       "type": "project_cam_policy",
-      "profile": "CK52DWY / SINUMERIK 828D V4.95"
+      "profile": "CK52PT-Y / SINUMERIK 828D V4.95"
     },
     "trust": "project_policy",
     "safety": "operator_confirmation_required"

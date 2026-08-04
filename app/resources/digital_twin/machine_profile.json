@@ -5,7 +5,7 @@
   "model": "CK52PT-Y",
   "serial_number": "TY250704F",
   "manufacture_date": "2025-09-19",
-  "digital_twin_version": "2.0.0",
+  "digital_twin_version": "3.0.0",
   "status": "photo_confirmed_operational_profile",
   "electrical": {
     "power_kw": 18,
@@ -92,5 +92,32 @@
     "automatic_oem_mcodes": false,
     "collision_claims": false
   },
-  "source_note": "Profile rebuilt from user-supplied photographs on 2026-08-04. Earlier CK52DWY identification is superseded by the physical CK52PT-Y nameplate."
+  "source_note": "Profile rebuilt from user-supplied photographs on 2026-08-04. Earlier CK52DWY identification is superseded by the physical CK52PT-Y nameplate.",
+  "simulator": {
+    "release": "4.8.0-sinumerik-simulator",
+    "machine_view": {
+      "chuck_and_stock": "fixed_left",
+      "turret": "fixed_right",
+      "default_camera": "sinumerik_side"
+    },
+    "supported_operations": [
+      "turning_xz",
+      "stock_removal",
+      "axial_drilling",
+      "radial_drilling_c_indexed",
+      "af_milling_c_indexed_xy",
+      "radial_pockets_and_slots_xyzc",
+      "face_pockets_xy",
+      "cutoff"
+    ],
+    "tool_visuals": [
+      "turning_holder",
+      "realistic_twist_drill",
+      "radial_driven_drill",
+      "end_mill",
+      "cutoff_blade"
+    ],
+    "turret_animation": "15-position T1-T15 indexing",
+    "safety_scope": "Parametric simulation. Certified collision and production MPF remain gated until OEM geometry, limits and M-codes are confirmed."
+  }
 }

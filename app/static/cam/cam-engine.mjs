@@ -11,6 +11,8 @@ import { normalizeFeatureContracts } from './feature-contracts.mjs';
 import { planDrilling } from './drilling-planner.mjs';
 import { planThreading } from './threading-planner.mjs';
 import { planAfMilling } from './af-milling-planner.mjs';
+import { planRadialDrilling } from './radial-drilling-planner.mjs';
+import { planPocketMilling } from './pocket-milling-planner.mjs';
 import { planCutoff } from './cutoff-planner.mjs';
 import {
   createFeatureMaterialModel, featureRemovedVolume, radialBoundaryAt,
@@ -30,7 +32,9 @@ function encounteredFeatures(input, features, route = []) {
   const holes = Array.isArray(input.geometry?.holes) ? input.geometry.holes : [];
   return {
     milling: features.millingAf.enabled || Boolean(input.afContour.length || secondary.length || route.some(item => item.kind === 'milling')),
+    millingPocket: features.millingPocket.enabled || route.some(item => item.kind === 'milling_pocket'),
     drilling: features.drilling.enabled || Boolean(holes.length || route.some(item => item.kind === 'drilling')),
+    radialDrilling: features.radialDrilling.enabled || route.some(item => item.kind === 'radial_drilling'),
     threading: features.threading.enabled || route.some(item => item.kind === 'threading'),
     cutoff: features.cutoff.enabled || route.some(item => item.kind === 'cutoff'),
   };
@@ -107,7 +111,7 @@ export function materialVolume(state) {
 
 function blockedFeatureErrors(features, results) {
   const errors = [];
-  for (const [key, result] of [['threading', results.threading], ['drilling', results.drilling], ['millingAf', results.millingAf], ['cutoff', results.cutoff]]) {
+  for (const [key, result] of [['threading', results.threading], ['drilling', results.drilling], ['radialDrilling', results.radialDrilling], ['millingAf', results.millingAf], ['millingPocket', results.millingPocket], ['cutoff', results.cutoff]]) {
     if (features[key].enabled && result.status === CAM_STATUS.BLOCKED) errors.push(...result.errors);
   }
   return errors;
@@ -119,15 +123,19 @@ export function buildCamPlan(rawInput, providers = {}) {
   const turning = planTurning(input);
   const threading = planThreading(input, features.threading);
   const drilling = planDrilling(input, features.drilling);
+  const radialDrilling = planRadialDrilling(input, features.radialDrilling);
   const millingAf = planAfMilling(input, features.millingAf);
+  const millingPocket = planPocketMilling(input, features.millingPocket);
   const cutoff = planCutoff(input, features.cutoff);
-  const plannerResults = { threading, drilling, millingAf, cutoff };
+  const plannerResults = { threading, drilling, radialDrilling, millingAf, millingPocket, cutoff };
   const provisionalRoute = routeCapabilityReport(input.route);
   const encountered = encounteredFeatures(input, features, provisionalRoute);
   const routeReport = routeCapabilityReport(input.route, {
     threading: threading.status === CAM_STATUS.SUPPORTED,
     drilling: drilling.status === CAM_STATUS.SUPPORTED,
+    radialDrilling: radialDrilling.status === CAM_STATUS.SUPPORTED,
     millingAf: millingAf.status === CAM_STATUS.SUPPORTED,
+    millingPocket: millingPocket.status === CAM_STATUS.SUPPORTED,
     cutoff: cutoff.status === CAM_STATUS.SUPPORTED,
   });
   const unsupportedOperations = routeReport.filter(item => item.status === CAM_STATUS.NOT_IMPLEMENTED);
@@ -139,10 +147,10 @@ export function buildCamPlan(rawInput, providers = {}) {
   const geometryErrors = [...turning.errors, ...featureErrors, ...routeOrderErrors];
   const geometryExecutable = turning.status === CAM_STATUS.SUPPORTED && geometryErrors.length === 0;
   const merged = geometryExecutable
-    ? mergeExecutablePlans(input, [turning, threading, drilling, millingAf, cutoff])
+    ? mergeExecutablePlans(input, [turning, threading, drilling, radialDrilling, millingAf, millingPocket, cutoff])
     : { operations: [], moves: [] };
   const warnings = [
-    ...turning.warnings, ...threading.warnings, ...drilling.warnings, ...millingAf.warnings, ...cutoff.warnings,
+    ...turning.warnings, ...threading.warnings, ...drilling.warnings, ...radialDrilling.warnings, ...millingAf.warnings, ...millingPocket.warnings, ...cutoff.warnings,
   ];
   if (unsupportedOperations.length) warnings.push(issue('ROUTE_PARTIALLY_UNSUPPORTED', 'Маршрут содержит операции вне рассчитанного подмножества; выпуск MPF заблокирован.', 'warning', 'route'));
   const plan = {
@@ -151,7 +159,7 @@ export function buildCamPlan(rawInput, providers = {}) {
     input, features,
     machineSetup: features.machineSetup,
     postConfig: features.postprocessor,
-    turning, threading, drilling, millingAf, milling: millingAf, cutoff,
+    turning, threading, drilling, radialDrilling, millingAf, millingPocket, milling: { af: millingAf, pocket: millingPocket }, cutoff,
     routeReport, unsupportedOperations, warnings, errors: geometryErrors,
     operations: merged.operations, moves: merged.moves,
     materialModel: turning.materialModel,
@@ -159,7 +167,7 @@ export function buildCamPlan(rawInput, providers = {}) {
     executable: geometryExecutable,
     geometryExecutable,
     kinematics: {
-      model: 'TURN_MILL_INDEXED_C_V1', axes: { X: 'DIAMETER', Z: 'LINEAR', C: 'INDEXED_BLOCKING', Y: 'NOT_IMPLEMENTED' },
+      model: 'CK52PT_Y_TURN_MILL_XYZC_V2', axes: { X: 'DIAMETER', Z: 'LINEAR', Y: 'LINEAR', C: 'INDEXED_BLOCKING' }, turretStations: 15, view: { chuck: 'LEFT', turret: 'RIGHT' },
     },
   };
   plan.featureMaterialModel = createFeatureMaterialModel(plan);

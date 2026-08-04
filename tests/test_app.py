@@ -261,7 +261,7 @@ def test_stock_removal_accepts_shopturn_tool_flow():
 
 def test_health_reports_shopturn_feature():
     body = client.get("/api/health").json()
-    assert body["version"] == "4.6.3-cutoff"
+    assert body["version"] == "4.8.0-sinumerik-simulator"
     assert "shopturn_tool_flow" in body["features"]
 
 
@@ -567,7 +567,7 @@ def test_index_disables_browser_cache():
     response = client.get("/")
     assert response.status_code == 200
     assert "no-store" in response.headers.get("cache-control", "")
-    assert response.headers.get("x-app-version") == "4.6.3-cutoff"
+    assert response.headers.get("x-app-version") == "4.8.0-sinumerik-simulator"
 
 
 def test_static_assets_require_revalidation():

@@ -1,4 +1,4 @@
-# CK52DWY / SINUMERIK 828D Knowledge Base
+# CK52PT-Y / SINUMERIK 828D Knowledge Base
 
 Локальная база проекта.
 

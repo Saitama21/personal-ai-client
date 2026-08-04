@@ -38,7 +38,7 @@ MOCK_MODE = os.getenv("MOCK_MODE", "false").strip().lower() in {"1", "true", "ye
 OPENAI_MODE = os.getenv("OPENAI_MODE", "live").strip().lower()
 OPENAI_CONFIGURED = bool(os.getenv("OPENAI_API_KEY", "").strip())
 KEEP_OPENAI_FILES = os.getenv("KEEP_OPENAI_FILES", "false").strip().lower() in {"1", "true", "yes", "on"}
-APP_VERSION = os.getenv("APP_VERSION", "4.6.3-cutoff")
+APP_VERSION = os.getenv("APP_VERSION", "4.8.0-sinumerik-simulator")
 DEPLOY_COMMIT = os.getenv("RAILWAY_GIT_COMMIT_SHA", os.getenv("GIT_COMMIT", "local"))
 
 logging.basicConfig(
@@ -1940,7 +1940,7 @@ def health() -> dict[str, Any]:
         "deploy_commit": DEPLOY_COMMIT[:12],
         "machine_profile": "tengyue_ck52pty_828d_495",
         "knowledge_base": knowledge_summary()["counts"],
-        "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "drawing_region_selection", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52pty_profile", "drawing_intelligence", "tolerance_detection", "metric_thread_catalog", "chamfer_marker", "multi_operation_route", "contour_mirroring", "history_project_restore", "mobile_history", "multi_operation_picker", "general_tolerance_h14_rule", "stock_mode_radio", "multi_checkbox_setup", "hybrid_turn_mill_mode", "chat_image_upload", "chat_region_selection", "split_chamfer_input", "toggleable_drawing_rules", "full_thread_library", "thread_library_filters", "engineering_layout_overflow_fix", "text_only_stock_plan", "safari_touch_hotfix", "machine_profile_autofill", "multiview_association", "af_flats_detection", "hybrid_stock_removal_split", "operator_pdf", "final_result_snapshot", "sinumerik_shopturn_guide", "local_knowledge_base", "knowledge_search", "source_trust_levels", "ck52pty_machine_profile", "digital_twin", "manual_page_search", "manual_translation_cache", "translation_pdf_export", "photo_evidence_gallery"],
+        "features": ["projects", "contour_editor", "slddrw_preview", "ai_contour", "drawing_region_selection", "sinumerik_export", "follow_up_chat", "shopturn_tool_flow", "tengyue_ck52pty_profile", "drawing_intelligence", "tolerance_detection", "metric_thread_catalog", "chamfer_marker", "multi_operation_route", "contour_mirroring", "history_project_restore", "mobile_history", "multi_operation_picker", "general_tolerance_h14_rule", "stock_mode_radio", "multi_checkbox_setup", "hybrid_turn_mill_mode", "chat_image_upload", "chat_region_selection", "split_chamfer_input", "toggleable_drawing_rules", "full_thread_library", "thread_library_filters", "engineering_layout_overflow_fix", "text_only_stock_plan", "safari_touch_hotfix", "machine_profile_autofill", "multiview_association", "af_flats_detection", "hybrid_stock_removal_split", "operator_pdf", "final_result_snapshot", "sinumerik_shopturn_guide", "local_knowledge_base", "knowledge_search", "source_trust_levels", "ck52pty_machine_profile", "digital_twin", "manual_page_search", "manual_translation_cache", "translation_pdf_export", "photo_evidence_gallery", "turning_xz_material_removal", "stock_removal_progressive", "axial_drilling_simulation", "realistic_twist_drill", "radial_drilling_xyzc", "af_indexed_c_full", "pocket_slot_milling_xyzc", "y_axis_milling", "fixed_left_chuck_view", "realistic_three_jaw_chuck", "fifteen_station_turret", "animated_tool_change_t1_t15", "sinumerik_828d_machine_view", "external_threading_simulation", "cutoff_simulation", "webgl_canvas2d_fallback"],
     }
 
 

@@ -4,6 +4,8 @@ import {
 import { planDrilling } from '../app/static/cam/drilling-planner.mjs';
 import { planThreading } from '../app/static/cam/threading-planner.mjs';
 import { planAfMilling } from '../app/static/cam/af-milling-planner.mjs';
+import { planRadialDrilling } from '../app/static/cam/radial-drilling-planner.mjs';
+import { planPocketMilling } from '../app/static/cam/pocket-milling-planner.mjs';
 import { normalizeCamInput } from '../app/static/cam/contracts.mjs';
 import { normalizeFeatureContracts } from '../app/static/cam/feature-contracts.mjs';
 
@@ -31,13 +33,16 @@ function baseRaw(overrides = {}) {
         turning: { radius: 0.5, cuttingReach: 8, gaugeLength: 80 },
         threading: { radius: 0.5, cuttingReach: 5, gaugeLength: 80 },
         drilling: { radius: 4, cuttingReach: 30, gaugeLength: 80 },
+        radialDrilling: { radius: 4, cuttingReach: 18, gaugeLength: 80 },
         millingAf: { radius: 4, cuttingReach: 8, gaugeLength: 80 },
+        millingPocket: { radius: 3, cuttingReach: 12, gaugeLength: 80 },
+        cutoff: { radius: 1, cuttingReach: 30, gaugeLength: 80 },
       },
     },
     postprocessor: {
       confirmed: true, programName: 'TEST_PART', workOffset: 'G54',
       cAxisClamp: 'M10', cAxisUnclamp: 'M11', liveToolOn: 'M133 S{RPM}', liveToolOff: 'M135',
-      coolantOn: 'M8', coolantOff: 'M9', safeParkX: 80, safeParkZ: 20,
+      coolantOn: 'M8', coolantOff: 'M9', safeParkX: 80, safeParkY: 0, safeParkZ: 20,
     },
     ...overrides,
   };
@@ -54,12 +59,15 @@ run('axial peck drilling has safe approach, cuts and retracts', () => {
   assert(plan.moves.at(-1).role === 'drill_safe_retract', 'safe drill retract missing');
 });
 
-run('radial drilling is explicitly blocked', () => {
-  const raw = baseRaw(); raw.features.drilling.orientation = 'radial';
-  const input = normalizeCamInput(raw); const feature = normalizeFeatureContracts(raw, input).drilling;
-  const plan = planDrilling(input, feature);
-  assert(plan.status === CAM_STATUS.BLOCKED, 'radial drill was falsely enabled');
-  assert(plan.errors.some(error => error.code === 'RADIAL_DRILLING_NOT_IMPLEMENTED'), 'radial drill gate missing');
+run('radial drilling indexes C and performs peck cuts', () => {
+  const raw = baseRaw();
+  raw.features.radialDrilling = { enabled: true, diameter: 6, depth: 8, peckDepth: 3, radialZ: -20, cAngle: 0, count: 4, angularStep: 90, rpm: 1500, feedRate: 90, toolId: 'T10' };
+  const input = normalizeCamInput(raw); const feature = normalizeFeatureContracts(raw, input).radialDrilling;
+  const plan = planRadialDrilling(input, feature);
+  assert(plan.status === CAM_STATUS.SUPPORTED, JSON.stringify(plan.errors));
+  assert(plan.operations.length === 4, 'radial hole count mismatch');
+  assert(plan.moves.some(move => move.cutKind === 'drill_radial' && move.cutting), 'radial drilling cut missing');
+  assert(plan.moves.filter(move => move.motion === 'index').length === 3, 'radial C indexing count mismatch');
 });
 
 run('thread planner produces synchronized pitch-controlled passes', () => {
@@ -77,6 +85,16 @@ run('AF planner indexes C and cuts every face', () => {
   assert(plan.moves.filter(move => move.motion === 'index').length === 5, 'C index count mismatch');
   assert(new Set(plan.moves.filter(move => move.cutKind === 'mill_af').map(move => move.faceIndex)).size === 6, 'not every AF face is cut');
   assert(plan.moves.filter(move => move.motion === 'index').every(move => plan.operations.some(op => op.id === move.operationId)), 'orphan C index move');
+});
+
+run('pocket planner creates Y raster and indexed copies', () => {
+  const raw = baseRaw();
+  raw.features.millingPocket = { enabled: true, type: 'pocket', placement: 'radial', length: 18, width: 10, depth: 3, zCenter: -25, count: 2, angularStep: 180, toolDiameter: 6, stepOver: 2, stepDown: 1, rpm: 2500, feedRate: 280, toolId: 'T8' };
+  const input = normalizeCamInput(raw); const feature = normalizeFeatureContracts(raw, input).millingPocket;
+  const plan = planPocketMilling(input, feature);
+  assert(plan.status === CAM_STATUS.SUPPORTED, JSON.stringify(plan.errors));
+  assert(plan.moves.some(move => move.cutKind === 'mill_pocket' && Math.abs(move.to.y) > 0), 'Y raster cut missing');
+  assert(plan.moves.some(move => move.motion === 'index' && move.to.c === 180), 'second indexed pocket missing');
 });
 
 run('unified plan removes 3D material progressively', () => {

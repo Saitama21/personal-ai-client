@@ -4,10 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#07111f" id="themeColorMeta">
-  <title>Personal AI Client PRO — CK52DWY Digital Twin</title>
-  <link rel="stylesheet" href="/static/styles.css?v=4.6.3-cutoff&build=4.8.0-sim-rewrite">
+  <title>CK52PT-Y · SINUMERIK 828D CNC Assistant PRO</title>
+  <link rel="stylesheet" href="/static/styles.css?v=4.8.0-sinumerik-simulator">
 </head>
-<body>
+<body class="sinumerik-hmi">
+<div class="hmi-status-strip"><span>SIEMENS</span><b>SINUMERIK 828D</b><span>CK52PT-Y</span><span>JOG / AUTO / SIMULATION</span><span class="hmi-alarm-ok">● READY</span></div>
 <div class="tablet-backdrop" id="tabletBackdrop" aria-hidden="true"></div>
 <div class="app-shell">
   <aside class="sidebar" id="sidebar">
@@ -39,12 +40,12 @@
     </nav>
     <section class="machine-card">
       <small>МОЙ СТАНОК</small>
-      <strong>CK52DWY</strong>
+      <strong>CK52PT-Y</strong>
       <span>SINUMERIK 828D · V4.95 SP03 HF02</span>
       <div class="axis-row"><i></i>X <i></i>Z <i></i>Y <i></i>C°</div>
       <button class="ghost small">Паспорт станка</button>
     </section>
-    <footer>Personal AI Client PRO<br><span>v4.6.3 Cutoff</span></footer>
+    <footer>Personal AI Client PRO<br><span>v4.8.0 SINUMERIK Simulator</span></footer>
   </aside>
 
   <main class="workspace">
@@ -84,23 +85,29 @@
     </div>
 
     <section class="next-strip" id="nextStrip"></section>
+    <nav class="hmi-bottom-softkeys" aria-label="SINUMERIK softkeys">
+      <button data-step-jump="0">PROGRAM</button><button data-step-jump="4">CAM</button><button data-step-jump="5">TOOLS</button><button data-step-jump="7">STOCK</button><button data-step-jump="8">SIMUL.</button><button data-support="digitalTwin">MACHINE</button><button data-support="knowledge">DIAG.</button><button data-step-jump="9">EXPORT</button>
+    </nav>
     <div class="mobile-actions">
       <button id="prevBtn" class="ghost">← Назад</button>
       <button id="nextBtn" class="primary">Далее →</button>
     </div>
+    <aside class="hmi-right-softkeys" aria-label="Vertical softkeys">
+      <button data-step-jump="0">Program</button><button data-step-jump="3">Contour</button><button data-step-jump="4">Cycles</button><button data-step-jump="5">Tool list</button><button data-step-jump="7">Stock Removal</button><button data-step-jump="8">Simulation</button><button data-support="digitalTwin">Machine</button><button data-support="knowledge">Diagnostics</button>
+    </aside>
   </main>
 </div>
-<script src="/static/app.js?v=4.6.3-cutoff&build=4.8.0-sim-rewrite" defer></script>
+<script src="/static/app.js?v=4.8.0-sinumerik-simulator" defer></script>
 <script type="module">
 (async()=>{
 try{
-  window.RecognitionCrop=await import("/static/recognition-crop.mjs?v=4.6.3-cutoff&build=4.8.0-sim-rewrite");
+  window.RecognitionCrop=await import("/static/recognition-crop.mjs?v=4.8.0-sinumerik-simulator");
   window.dispatchEvent(new Event("recognition-crop-ready"));
 }catch(error){console.error("Recognition crop load failed",error)}
 try{
-  window.CNC_CAM_API=await import("/static/cam/cam-engine.mjs?v=4.6.3-cutoff&build=4.8.0-sim-rewrite");
+  window.CNC_CAM_API=await import("/static/cam/cam-engine.mjs?v=4.8.0-sinumerik-simulator");
   window.THREE=await import("/static/vendor/three.module.min.js");
-  await import("/static/simulation3d.js?v=4.6.3-cutoff&build=4.8.0-sim-rewrite");
+  await import("/static/simulation3d.js?v=4.8.0-sinumerik-simulator");
   window.dispatchEvent(new Event("cnc-cam-engine-ready"));
   window.CNC_CAM_renderPreflight?.();
   window.CNC3D_init?.();

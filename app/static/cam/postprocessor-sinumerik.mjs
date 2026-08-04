@@ -18,7 +18,9 @@ function fnv1a32(text) {
 function toolForOperation(plan, operation) {
   if (operation.kind === 'threading') return plan.threading.feature.toolId;
   if (operation.kind === 'drilling') return plan.drilling.feature.toolId;
+  if (operation.kind === 'radial_drilling') return plan.radialDrilling.feature.toolId;
   if (operation.kind === 'milling_af') return plan.millingAf.feature.toolId;
+  if (operation.kind === 'milling_pocket') return plan.millingPocket.feature.toolId;
   if (operation.kind === 'cutoff') return plan.cutoff.feature.toolId;
   return operation.kind === 'finish_turning' ? 'T2' : 'T1';
 }
@@ -40,7 +42,8 @@ export function validateSinumerikExport(plan, config) {
     errors.push(issue('POST_COLLISION_GATE', 'Экспорт разрешён только после успешной проверки ограничивающих оболочек.', 'error', 'export'));
   }
   if (plan.unsupportedOperations?.length) errors.push(issue('POST_UNSUPPORTED_ROUTE', 'Маршрут содержит неподдерживаемые операции; удалите их или реализуйте до экспорта.', 'error', 'export'));
-  if (plan.millingAf?.status === CAM_STATUS.SUPPORTED) {
+  const liveToolRequired = [plan.millingAf, plan.millingPocket, plan.radialDrilling].some(item => item?.status === CAM_STATUS.SUPPORTED);
+  if (liveToolRequired) {
     for (const [code, value, label] of [
       ['POST_C_CLAMP_REQUIRED', config.cAxisClamp, 'зажим C'],
       ['POST_C_UNCLAMP_REQUIRED', config.cAxisUnclamp, 'разжим C'],
@@ -79,10 +82,12 @@ export class Sinumerik828DPostprocessor {
         activeTool = number;
         const rpm = operation.kind === 'threading' ? plan.threading.feature.rpm
           : operation.kind === 'drilling' ? plan.drilling.feature.rpm
-            : operation.kind === 'milling_af' ? plan.millingAf.feature.rpm
-              : operation.kind === 'cutoff' ? plan.cutoff.feature.rpm
-                : plan.turning.parameters.rpm;
-        if (operation.kind === 'milling_af') {
+            : operation.kind === 'radial_drilling' ? plan.radialDrilling.feature.rpm
+              : operation.kind === 'milling_af' ? plan.millingAf.feature.rpm
+                : operation.kind === 'milling_pocket' ? plan.millingPocket.feature.rpm
+                  : operation.kind === 'cutoff' ? plan.cutoff.feature.rpm
+                    : plan.turning.parameters.rpm;
+        if (['milling_af','milling_pocket','radial_drilling'].includes(operation.kind)) {
           emit(config.liveToolOn.replaceAll('{RPM}', ncNumber(rpm, 0)), { role: 'live_tool_on', rpm });
           liveToolActive = true;
         } else {
@@ -100,7 +105,8 @@ export class Sinumerik828DPostprocessor {
           emit(config.cAxisUnclamp, { operationId: operation.id, role: 'c_unclamp' });
           emit(`SPOS=AC(${ncNumber(move.to.c, 3)})`, { operationId: operation.id, moveId: move.id, role: move.role });
           emit(config.cAxisClamp, { operationId: operation.id, role: 'c_clamp' });
-          emit(config.liveToolOn.replaceAll('{RPM}', ncNumber(plan.millingAf.feature.rpm, 0)), { operationId: operation.id, role: 'live_tool_resume' });
+          const liveRpm = operation.kind === 'radial_drilling' ? plan.radialDrilling.feature.rpm : operation.kind === 'milling_pocket' ? plan.millingPocket.feature.rpm : plan.millingAf.feature.rpm;
+          emit(config.liveToolOn.replaceAll('{RPM}', ncNumber(liveRpm, 0)), { operationId: operation.id, role: 'live_tool_resume' });
           liveToolActive = true;
           continue;
         }
@@ -129,7 +135,8 @@ export class Sinumerik828DPostprocessor {
     const errors = [];
     if (missingCuttingMoves.length) errors.push(issue('POST_TRACE_INCOMPLETE', `Не отображено режущих движений: ${missingCuttingMoves.length}.`, 'error', 'export'));
     if (!text.includes('G33') && plan.threading?.status === CAM_STATUS.SUPPORTED) errors.push(issue('POST_G33_MISSING', 'В программе отсутствует G33 для рассчитанной резьбы.', 'error', 'export'));
-    if (!text.includes('SPOS=AC') && plan.millingAf?.status === CAM_STATUS.SUPPORTED) errors.push(issue('POST_SPOS_MISSING', 'В программе отсутствует SPOS=AC для индексируемого AF.', 'error', 'export'));
+    if (!text.includes('SPOS=AC') && [plan.millingAf, plan.millingPocket, plan.radialDrilling].some(item => item?.status === CAM_STATUS.SUPPORTED)) errors.push(issue('POST_SPOS_MISSING', 'В программе отсутствует SPOS=AC для индексируемых операций C.', 'error', 'export'));
+    if (plan.millingPocket?.status === CAM_STATUS.SUPPORTED && !/\bY-?\d/.test(text)) errors.push(issue('POST_Y_MISSING', 'В программе отсутствуют команды Y для рассчитанного кармана/паза.', 'error', 'export'));
     return {
       status: errors.length ? CAM_STATUS.BLOCKED : CAM_STATUS.GENERATED,
       controller: 'SINUMERIK 828D', dialect: 'SIEMENS', programName: config.programName,
@@ -139,6 +146,8 @@ export class Sinumerik828DPostprocessor {
         'G33 longitudinal thread pitch is emitted in K.',
         'C-indexing is emitted with blocking SPOS=AC positioning.',
         'Peck drilling is expanded into deterministic G0/G1 moves to avoid cycle-version ambiguity.',
+        'Radial drilling, AF and pocket milling use live tooling plus blocking C-axis positioning.',
+        'X/Y/Z pocket paths are expanded into deterministic G0/G1 moves.',
         'Cutoff is emitted as a deterministic radial G1 move at a fixed Z and must remain the last route operation.',
       ],
     };

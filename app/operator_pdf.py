@@ -368,7 +368,7 @@ def build_operator_pdf(snapshot: dict[str, Any]) -> bytes:
 
     generated = snapshot.get("finalizedAt") or snapshot.get("created_at") or datetime.now(timezone.utc).isoformat()
     machine = snapshot.get("machine") if isinstance(snapshot.get("machine"), dict) else {}
-    machine_name = _safe(machine.get("name"), "Tengyue / Dongguan Xinrui CK52DWY")
+    machine_name = _safe(machine.get("name"), "Zhongshan Tengyue CK52PT-Y")
     control = _safe(machine.get("control"), "SINUMERIK 828D")
 
     story: list[Any] = []
@@ -389,7 +389,7 @@ def build_operator_pdf(snapshot: dict[str, Any]) -> bytes:
         ),
         Spacer(1, 4 * mm),
         _p(
-            "ВАЖНО: это карта для ручного ввода, а не автоматически безопасная NC-программа для CK52DWY. До пуска оператор обязан сверить чертёж, зажим, вылеты, коррекции, лимиты станка и выполнить Sinutrain / Dry Run / Single Block.",
+            "ВАЖНО: это карта для ручного ввода, а не автоматически безопасная NC-программа для CK52PT-Y. До пуска оператор обязан сверить чертёж, зажим, вылеты, коррекции, лимиты станка и выполнить Sinutrain / Dry Run / Single Block.",
             styles["warning"],
         ),
         _p("Статусы и границы данных", styles["h1"]),
