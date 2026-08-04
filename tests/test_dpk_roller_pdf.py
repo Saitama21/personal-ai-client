@@ -50,9 +50,15 @@ def test_dpk_pdf_analysis_extracts_geometry():
     assert intel['part_name'] == 'Ролик'
     assert intel['material'] == 'PE 500'
     assert intel['blank_diameter'] == 60.0
+    assert intel['blank_diameter_exact'] is True
+    assert intel['blank_diameter_source'] == 'drawing_profile'
+    assert intel['radial_stock_allowance'] == 0.0
     assert intel['overall_length'] == 30.0
     assert intel['thread_applicable'] is False
     assert intel['af_applicable'] is False
+    assert intel['drilling_applicable'] is True
+    assert intel['drilling_diameter'] == 12.2
+    assert intel['drilling_depth'] == 30.0
     assert [item['length'] for item in intel['axial_segments']] == [8.0, 22.0]
     assert [item['name'] for item in intel['axial_segments']] == ['Расточка Ø30', 'Отверстие Ø12,2 до уступа']
     assert intel['dimension_chain']['matches'] is True
@@ -90,3 +96,16 @@ def test_dpk_contour_ai_returns_outer_inner_and_holes():
     assert body['inner_contours'][0][1]['rv'] == '1×45°'
     assert body['holes'][0]['diameter'] == 12.2
     assert body['holes'][1]['diameter'] == 30.0
+
+
+def test_dpk_contour_uses_drawing_profile_even_when_live(monkeypatch):
+    import app.main as main_module
+    monkeypatch.setattr(main_module, 'MOCK_MODE', False)
+    response = post_file('/api/contour-ai', {'blank_diameter': '70', 'blank_length': '30', 'notes': 'live mode must not replace known drawing geometry'})
+    assert response.status_code == 200
+    body = response.json()
+    assert body['source'] == 'drawing_profile'
+    assert body['confidence'] == 0.99
+    assert body['secondary_features'] == []
+    assert body['outer_contour'][2] == {'x': 57.0, 'z': -5.0, 'type': 'lineX', 'rv': '—', 'direction': 'по X'}
+    assert body['outer_contour'][3] == {'x': 50.0, 'z': -8.5, 'type': 'arcCW', 'rv': 'R3.5', 'direction': 'CW'}

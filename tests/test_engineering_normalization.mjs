@@ -28,8 +28,8 @@ const sandbox = {
 vm.createContext(sandbox);
 vm.runInContext(prefix, sandbox);
 const intelligence = {
-  part_name: 'Ролик', quantity: 28, material: 'PE 500', blank_diameter: 60, overall_length: 30,
-  thread_applicable: false, af_applicable: false,
+  part_name: 'Ролик', quantity: 28, material: 'PE 500', blank_diameter: 60, blank_diameter_exact: true, blank_diameter_source: 'drawing_profile', radial_stock_allowance: 0, overall_length: 30,
+  thread_applicable: false, drilling_applicable: true, drilling_diameter: 12.2, drilling_depth: 30, af_applicable: false,
   chamfers: [{ designation: '1×45°' }],
   tolerance_summary: 'H14 — внутренние размеры/отверстия; h14 — наружные размеры/валы; ±IT14/2 — остальные линейные размеры.',
   recommended_stock_mode: 'lathe',
@@ -49,3 +49,21 @@ assert.equal(result.fields.chamfer, '1×45°');
 assert.equal(result.chain.label, '8 + 22 = 30 мм');
 assert.equal(result.chain.matches, true);
 console.log('PASS engineering normalization: DPK-5.02.103');
+const safety = vm.runInContext('({stock:state.stock,applicability:state.applicability,camFeatures:state.camFeatures,stockHtml:stockStage(),camHtml:(state.step=4,afStage())})', sandbox);
+assert.equal(safety.stock.allowanceD, '0');
+assert.equal(safety.stock.blankDiameterExact, true);
+assert.equal(safety.stock.drawingBlankDiameter, '60');
+assert.equal(safety.applicability.thread, false);
+assert.equal(safety.applicability.af, false);
+assert.equal(safety.applicability.drilling, true);
+assert.equal(safety.camFeatures.threading.enabled, false);
+assert.equal(safety.camFeatures.millingAf.enabled, false);
+assert.equal(safety.camFeatures.drilling.enabled, false);
+assert.equal(safety.camFeatures.drilling.suggestedDiameter, '12.2');
+assert.equal(safety.camFeatures.drilling.suggestedDepth, '30');
+assert.match(safety.stockHtml, /Ø60/);
+assert.match(safety.stockHtml, /readonly/);
+assert.match(safety.camHtml, /На текущем чертеже резьба отсутствует/);
+assert.match(safety.camHtml, /На чертеже нет AF/);
+assert.doesNotMatch(safety.camHtml, /AF13/);
+console.log('PASS CAM safety: exact stock, no phantom thread/AF, drilling suggestion only');

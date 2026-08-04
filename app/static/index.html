@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#07111f" id="themeColorMeta">
   <title>Personal AI Client PRO — CK52DWY Digital Twin</title>
-  <link rel="stylesheet" href="/static/styles.css?v=4.6.1-engineering-normalization">
+  <link rel="stylesheet" href="/static/styles.css?v=4.6.2-dpk-cam-safety">
 </head>
 <body>
 <div class="tablet-backdrop" id="tabletBackdrop" aria-hidden="true"></div>
@@ -44,7 +44,7 @@
       <div class="axis-row"><i></i>X <i></i>Z <i></i>Y <i></i>C°</div>
       <button class="ghost small">Паспорт станка</button>
     </section>
-    <footer>Personal AI Client PRO<br><span>v4.6.1 Engineering Normalization</span></footer>
+    <footer>Personal AI Client PRO<br><span>v4.6.2 DPK CAM Safety</span></footer>
   </aside>
 
   <main class="workspace">
@@ -90,17 +90,17 @@
     </div>
   </main>
 </div>
-<script src="/static/app.js?v=4.5.1-dpk-roller-test" defer></script>
+<script src="/static/app.js?v=4.6.2-dpk-cam-safety" defer></script>
 <script type="module">
 (async()=>{
 try{
-  window.RecognitionCrop=await import("/static/recognition-crop.mjs?v=4.5.1-dpk-roller-test");
+  window.RecognitionCrop=await import("/static/recognition-crop.mjs?v=4.6.2-dpk-cam-safety");
   window.dispatchEvent(new Event("recognition-crop-ready"));
 }catch(error){console.error("Recognition crop load failed",error)}
 try{
-  window.CNC_CAM_API=await import("/static/cam/cam-engine.mjs?v=4.5.1-dpk-roller-test");
+  window.CNC_CAM_API=await import("/static/cam/cam-engine.mjs?v=4.6.2-dpk-cam-safety");
   window.THREE=await import("/static/vendor/three.module.min.js");
-  await import("/static/simulation3d.js?v=4.5.1-dpk-roller-test");
+  await import("/static/simulation3d.js?v=4.6.2-dpk-cam-safety");
   window.dispatchEvent(new Event("cnc-cam-engine-ready"));
   window.CNC_CAM_renderPreflight?.();
   window.CNC3D_init?.();

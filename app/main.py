@@ -38,7 +38,7 @@ MOCK_MODE = os.getenv("MOCK_MODE", "false").strip().lower() in {"1", "true", "ye
 OPENAI_MODE = os.getenv("OPENAI_MODE", "live").strip().lower()
 OPENAI_CONFIGURED = bool(os.getenv("OPENAI_API_KEY", "").strip())
 KEEP_OPENAI_FILES = os.getenv("KEEP_OPENAI_FILES", "false").strip().lower() in {"1", "true", "yes", "on"}
-APP_VERSION = os.getenv("APP_VERSION", "4.6.1-engineering-normalization")
+APP_VERSION = os.getenv("APP_VERSION", "4.6.2-dpk-cam-safety")
 DEPLOY_COMMIT = os.getenv("RAILWAY_GIT_COMMIT_SHA", os.getenv("GIT_COMMIT", "local"))
 
 logging.basicConfig(
@@ -338,6 +338,9 @@ def enrich_drawing_intelligence_from_profile(
         "material": profile.get("material", ""),
         "quantity": profile.get("quantity"),
         "blank_diameter": profile.get("blank_diameter"),
+        "blank_diameter_exact": profile.get("blank_diameter") is not None,
+        "blank_diameter_source": "drawing_profile",
+        "radial_stock_allowance": 0.0,
         "overall_length": profile.get("overall_length"),
         "recommended_mode": profile.get("recommended_mode", ""),
         "recommended_stock_mode": profile.get("recommended_mode", ""),
@@ -366,6 +369,10 @@ def enrich_drawing_intelligence_from_profile(
         result.update({
             "thread_applicable": False,
             "threads": [],
+            "drilling_applicable": True,
+            "drilling_diameter": profile["through_bore"],
+            "drilling_depth": profile["overall_length"],
+            "through_bore_is_through": True,
             "af_applicable": False,
             "af_features": [],
             "secondary_features": [],
@@ -406,6 +413,7 @@ def enrich_drawing_intelligence_from_profile(
     elif profile.get("kind") == "pin_m8_af13":
         result.update({
             "thread_applicable": True,
+            "drilling_applicable": False,
             "threads": [{
                 "designation": "M8",
                 "pitch": 1.25,
@@ -2591,7 +2599,16 @@ async def generate_contour_ai(
     processed_type = media_type
     if crop:
         processed_raw, processed_type = crop_image(raw, crop)
-    if MOCK_MODE:
+    deterministic_profile = infer_local_drawing_profile(
+        processed_raw,
+        " ".join([file.filename or "file", blank_diameter or "", blank_length or "", notes or ""]),
+    )
+    # Known drawings use source-backed deterministic geometry even in live mode. This prevents
+    # a generic model response from replacing confirmed R/chamfer/AF facts with stale templates.
+    if deterministic_profile:
+        result = build_contour_mock(blank_diameter or "", blank_length or "", processed_raw, file.filename or "file", notes or "")
+        result["source"] = "drawing_profile"
+    elif MOCK_MODE:
         result = build_contour_mock(blank_diameter or "", blank_length or "", processed_raw, file.filename or "file", notes or "")
     else:
         result = contour_with_openai(
