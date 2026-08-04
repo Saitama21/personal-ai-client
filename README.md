@@ -1,3 +1,5 @@
+# Personal AI Client PRO v5.1.0 — CK52PT-Y Professional Digital Twin
+
 # Personal AI Client PRO v4.8.2 — CK52PT-Y Clamp Setup Simulator
 
 Специализированный CNC‑клиент под фактическую конфигурацию станка **Zhongshan Tengyue CK52PT‑Y** со стойкой **Siemens SINUMERIK 828D PPU271.4**, CNC‑ПО **V04.95 + SP03 + HF02** и осями **X/Y/Z/C**.

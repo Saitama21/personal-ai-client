@@ -5,7 +5,7 @@ JS=(ROOT/'app/static/app.js').read_text(encoding='utf-8')
 CSS=(ROOT/'app/static/styles.css').read_text(encoding='utf-8')
 
 def test_v4_workflow_present():
-    assert 'ПОСЛЕДОВАТЕЛЬНЫЙ МАСТЕР ПРОЕКТА' in HTML
+    assert 'PROGRAM / PROJECT WIZARD' in HTML
     assert 'const STEPS=' in JS
     for step in ['Анализ','Проверка','Заготовка','Контур X/Z','AF-контур','Инструменты','Техпроцесс','Stock Removal','Симуляция','Экспорт']:
         assert step in JS

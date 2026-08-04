@@ -12,7 +12,7 @@
     chuck: null, clampZoneMesh: null, turret: null, turretDisk: null, activeTool: null, collisionGroup: null,
     resizeObserver: null, running: false, progress: 0, speed: 1, lastFrame: 0,
     lastGeometryProgress: -1, initialVolume: 0, finalVolume: 0, currentVolume: 0,
-    view: 'sinumerik', loopGeneration: 0, selectedTool: null, fallbackCanvas: null, fallbackState: null,
+    view: 'sinumerik', loopGeneration: 0, selectedTool: null, fallbackCanvas: null, fallbackState: null, collisionLatched: false,
   };
 
   const api = () => window.CNC_CAM_API || null;
@@ -239,18 +239,32 @@
     if ($('simVc')) $('simVc').textContent = fmt(pt.x, 3); if ($('simRpm')) $('simRpm').textContent = fmt(pt.z, 3);
     if ($('simY')) $('simY').textContent = fmt(pt.y, 3); if ($('simC')) $('simC').textContent = `${fmt(pt.c, 2)}°`; if ($('simT')) $('simT').textContent = toolId;
     if ($('simFeed')) $('simFeed').textContent = move?.feedRate ? `${fmt(move.feedRate, 1)} мм/мин` : move?.motion === 'rapid' ? 'G0' : '—';
+    const spindle = Number(move?.spindleRpm || op?.spindleRpm || op?.rpm || sim.plan?.input?.spindleRpm || 0);
+    if ($('simSpindle')) $('simSpindle').textContent = spindle > 0 ? `S${Math.round(spindle)}` : (move?.toolKind === 'drilling' || move?.toolKind === 'radialDrilling' || move?.toolKind === 'millingAf' || move?.toolKind === 'millingPocket' ? 'S LIVE' : 'S0');
     if ($('simDepth')) $('simDepth').textContent = move?.passIndex ? `${move.passIndex}` : '—'; if ($('simOperationLabel')) $('simOperationLabel').textContent = op?.name || '—';
+    const collisionNow = (sim.plan.collision?.collisions || []).some(col => col.moveId === move?.id);
+    const banner = $('simCollisionBanner');
+    if (collisionNow) { sim.running = false; sim.collisionLatched = true; if (banner) banner.hidden = false; }
+    else if (!sim.collisionLatched && banner) banner.hidden = true;
+    if (sim.view === 'follow' || sim.view === 'tool') setView(sim.view, pt);
     if ($('simProgressValue')) $('simProgressValue').textContent = `${Math.round(sim.progress * 100)}%`; if ($('simRemaining')) $('simRemaining').textContent = `${Math.round((1 - sim.progress) * 100)}%`;
     if ($('simProgressRange')) $('simProgressRange').value = Math.round(sim.progress * 1000);
     const opIndex = op ? sim.plan.operations.findIndex(o => o.id === op.id) : -1; if ($('simNextOperation')) $('simNextOperation').textContent = sim.plan.operations[opIndex + 1]?.name || 'Финиш';
   }
 
-  function setView(name) {
+  function setView(name, toolPoint = null) {
     sim.view = name; if (!sim.camera || !sim.plan) return;
     const span = Math.max(95, sim.plan.input.blankLength + 90), aspect = Math.max(1, sim.host.clientWidth / Math.max(1, sim.host.clientHeight));
     sim.camera.left = -span * aspect / 2; sim.camera.right = span * aspect / 2; sim.camera.top = span / 2; sim.camera.bottom = -span / 2;
-    if (name === 'top') sim.camera.position.set(0, 150, 0.001); else if (name === 'iso') sim.camera.position.set(120, 90, 150); else sim.camera.position.set(0, 0, 180);
-    sim.camera.lookAt(0, 0, 0); sim.camera.updateProjectionMatrix(); document.querySelectorAll('[data-sim-view]').forEach(b => b.classList.toggle('active', b.dataset.simView === name));
+    const wp = toolPoint ? worldPoint(sim.plan, toolPoint) : new THREE.Vector3(0,0,0);
+    if (name === 'top') sim.camera.position.set(0, 150, 0.001);
+    else if (name === 'iso') sim.camera.position.set(120, 90, 150);
+    else if (name === 'front') sim.camera.position.set(0, 0, 180);
+    else if (name === 'tool') sim.camera.position.set(wp.x + 42, wp.y + 20, wp.z + 52);
+    else if (name === 'follow') sim.camera.position.set(wp.x + 70, wp.y + 45, wp.z + 95);
+    else sim.camera.position.set(0, 0, 180);
+    sim.camera.lookAt((name === 'tool' || name === 'follow') ? wp : new THREE.Vector3(0, 0, 0));
+    sim.camera.updateProjectionMatrix(); document.querySelectorAll('[data-sim-view]').forEach(b => b.classList.toggle('active', b.dataset.simView === name));
   }
 
   function fallbackToolShape(ctx, kind, x, y) {
@@ -320,6 +334,9 @@
   function animate(ts) {
     const generation = sim.loopGeneration; if (!sim.lastFrame) sim.lastFrame = ts; const dt = Math.min(.08, (ts - sim.lastFrame) / 1000); sim.lastFrame = ts;
     if (sim.running && sim.plan?.executable) { sim.progress = clamp(sim.progress + dt * .055 * sim.speed, 0, 1); if (sim.progress >= 1) sim.running = false; updateMaterial(); updateTelemetry(); }
+    const move = currentMove();
+    if (sim.running && sim.chuck && !['radialDrilling','millingAf','millingPocket'].includes(move?.toolKind)) sim.chuck.rotation.x += dt * 2.8;
+    if (sim.running && sim.activeTool && ['drilling','radialDrilling','millingAf','millingPocket'].includes(move?.toolKind)) sim.activeTool.rotation.x += dt * 8;
     renderFrame(); if (generation === sim.loopGeneration) requestAnimationFrame(animate);
   }
 
@@ -327,7 +344,7 @@
     const setProgress = v => { sim.progress = clamp(v, 0, 1); updateMaterial(true); updateTelemetry(); renderFrame(); };
     $('simProgressRange')?.addEventListener('input', e => setProgress(Number(e.target.value) / 1000));
     $('simSpeedRange')?.addEventListener('input', e => { sim.speed = Number(e.target.value); if ($('simSpeedValue')) $('simSpeedValue').textContent = `${sim.speed}×`; });
-    $('simPlayBtn')?.addEventListener('click', () => { if (sim.progress >= 1) setProgress(0); sim.running = true; }); $('simPauseBtn')?.addEventListener('click', () => { sim.running = false; }); $('simResetBtn')?.addEventListener('click', () => { sim.running = false; setProgress(0); });
+    $('simPlayBtn')?.addEventListener('click', () => { if (sim.progress >= 1) setProgress(0); sim.collisionLatched = false; const b=$('simCollisionBanner'); if(b)b.hidden=true; sim.running = true; }); $('simPauseBtn')?.addEventListener('click', () => { sim.running = false; }); $('simResetBtn')?.addEventListener('click', () => { sim.running = false; sim.collisionLatched=false; const b=$('simCollisionBanner'); if(b)b.hidden=true; setProgress(0); });
     $('simBuildBtn')?.addEventListener('click', () => init3D(true));
     $('simPrevStepBtn')?.addEventListener('click', () => { const candidates = sim.plan.moves.map(m => m.startProgress).filter(p => p < sim.progress - .001); setProgress(candidates.length ? candidates.at(-1) : 0); });
     $('simNextStepBtn')?.addEventListener('click', () => { const next = sim.plan.moves.map(m => m.endProgress).find(p => p > sim.progress + .001); setProgress(next ?? 1); });
@@ -337,7 +354,7 @@
   function init3D(force = false) {
     const host = $('stock3dViewport'); if (!host) return false;
     if (!force && sim.host === host && sim.renderer && host.contains(sim.renderer.domElement)) return true;
-    sim.loopGeneration++; sim.resizeObserver?.disconnect?.(); disposeObject(sim.scene); sim.renderer?.dispose?.(); Object.assign(sim, { renderer: null, scene: null, camera: null, materialMesh: null, targetMesh: null, boreMesh: null, chuck: null, clampZoneMesh: null, turret: null, activeTool: null, selectedTool: null, progress: Number($('simProgressRange')?.value || 0) / 1000, lastGeometryProgress: -1, running: false, lastFrame: 0, host, fallbackCanvas: null, fallbackState: null });
+    sim.loopGeneration++; sim.resizeObserver?.disconnect?.(); disposeObject(sim.scene); sim.renderer?.dispose?.(); Object.assign(sim, { renderer: null, scene: null, camera: null, materialMesh: null, targetMesh: null, boreMesh: null, chuck: null, clampZoneMesh: null, turret: null, activeTool: null, selectedTool: null, progress: Number($('simProgressRange')?.value || 0) / 1000, lastGeometryProgress: -1, running: false, lastFrame: 0, host, fallbackCanvas: null, fallbackState: null, collisionLatched: false });
     rebuildPlan();
     if (!sim.plan?.executable) { host.innerHTML = '<div class="sim-fallback warning">CAM-план заблокирован. Откройте CAM-функции и исправьте параметры.</div>'; return false; }
     let sceneReady = false;

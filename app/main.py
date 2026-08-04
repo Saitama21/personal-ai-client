@@ -38,7 +38,7 @@ MOCK_MODE = os.getenv("MOCK_MODE", "false").strip().lower() in {"1", "true", "ye
 OPENAI_MODE = os.getenv("OPENAI_MODE", "live").strip().lower()
 OPENAI_CONFIGURED = bool(os.getenv("OPENAI_API_KEY", "").strip())
 KEEP_OPENAI_FILES = os.getenv("KEEP_OPENAI_FILES", "false").strip().lower() in {"1", "true", "yes", "on"}
-APP_VERSION = os.getenv("APP_VERSION", "4.8.2-clamp-setup-simulation")
+APP_VERSION = os.getenv("APP_VERSION", "5.1.0-sinumerik-operate-ui")
 DEPLOY_COMMIT = os.getenv("RAILWAY_GIT_COMMIT_SHA", os.getenv("GIT_COMMIT", "local"))
 
 logging.basicConfig(
