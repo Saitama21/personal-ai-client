@@ -1,17 +1,17 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import type { AxisState, MachineMode, StockSettings } from '../core/types';
+import type { AxisState, CameraView, MachineMode, MotionMode, StockSettings } from '../core/types';
 
-interface Props { axes: AxisState; mode: MachineMode; tool: number; spindleOn: boolean; rpm:number; stock:StockSettings; }
+interface Props { axes: AxisState; mode: MachineMode; motion:MotionMode; tool: number; spindleOn: boolean; rpm:number; stock:StockSettings; cameraView:CameraView; danger:boolean; }
 
 function disposeObject(root: THREE.Object3D){
   root.traverse(o=>{if(o instanceof THREE.Mesh){o.geometry.dispose();const m=o.material;Array.isArray(m)?m.forEach(x=>x.dispose()):m.dispose();}});
 }
 
-export default function MachineScene({ axes, mode, tool, spindleOn, rpm, stock }: Props) {
+export default function MachineScene({ axes, mode, motion, tool, spindleOn, rpm, stock, cameraView, danger }: Props) {
   const mount = useRef<HTMLDivElement>(null);
-  const state = useRef({ axes, mode, tool, spindleOn, rpm, stock });
-  state.current = { axes, mode, tool, spindleOn, rpm, stock };
+  const state = useRef({ axes, mode, motion, tool, spindleOn, rpm, stock, cameraView, danger });
+  state.current = { axes, mode, motion, tool, spindleOn, rpm, stock, cameraView, danger };
 
   useEffect(() => {
     if (!mount.current) return;
@@ -93,6 +93,7 @@ export default function MachineScene({ axes, mode, tool, spindleOn, rpm, stock }
     const xLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,-1.8,2.5),new THREE.Vector3(0,1.5,2.5)]),new THREE.LineBasicMaterial({color:0xff6e6e}));labels.add(xLine);
     const zLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-4.8,-1.55,2.5),new THREE.Vector3(4.8,-1.55,2.5)]),new THREE.LineBasicMaterial({color:0x58a5ff}));labels.add(zLine);
 
+    const targetCamera=new THREE.Vector3(8.8,5.8,12.8);
     let currentToolAngle=0;
     let targetToolAngle=0;
     let lastD=stock.diameter,lastL=stock.length;
@@ -103,13 +104,18 @@ export default function MachineScene({ axes, mode, tool, spindleOn, rpm, stock }
       frame=requestAnimationFrame(animate);
       const s=state.current;
       if(s.stock.diameter!==lastD||s.stock.length!==lastL){lastD=s.stock.diameter;lastL=s.stock.length;rebuildStock(lastD,lastL);}
+      const views:Record<CameraView,[number,number,number]>={iso:[8.8,5.8,12.8],front:[8.8,.4,12.8],top:[.5,15,.5],sinumerik:[10.8,3.5,14.8]};
+      targetCamera.set(...views[s.cameraView]);
+      camera.position.lerp(targetCamera,.08);camera.lookAt(0,.1,0);
       const speed=Math.min(Math.max(s.rpm,0)/800,2.2)*.045;
       if(s.spindleOn){chuck.rotation.x+=speed;if(stockMesh)stockMesh.rotation.x+=speed;}
       const zTarget=4.15+(s.axes.z-20)*.035;
       const xTarget=.2+(70-s.axes.x)*.027;
-      turret.position.x+= (zTarget-turret.position.x)*.12;
-      turret.position.y+= (xTarget-turret.position.y)*.12;
-      turret.position.z+= ((s.mode==='milling'?s.axes.y*.035:0)-turret.position.z)*.12;
+      const lerpRate=s.motion==='rapid'?.17:.07;
+      turret.position.x+= (zTarget-turret.position.x)*lerpRate;
+      turret.position.y+= (xTarget-turret.position.y)*lerpRate;
+      turret.position.z+= ((s.mode==='milling'?s.axes.y*.035:0)-turret.position.z)*lerpRate;
+      accent.color.setHex(s.danger?0xff4d4d:0xf4c84f);accent.emissive.setHex(s.danger?0x7a0000:0x4a3100);
       targetToolAngle=-(s.tool-1)*Math.PI*2/15;
       let diff=((targetToolAngle-currentToolAngle+Math.PI)%(Math.PI*2))-Math.PI;
       currentToolAngle+=diff*.13;turretDisc.rotation.x=currentToolAngle;turretFace.rotation.x=currentToolAngle;
