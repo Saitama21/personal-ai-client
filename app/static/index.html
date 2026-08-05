@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07111f" id="themeColorMeta">
+  <title>Personal AI Client PRO — CK52DWY Digital Twin</title>
+  <link rel="stylesheet" href="/static/styles.css?v=4.6.3-cutoff">
+</head>
+<body>
+<div class="tablet-backdrop" id="tabletBackdrop" aria-hidden="true"></div>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark">R</div>
+      <div><strong>ROZFOOD</strong><span>CNC ASSISTANT <b>PRO</b></span></div>
+    </div>
+    <nav class="main-nav" aria-label="Основная навигация">
+      <button data-nav="projects">▣ Проекты</button>
+      <button data-nav="new" class="active">⊕ Новый проект</button>
+      <button data-nav="history">◷ История</button>
+      <button data-nav="templates">♙ Шаблоны</button>
+      <hr>
+      <button data-step-jump="0" class="active">▧ Анализ чертежа</button>
+      <button data-step-jump="3">⌁ Контур X/Z</button>
+      <button data-step-jump="4">⬡ CAM-функции</button>
+      <button data-step-jump="5">⌕ Инструменты</button>
+      <button data-step-jump="6">♧ Техпроцесс</button>
+      <button data-step-jump="7">◌ Stock Removal</button>
+      <button data-step-jump="8">▷ Симуляция</button>
+      <button data-step-jump="9">⇧ Экспорт</button>
+      <hr>
+      <button data-support="libraries">⌘ Библиотеки</button>
+      <button data-support="calculators">▦ Калькуляторы</button>
+      <button data-support="digitalTwin">◫ Цифровой двойник</button>
+      <button data-support="knowledge">⌕ База 828D</button>
+      <button data-support="reference">ⓘ Справочник</button>
+      <button data-support="settings">⚙ Настройки</button>
+    </nav>
+    <section class="machine-card">
+      <small>МОЙ СТАНОК</small>
+      <strong>CK52DWY</strong>
+      <span>SINUMERIK 828D · V4.95 SP03 HF02</span>
+      <div class="axis-row"><i></i>X <i></i>Z <i></i>Y <i></i>C°</div>
+      <button class="ghost small">Паспорт станка</button>
+    </section>
+    <footer>Personal AI Client PRO<br><span>v4.6.3 Cutoff</span></footer>
+  </aside>
+
+  <main class="workspace">
+    <header class="topbar">
+      <div>
+        <h1>ПОСЛЕДОВАТЕЛЬНЫЙ МАСТЕР ПРОЕКТА</h1>
+        <p id="projectSubtitle">Новый технологический проект</p>
+      </div>
+      <div class="top-actions">
+        <div class="tablet-controls" aria-label="Панели планшета">
+          <button class="icon-btn" id="tabletMenuBtn" type="button" aria-controls="sidebar" aria-expanded="false">☰ <span>Меню</span></button>
+          <button class="icon-btn" id="tabletInspectorBtn" type="button" aria-controls="projectInspector" aria-expanded="false">◫ <span>Сводка</span></button>
+        </div>
+        <button class="icon-btn" id="themeBtn">◐</button>
+        <button class="ghost">ⓘ Справка</button>
+        <div class="user-chip"><span class="creator-label">СОЗДАТЕЛЬ</span><strong>Ерошов Иван</strong></div>
+      </div>
+    </header>
+
+    <section class="mobile-progress" id="mobileProgress" aria-live="polite"></section>
+    <section class="stepper" id="stepper"></section>
+
+    <div class="layout-grid">
+      <section class="stage-panel" id="stagePanel"></section>
+      <aside class="inspector" id="projectInspector">
+        <section class="summary-card">
+          <h3>СВОДКА ПРОЕКТА</h3>
+          <dl id="summaryList"></dl>
+        </section>
+        <section class="progress-card">
+          <h3>ПРОГРЕСС ПРОЕКТА</h3>
+          <div class="progress-head"><span>10 этапов</span><b id="progressPercent">0%</b></div>
+          <div class="progress"><i id="progressBar"></i></div>
+          <ol id="progressList"></ol>
+        </section>
+      </aside>
+    </div>
+
+    <section class="next-strip" id="nextStrip"></section>
+    <div class="mobile-actions">
+      <button id="prevBtn" class="ghost">← Назад</button>
+      <button id="nextBtn" class="primary">Далее →</button>
+    </div>
+  </main>
+</div>
+<script src="/static/app.js?v=4.6.3-cutoff" defer></script>
+<script type="module">
+(async()=>{
+try{
+  window.RecognitionCrop=await import("/static/recognition-crop.mjs?v=4.6.3-cutoff");
+  window.dispatchEvent(new Event("recognition-crop-ready"));
+}catch(error){console.error("Recognition crop load failed",error)}
+try{
+  window.CNC_CAM_API=await import("/static/cam/cam-engine.mjs?v=4.6.3-cutoff");
+  window.THREE=await import("/static/vendor/three.module.min.js");
+  await import("/static/simulation3d.js?v=4.6.3-cutoff");
+  window.dispatchEvent(new Event("cnc-cam-engine-ready"));
+  window.CNC_CAM_renderPreflight?.();
+  window.CNC3D_init?.();
+}catch(error){console.error("CAM/3D load failed",error);window.dispatchEvent(new CustomEvent("cnc-3d-load-error",{detail:error}));}})();
+</script>
+</body>
+</html>

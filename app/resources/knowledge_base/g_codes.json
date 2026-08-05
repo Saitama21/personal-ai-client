@@ -1,0 +1,1360 @@
+[
+  {
+    "code": "G0",
+    "category": "Основные перемещения",
+    "title_ru": "Быстрое перемещение",
+    "description_uk": "Швидкий рух",
+    "description_en": "Rapid traverse",
+    "description_zh": "快速移动",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G1",
+    "category": "Основные перемещения",
+    "title_ru": "Линейная интерполяция",
+    "description_uk": "Лінійна інтерполяція",
+    "description_en": "Linear interpolation",
+    "description_zh": "线性插补",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G2",
+    "category": "Основные перемещения",
+    "title_ru": "Круговая интерполяция по часовой стрелке",
+    "description_uk": "Кругова інтерполяція за годинниковою стрілкою",
+    "description_en": "Clockwise circular interpolation",
+    "description_zh": "顺时针圆弧插补",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G3",
+    "category": "Основные перемещения",
+    "title_ru": "Круговая интерполяция против часовой стрелки",
+    "description_uk": "Кругова інтерполяція проти годинникової стрілки",
+    "description_en": "Counterclockwise circular interpolation",
+    "description_zh": "逆时针圆弧插补",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "CIP",
+    "category": "Основные перемещения",
+    "title_ru": "Кругова інтерполяція через середню точку (просторова нахилена дуга)",
+    "description_uk": "Кругова інтерполяція через середню точку (просторова нахилена дуга)",
+    "description_en": "Circular interpolation via intermediate point (spatial inclined arc)",
+    "description_zh": "通过中间点的圆弧插补（空间倾斜圆弧）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G70",
+    "category": "Размеры и единицы",
+    "title_ru": "Активувати імперські одиниці (геометричні дані)",
+    "description_uk": "Активувати імперські одиниці (геометричні дані)",
+    "description_en": "Activate inch system (geometric data)",
+    "description_zh": "激活英制单位（几何数据）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G71",
+    "category": "Размеры и единицы",
+    "title_ru": "Активувати метричні одиниці (геометричні дані)",
+    "description_uk": "Активувати метричні одиниці (геометричні дані)",
+    "description_en": "Activate metric system (geometric data)",
+    "description_zh": "激活公制单位（几何数据）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G700",
+    "category": "Размеры и единицы",
+    "title_ru": "Активувати імперські одиниці (геометричні + дані процесу)",
+    "description_uk": "Активувати імперські одиниці (геометричні + дані процесу)",
+    "description_en": "Activate inch system (geometric + process data)",
+    "description_zh": "激活英制单位（几何 + 工艺数据）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G710",
+    "category": "Размеры и единицы",
+    "title_ru": "Активувати метричні одиниці (геометричні + дані процесу)",
+    "description_uk": "Активувати метричні одиниці (геометричні + дані процесу)",
+    "description_en": "Activate metric system (geometric + process data)",
+    "description_zh": "激活公制单位（几何 + 工艺数据）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G90",
+    "category": "Размеры и единицы",
+    "title_ru": "Абсолютное программирование",
+    "description_uk": "Програмування абсолютного розміру",
+    "description_en": "Absolute dimensioning",
+    "description_zh": "绝对尺寸编程",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G91",
+    "category": "Размеры и единицы",
+    "title_ru": "Инкрементальное программирование",
+    "description_uk": "Програмування з поступовим збільшенням розміру",
+    "description_en": "Incremental dimensioning",
+    "description_zh": "增量尺寸编程",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G17",
+    "category": "Рабочая плоскость",
+    "title_ru": "Вибір робочої площини X/Y",
+    "description_uk": "Вибір робочої площини X/Y",
+    "description_en": "Select X/Y working plane",
+    "description_zh": "选择 X/Y 工作平面",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G18",
+    "category": "Рабочая плоскость",
+    "title_ru": "Рабочая плоскость Z/X для токарной обработки",
+    "description_uk": "Вибір робочої площини Z/X",
+    "description_en": "Select Z/X working plane",
+    "description_zh": "选择 Z/X 工作平面",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G19",
+    "category": "Рабочая плоскость",
+    "title_ru": "Виберіть робочу площину Y/Z",
+    "description_uk": "Виберіть робочу площину Y/Z",
+    "description_en": "Select Y/Z working plane",
+    "description_zh": "选择 Y/Z 工作平面",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G93",
+    "category": "Режим подачи",
+    "title_ru": "Швидкість подачі у зворотному часі",
+    "description_uk": "Швидкість подачі у зворотному часі",
+    "description_en": "Inverse time feed rate",
+    "description_zh": "反比时间进给率",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G94",
+    "category": "Режим подачи",
+    "title_ru": "Подача в мм/мин",
+    "description_uk": "Лінійна швидкість подачі (мм/хв/град/хв)",
+    "description_en": "Linear feed rate (mm/min / inch/min / deg/min)",
+    "description_zh": "线性进给率（毫米 / 分钟 / 度 / 分钟）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G95",
+    "category": "Режим подачи",
+    "title_ru": "Подача в мм/об",
+    "description_uk": "Швидкість подачі обертання (мм/об/хв/дюйм/об/хв)",
+    "description_en": "Rotational feed rate (mm/rev / inch/rev)",
+    "description_zh": "旋转进给率（毫米 / 转 / 英寸 / 转）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G96",
+    "category": "Управление шпинделем",
+    "title_ru": "Постоянная скорость резания",
+    "description_uk": "Постійна швидкість різання (режим обертальної подачі)",
+    "description_en": "Constant cutting speed (rotational feed mode)",
+    "description_zh": "恒定切削速度（旋转进给模式）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G961",
+    "category": "Управление шпинделем",
+    "title_ru": "Постійна швидкість різання (лінійний режим подачі)",
+    "description_uk": "Постійна швидкість різання (лінійний режим подачі)",
+    "description_en": "Constant cutting speed (linear feed mode)",
+    "description_zh": "恒定切削速度（线性进给模式）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G962",
+    "category": "Управление шпинделем",
+    "title_ru": "Постійна швидкість різання (лінійний + обертальний режим подачі)",
+    "description_uk": "Постійна швидкість різання (лінійний + обертальний режим подачі)",
+    "description_en": "Constant cutting speed (linear + rotational feed mode)",
+    "description_zh": "恒定切削速度（线性 + 旋转进给模式）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G97",
+    "category": "Управление шпинделем",
+    "title_ru": "Постоянные обороты / отмена G96",
+    "description_uk": "Скасувати постійну швидкість різання (режим обертальної подачі)",
+    "description_en": "Cancel constant cutting speed (rotational feed mode)",
+    "description_zh": "取消恒定切削速度（旋转进给模式）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G971",
+    "category": "Управление шпинделем",
+    "title_ru": "Скасувати постійну швидкість різання (режим лінійної подачі)",
+    "description_uk": "Скасувати постійну швидкість різання (режим лінійної подачі)",
+    "description_en": "Cancel constant cutting speed (linear feed mode)",
+    "description_zh": "取消恒定切削速度（线性进给模式）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G972",
+    "category": "Управление шпинделем",
+    "title_ru": "Скасувати постійну швидкість різання (лінійний/ротаційний режим подачі)",
+    "description_uk": "Скасувати постійну швидкість різання (лінійний/ротаційний режим подачі)",
+    "description_en": "Cancel constant cutting speed (linear/rotational feed mode)",
+    "description_zh": "取消恒定切削速度（线性 / 旋转进给模式）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G973",
+    "category": "Управление шпинделем",
+    "title_ru": "Скасувати постійну швидкість різання (без обмеження швидкості)",
+    "description_uk": "Скасувати постійну швидкість різання (без обмеження швидкості)",
+    "description_en": "Cancel constant cutting speed (no speed limit)",
+    "description_zh": "取消恒定切削速度（无转速限制）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G25",
+    "category": "Управление шпинделем",
+    "title_ru": "Нижня межа швидкості шпинделя",
+    "description_uk": "Нижня межа швидкості шпинделя",
+    "description_en": "Spindle speed lower limit",
+    "description_zh": "主轴转速下限",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G26",
+    "category": "Управление шпинделем",
+    "title_ru": "Обмеження швидкості шпинделя",
+    "description_uk": "Обмеження швидкості шпинделя",
+    "description_en": "Spindle speed upper limit",
+    "description_zh": "主轴转速上限",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G40",
+    "category": "Коррекции инструмента",
+    "title_ru": "Отмена коррекции радиуса",
+    "description_uk": "Скасувати компенсацію радіуса інструмента",
+    "description_en": "Cancel tool radius compensation",
+    "description_zh": "取消刀具半径补偿",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G41",
+    "category": "Коррекции инструмента",
+    "title_ru": "Коррекция радиуса слева от контура",
+    "description_uk": "Активуйте компенсацію радіуса інструмента (ліва сторона профілю)",
+    "description_en": "Activate tool radius compensation (left of contour)",
+    "description_zh": "激活刀具半径补偿（轮廓左侧）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G42",
+    "category": "Коррекции инструмента",
+    "title_ru": "Коррекция радиуса справа от контура",
+    "description_uk": "Активуйте компенсацію радіуса інструмента (права сторона профілю)",
+    "description_en": "Activate tool radius compensation (right of contour)",
+    "description_zh": "激活刀具半径补偿（轮廓右侧）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G140~G143",
+    "category": "Коррекции инструмента",
+    "title_ru": "Плавне наближення та відведення (базовий режим)",
+    "description_uk": "Плавне наближення та відведення (базовий режим)",
+    "description_en": "Soft approach and retraction (basic mode)",
+    "description_zh": "平滑逼近与退刀（基础模式）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G147~G148",
+    "category": "Коррекции инструмента",
+    "title_ru": "Плавне наближення та відведення інструменту (розширений режим)",
+    "description_uk": "Плавне наближення та відведення інструменту (розширений режим)",
+    "description_en": "Soft approach and retraction (extended mode)",
+    "description_zh": "平滑逼近与退刀（扩展模式）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G247~G248",
+    "category": "Коррекции инструмента",
+    "title_ru": "Плавне наближення та відведення інструменту (2D-режим)",
+    "description_uk": "Плавне наближення та відведення інструменту (2D-режим)",
+    "description_en": "Soft approach and retraction (2D mode)",
+    "description_zh": "平滑逼近与退刀（2D 模式）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G340~G341",
+    "category": "Коррекции инструмента",
+    "title_ru": "Плавне наближення та відведення інструменту (3D-режим)",
+    "description_uk": "Плавне наближення та відведення інструменту (3D-режим)",
+    "description_en": "Soft approach and retraction (3D mode)",
+    "description_zh": "平滑逼近与退刀（3D 模式）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G347~G348",
+    "category": "Коррекции инструмента",
+    "title_ru": "Плавне наближення та відведення (режим спеціального інструменту)",
+    "description_uk": "Плавне наближення та відведення (режим спеціального інструменту)",
+    "description_en": "Soft approach and retraction (special tool mode)",
+    "description_zh": "平滑逼近与退刀（特殊刀具模式）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G460~G462",
+    "category": "Коррекции инструмента",
+    "title_ru": "Плавне наближення та відведення (розширена стратегія відведення)",
+    "description_uk": "Плавне наближення та відведення (розширена стратегія відведення)",
+    "description_en": "Soft approach and retraction (extended retraction strategies)",
+    "description_zh": "平滑逼近与退刀（扩展退刀策略）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "CUT2D",
+    "category": "Коррекции инструмента",
+    "title_ru": "2.5D Компенсація інструменту (базовий режим)",
+    "description_uk": "2.5D Компенсація інструменту (базовий режим)",
+    "description_en": "2 1/2 D tool offset (basic mode)",
+    "description_zh": "2.5D 刀具补偿（基础模式）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "CUT2DD",
+    "category": "Коррекции инструмента",
+    "title_ru": "2.5D Компенсація інструменту (режим глибини)",
+    "description_uk": "2.5D Компенсація інструменту (режим глибини)",
+    "description_en": "2 1/2 D tool offset (depth mode)",
+    "description_zh": "2.5D 刀具补偿（深度模式）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "CUT2DF",
+    "category": "Коррекции инструмента",
+    "title_ru": "2.5D Компенсація інструменту (режим подачі)",
+    "description_uk": "2.5D Компенсація інструменту (режим подачі)",
+    "description_en": "2 1/2 D tool offset (feed mode)",
+    "description_zh": "2.5D 刀具补偿（进给模式）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "CUT2DFD",
+    "category": "Коррекции инструмента",
+    "title_ru": "2.5D Компенсація інструменту (режим глибини + подачі)",
+    "description_uk": "2.5D Компенсація інструменту (режим глибини + подачі)",
+    "description_en": "2 1/2 D tool offset (depth + feed mode)",
+    "description_zh": "2.5D 刀具补偿（深度 + 进给模式）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "CUTCONON",
+    "category": "Коррекции инструмента",
+    "title_ru": "Підтримуйте постійну компенсацію радіуса інструменту",
+    "description_uk": "Підтримуйте постійну компенсацію радіуса інструменту",
+    "description_en": "Keep tool radius compensation constant",
+    "description_zh": "保持刀具半径补偿恒定",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "CUTCONOF",
+    "category": "Коррекции инструмента",
+    "title_ru": "Скасувати константу компенсації радіуса інструмента",
+    "description_uk": "Скасувати константу компенсації радіуса інструмента",
+    "description_en": "Cancel constant tool radius compensation",
+    "description_zh": "取消刀具半径补偿恒定",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G53",
+    "category": "Нулевые смещения",
+    "title_ru": "Подавление настраиваемого нулевого смещения",
+    "description_uk": "Придушення налаштованого зміщення нуля + Програмоване зміщення нуля",
+    "description_en": "Suppress settable zero offset + programmable zero offset",
+    "description_zh": "抑制可设定零点偏移 + 可编程零点偏移",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G54~G59",
+    "category": "Нулевые смещения",
+    "title_ru": "Выбор настраиваемого нулевого смещения",
+    "description_uk": "Викликайте з 1-го по 6-те налаштовувані зміщення нуля",
+    "description_en": "Call 1st~6th settable zero offset",
+    "description_zh": "调用第 1~6 个可设定零点偏移",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G500",
+    "category": "Нулевые смещения",
+    "title_ru": "Вимкніть поточне налаштоване зміщення нуля.",
+    "description_uk": "Вимкніть поточне налаштоване зміщення нуля.",
+    "description_en": "Close current settable zero offset",
+    "description_zh": "关闭当前可设定零点偏移",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G507~G599",
+    "category": "Нулевые смещения",
+    "title_ru": "Викликайте налаштовуване зміщення нуля з 7-го по 99-й",
+    "description_uk": "Викликайте налаштовуване зміщення нуля з 7-го по 99-й",
+    "description_en": "Call 7th~99th settable zero offset",
+    "description_zh": "调用第 7~99 个可设定零点偏移",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G153",
+    "category": "Нулевые смещения",
+    "title_ru": "Подавление всех смещений и фреймов",
+    "description_uk": "Придушити всі зміщення нульової точки + загальний базовий кадр",
+    "description_en": "Suppress all zero offsets + overall reference frame",
+    "description_zh": "抑制所有零点偏移 + 整体基准框架",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G60",
+    "category": "Точное позиционирование и траектория",
+    "title_ru": "Режим попередньої зупинки",
+    "description_uk": "Режим попередньої зупинки",
+    "description_en": "Exact stop mode",
+    "description_zh": "准停模式",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G601",
+    "category": "Точное позиционирование и траектория",
+    "title_ru": "Точне зупинення",
+    "description_uk": "Точне зупинення",
+    "description_en": "Exact stop precise",
+    "description_zh": "精确准停",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G602",
+    "category": "Точное позиционирование и траектория",
+    "title_ru": "Приблизно точна зупинка",
+    "description_uk": "Приблизно точна зупинка",
+    "description_en": "Exact stop coarse",
+    "description_zh": "粗略准停",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G603",
+    "category": "Точное позиционирование и траектория",
+    "title_ru": "Буферизована зупинка",
+    "description_uk": "Буферизована зупинка",
+    "description_en": "Exact stop with buffer",
+    "description_zh": "带缓冲的准停",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G64",
+    "category": "Точное позиционирование и траектория",
+    "title_ru": "Безперервна робота по траєкторії",
+    "description_uk": "Безперервна робота по траєкторії",
+    "description_en": "Continuous path mode",
+    "description_zh": "连续路径运行",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G641~G646",
+    "category": "Точное позиционирование и траектория",
+    "title_ru": "Безперервна робота з траєкторією (різні рівні плавності)",
+    "description_uk": "Безперервна робота з траєкторією (різні рівні плавності)",
+    "description_en": "Continuous path mode (different smoothing levels)",
+    "description_zh": "连续路径运行（不同平滑等级）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G62",
+    "category": "Точное позиционирование и траектория",
+    "title_ru": "Уповільнення внутрішнього кута при активованій корекції радіуса інструменту",
+    "description_uk": "Уповільнення внутрішнього кута при активованій корекції радіуса інструменту",
+    "description_en": "Inner corner deceleration when tool radius compensation is active",
+    "description_zh": "刀具半径补偿激活时内拐角减速",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G621",
+    "category": "Точное позиционирование и траектория",
+    "title_ru": "Усі уповільнення кутів, коли активовано компенсацію радіуса інструменту",
+    "description_uk": "Усі уповільнення кутів, коли активовано компенсацію радіуса інструменту",
+    "description_en": "All corner deceleration when tool radius compensation is active",
+    "description_zh": "刀具半径补偿激活时所有拐角减速",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G450",
+    "category": "Точное позиционирование и траектория",
+    "title_ru": "Метод обходу зовнішнього кута (круговий перехід)",
+    "description_uk": "Метод обходу зовнішнього кута (круговий перехід)",
+    "description_en": "External corner traversal (circular transition)",
+    "description_zh": "外角绕行方式（圆弧过渡）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G451",
+    "category": "Точное позиционирование и траектория",
+    "title_ru": "Метод обходу зовнішнього кута (перехід під гострим кутом)",
+    "description_uk": "Метод обходу зовнішнього кута (перехід під гострим кутом)",
+    "description_en": "External corner traversal (acute angle transition)",
+    "description_zh": "外角绕行方式（锐角过渡）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G33",
+    "category": "Специальная интерполяция",
+    "title_ru": "Резьба с постоянным шагом",
+    "description_uk": "Нарізання різьби з постійним кроком",
+    "description_en": "Thread cutting with constant pitch",
+    "description_zh": "带恒定螺距的螺纹切削",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G34",
+    "category": "Специальная интерполяция",
+    "title_ru": "Нарізання різьби зі збільшенням кроку",
+    "description_uk": "Нарізання різьби зі збільшенням кроку",
+    "description_en": "Thread cutting with increasing pitch",
+    "description_zh": "带递增螺距的螺纹切削",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G35",
+    "category": "Специальная интерполяция",
+    "title_ru": "Нарізання різьби зі зменшувальним кроком",
+    "description_uk": "Нарізання різьби зі зменшувальним кроком",
+    "description_en": "Thread cutting with decreasing pitch",
+    "description_zh": "带递减螺距的螺纹切削",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G331",
+    "category": "Специальная интерполяция",
+    "title_ru": "Жорстке нарізання різьби нееластичним патроном (напрямок вперед)",
+    "description_uk": "Жорстке нарізання різьби нееластичним патроном (напрямок вперед)",
+    "description_en": "Rigid tapping without compensation chuck (forward)",
+    "description_zh": "无弹性卡头的刚性攻丝（正向）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G332",
+    "category": "Специальная интерполяция",
+    "title_ru": "Жорстке нарізання різьби нееластичним патроном (зворотний напрямок)",
+    "description_uk": "Жорстке нарізання різьби нееластичним патроном (зворотний напрямок)",
+    "description_en": "Rigid tapping without compensation chuck (reverse)",
+    "description_zh": "无弹性卡头的刚性攻丝（反向）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G63",
+    "category": "Специальная интерполяция",
+    "title_ru": "Нарізання різьби компенсуючим пристосуванням",
+    "description_uk": "Нарізання різьби компенсуючим пристосуванням",
+    "description_en": "Tapping with compensation chuck",
+    "description_zh": "带补偿夹具的攻丝",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G335",
+    "category": "Специальная интерполяция",
+    "title_ru": "нарізання опуклої різьби",
+    "description_uk": "нарізання опуклої різьби",
+    "description_en": "Convex thread cutting",
+    "description_zh": "凸形螺纹切削",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G336",
+    "category": "Специальная интерполяция",
+    "title_ru": "Спеціальне опукле різьблення",
+    "description_uk": "Спеціальне опукле різьблення",
+    "description_en": "Special convex thread cutting",
+    "description_zh": "特殊凸形螺纹切削",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G110",
+    "category": "Полярные координаты",
+    "title_ru": "Опорна точка полярних координат (на основі останньої повернутої позиції)",
+    "description_uk": "Опорна точка полярних координат (на основі останньої повернутої позиції)",
+    "description_en": "Polar coordinate reference point (based on last return position)",
+    "description_zh": "极坐标参考点（以上次返回位置为基准）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G111",
+    "category": "Полярные координаты",
+    "title_ru": "Опорна точка полярних координат (на основі нульової точки системи координат заготовки)",
+    "description_uk": "Опорна точка полярних координат (на основі нульової точки системи координат заготовки)",
+    "description_en": "Polar coordinate reference point (based on workpiece zero)",
+    "description_zh": "极坐标参考点（以工件坐标系零点为基准）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G112",
+    "category": "Полярные координаты",
+    "title_ru": "Опорна точка полярних координат (на основі останнього дійсного полюса)",
+    "description_uk": "Опорна точка полярних координат (на основі останнього дійсного полюса)",
+    "description_en": "Polar coordinate reference point (based on last valid pole)",
+    "description_zh": "极坐标参考点（以最后有效极点为基准）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "CFTCP",
+    "category": "Оптимизация подачи",
+    "title_ru": "Постійна швидкість подачі для траєкторії центру фрези",
+    "description_uk": "Постійна швидкість подачі для траєкторії центру фрези",
+    "description_en": "Constant feed rate on tool center point trajectory",
+    "description_zh": "铣刀中心轨迹恒定进给率",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "CFC",
+    "category": "Оптимизация подачи",
+    "title_ru": "Постійна швидкість подачі для профілю (кромка інструменту)",
+    "description_uk": "Постійна швидкість подачі для профілю (кромка інструменту)",
+    "description_en": "Constant feed rate on contour (cutting edge)",
+    "description_zh": "轮廓（刀沿）恒定进给率",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "CFIN",
+    "category": "Оптимизация подачи",
+    "title_ru": "Увігнутий профільний фрезер дотримується постійної швидкості подачі, тоді як траєкторія центру опуклого профілю також дотримується постійної швидкості подачі.",
+    "description_uk": "Увігнутий профільний фрезер дотримується постійної швидкості подачі, тоді як траєкторія центру опуклого профілю також дотримується постійної швидкості подачі.",
+    "description_en": "Constant feed rate on concave contour edge, constant on convex center trajectory",
+    "description_zh": "凹形轮廓刀沿恒定进给率，凸形轮廓中心轨迹恒定进给率",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G4",
+    "category": "Прочие функции",
+    "title_ru": "Час паузи",
+    "description_uk": "Час паузи",
+    "description_en": "Dwell time",
+    "description_zh": "暂停时间",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G74",
+    "category": "Прочие функции",
+    "title_ru": "Збіжність опорних точок",
+    "description_uk": "Збіжність опорних точок",
+    "description_en": "Reference point approach",
+    "description_zh": "参考点趋近",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G75",
+    "category": "Прочие функции",
+    "title_ru": "Збіжність у нерухомій точці",
+    "description_uk": "Збіжність у нерухомій точці",
+    "description_en": "Approaching a fixed point",
+    "description_zh": "固定点趋近",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G290",
+    "category": "Прочие функции",
+    "title_ru": "Перемикання мовного режиму (Режим 1)",
+    "description_uk": "Перемикання мовного режиму (Режим 1)",
+    "description_en": "Switch language mode (Mode 1)",
+    "description_zh": "切换语言模式（模式 1）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G291",
+    "category": "Прочие функции",
+    "title_ru": "Перемикання мовного режиму (Режим 2)",
+    "description_uk": "Перемикання мовного режиму (Режим 2)",
+    "description_en": "Switch language mode (Mode 2)",
+    "description_zh": "切换语言模式（模式 2）",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G5",
+    "category": "Прочие функции",
+    "title_ru": "Режим косого різання шліфувального верстата 1",
+    "description_uk": "Режим косого різання шліфувального верстата 1",
+    "description_en": "Oblique plunge-cutting on grinding machines (Mode 1)",
+    "description_zh": "磨床斜向切入模式 1",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "G7",
+    "category": "Прочие функции",
+    "title_ru": "Шліфувальний верстат, режим косого різання 2",
+    "description_uk": "Шліфувальний верстат, режим косого різання 2",
+    "description_en": "Oblique plunge-cutting on grinding machines (Mode 2)",
+    "description_zh": "磨床斜向切入模式 2",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "PTP",
+    "category": "Прочие функции",
+    "title_ru": "Рух від точки до точки за Декартом",
+    "description_uk": "Рух від точки до точки за Декартом",
+    "description_en": "Cartesian PTP travel",
+    "description_zh": "笛卡尔点对点运动",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "PTPG0",
+    "category": "Прочие функции",
+    "title_ru": "Декартівський рух від точки до точки в режимі швидкого руху",
+    "description_uk": "Декартівський рух від точки до точки в режимі швидкого руху",
+    "description_en": "Cartesian PTP travel in rapid traverse mode",
+    "description_zh": "快速移动模式下笛卡尔点对点运动",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "PTPWOC",
+    "category": "Прочие функции",
+    "title_ru": "Декартівський рух від точки до точки без контролю зіткнень",
+    "description_uk": "Декартівський рух від точки до точки без контролю зіткнень",
+    "description_en": "Cartesian PTP travel without collision control",
+    "description_zh": "无碰撞控制的笛卡尔点对点运动",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "CTRANS",
+    "category": "Прочие функции",
+    "title_ru": "грубе зміщення",
+    "description_uk": "грубе зміщення",
+    "description_en": "Coarse transformation offset",
+    "description_zh": "粗偏移量",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "CFINE",
+    "category": "Прочие функции",
+    "title_ru": "тонке зміщення",
+    "description_uk": "тонке зміщення",
+    "description_en": "Fine transformation offset",
+    "description_zh": "精偏移量",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "TRAFOON",
+    "category": "Прочие функции",
+    "title_ru": "Активувати перетворення координат",
+    "description_uk": "Активувати перетворення координат",
+    "description_en": "Activate coordinate transformation",
+    "description_zh": "激活坐标变换",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "TRAFOOF",
+    "category": "Прочие функции",
+    "title_ru": "Отключение активной кинематической трансформации",
+    "description_uk": "Скасувати перетворення координат",
+    "description_en": "Deactivate coordinate transformation",
+    "description_zh": "取消坐标变换",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "TRANSMIT",
+    "category": "Прочие функции",
+    "title_ru": "Трансформация для обработки торца",
+    "description_uk": "Активація трансформації торця",
+    "description_en": "Activate face end transformation",
+    "description_zh": "端面变换激活",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "TRACYL",
+    "category": "Прочие функции",
+    "title_ru": "Трансформация цилиндрической поверхности",
+    "description_uk": "Активація перетворення циліндричної поверхні",
+    "description_en": "Activate cylinder surface transformation",
+    "description_zh": "圆柱面变换激活",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "TRAANG",
+    "category": "Прочие функции",
+    "title_ru": "Активація програмованого перетворення кута",
+    "description_uk": "Активація програмованого перетворення кута",
+    "description_en": "Activate transformation with programmable angle",
+    "description_zh": "可编程角度变换激活",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "ROT",
+    "category": "Прочие функции",
+    "title_ru": "Программируемый поворот системы координат",
+    "description_uk": "Програмоване обертання",
+    "description_en": "Programmable rotation",
+    "description_zh": "可编程旋转",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "AROT",
+    "category": "Прочие функции",
+    "title_ru": "Добавочный поворот системы координат",
+    "description_uk": "Додаткове програмоване обертання",
+    "description_en": "Additional programmable rotation",
+    "description_zh": "附加可编程旋转",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "RPL",
+    "category": "Прочие функции",
+    "title_ru": "Налаштування кута повороту",
+    "description_uk": "Налаштування кута повороту",
+    "description_en": "Rotation angle setting",
+    "description_zh": "旋转角度设定",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "SCALE",
+    "category": "Прочие функции",
+    "title_ru": "Програмоване масштабування",
+    "description_uk": "Програмоване масштабування",
+    "description_en": "Programmable scaling",
+    "description_zh": "可编程缩放",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "ASCALE",
+    "category": "Прочие функции",
+    "title_ru": "Додаткове програмоване масштабування",
+    "description_uk": "Додаткове програмоване масштабування",
+    "description_en": "Additional programmable scaling",
+    "description_zh": "附加可编程缩放",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "MIRROR",
+    "category": "Прочие функции",
+    "title_ru": "Зеркальное отражение системы координат",
+    "description_uk": "Програмоване зображення",
+    "description_en": "Programmable mirroring",
+    "description_zh": "可编程镜像",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "AMIRROR",
+    "category": "Прочие функции",
+    "title_ru": "Додаткове програмоване зображення",
+    "description_uk": "Додаткове програмоване зображення",
+    "description_en": "Additional programmable mirroring",
+    "description_zh": "附加可编程镜像",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "TOFRAME",
+    "category": "Прочие функции",
+    "title_ru": "Обертання рамки вирівнювання інструменту/заготовки",
+    "description_uk": "Обертання рамки вирівнювання інструменту/заготовки",
+    "description_en": "Frame rotation to align at tool or workpiece",
+    "description_zh": "刀具 / 工件对齐框架旋转",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "TOROT",
+    "category": "Прочие функции",
+    "title_ru": "Обертання орієнтації інструменту",
+    "description_uk": "Обертання орієнтації інструменту",
+    "description_en": "Tool orientation rotation",
+    "description_zh": "刀具定向旋转",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  },
+  {
+    "code": "PAROT",
+    "category": "Прочие функции",
+    "title_ru": "Паралельне обертання",
+    "description_uk": "Паралельне обертання",
+    "description_en": "Parallel rotation",
+    "description_zh": "平行旋转",
+    "trust": "reference_verify_version",
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码",
+      "note": "Сверять с NC Programming Manual V4.95 и опциями станка."
+    }
+  }
+]

@@ -1,0 +1,447 @@
+[
+  {
+    "id": "machine_identity",
+    "category": "machine",
+    "title": "Идентификация станка CK52DWY",
+    "summary": "В OEM-INFO указано CK52DWY. Установлена SINUMERIK 828D-TE42 V04.95 SP03 HF02; производитель Dongguan Xinrui.",
+    "keywords": [
+      "CK52DWY",
+      "828D-TE42",
+      "4.95",
+      "SP03",
+      "HF02",
+      "Dongguan Xinrui",
+      "станок",
+      "версия"
+    ],
+    "source": {
+      "type": "machine_photo_profile",
+      "ref": "machine_profile.json"
+    },
+    "trust": "confirmed_from_machine",
+    "safety": "informational"
+  },
+  {
+    "id": "machine_axes",
+    "category": "machine",
+    "title": "Оси и токарно-фрезерная конфигурация",
+    "summary": "Машинные координаты показывают X/Y/Z. Панель имеет C, Y, A и 6th Axis, а также управление приводным инструментом. Y подтверждена; пределы C/Y и кинематика не подтверждены.",
+    "keywords": [
+      "ось X",
+      "ось Y",
+      "ось Z",
+      "ось C",
+      "приводной инструмент",
+      "токарно-фрезерный",
+      "кинематика"
+    ],
+    "source": {
+      "type": "machine_photo_profile",
+      "ref": "machine_profile.json"
+    },
+    "trust": "partial_confirmed",
+    "safety": "limits_required"
+  },
+  {
+    "id": "machine_tailstock",
+    "category": "machine",
+    "title": "Задняя бабка",
+    "summary": "На панели есть Tailstock Jog, значит управление задней бабкой заведено в OEM PLC. Конкретные M-коды и последовательность движения не подтверждены.",
+    "keywords": [
+      "задняя бабка",
+      "tailstock",
+      "пиноль",
+      "центр",
+      "M78",
+      "M79"
+    ],
+    "source": {
+      "type": "machine_photo_profile",
+      "ref": "machine_profile.json"
+    },
+    "trust": "control_present_commands_unknown",
+    "safety": "do_not_execute_unverified_mcodes"
+  },
+  {
+    "id": "shopturn_create_program",
+    "category": "shopturn",
+    "title": "Создание ShopTurn-программы",
+    "summary": "Рабочий процесс: Program → новая ShopTurn-программа → Program Header → технологические блоки. Изменение блока: выбрать его, Cursor right, изменить параметры, Accept.",
+    "keywords": [
+      "ShopTurn",
+      "новая программа",
+      "Program",
+      "рабочий план",
+      "Cursor right",
+      "Accept",
+      "изменить блок"
+    ],
+    "source": {
+      "document": "828D_turning_op_man_0325_en-US.pdf",
+      "pages": [
+        359,
+        372
+      ]
+    },
+    "trust": "workflow_supplement_v525",
+    "safety": "verify_screen_v495"
+  },
+  {
+    "id": "shopturn_program_header",
+    "category": "shopturn",
+    "title": "Program Header и безопасный отвод",
+    "summary": "В заголовке задаются заготовка, единицы, отводы, точка смены инструмента и максимальные обороты. Для задней бабки используются Tailstock=Yes и XRR.",
+    "keywords": [
+      "Program Header",
+      "заголовок",
+      "XRA",
+      "XRI",
+      "ZRA",
+      "ZRI",
+      "XRR",
+      "точка смены",
+      "обороты"
+    ],
+    "source": {
+      "document": "828D_turning_op_man_0325_en-US.pdf",
+      "pages": [
+        361,
+        373,
+        374,
+        767,
+        769
+      ]
+    },
+    "trust": "workflow_supplement_v525",
+    "safety": "passport_dimensions_required"
+  },
+  {
+    "id": "shopturn_contour",
+    "category": "shopturn",
+    "title": "Контурное точение",
+    "summary": "Contour turning включает New contour, построение элементов, изменение контура и Stock removal CYCLE952. X для токарной детали программируется диаметром.",
+    "keywords": [
+      "Contour turning",
+      "New contour",
+      "контур",
+      "Stock removal",
+      "CYCLE952",
+      "X диаметр",
+      "дуга",
+      "фаска"
+    ],
+    "source": {
+      "document": "828D_turning_op_man_0325_en-US.pdf",
+      "pages": [
+        508,
+        509,
+        510,
+        512,
+        520,
+        522,
+        533
+      ]
+    },
+    "trust": "workflow_supplement_v525",
+    "safety": "simulate_and_verify"
+  },
+  {
+    "id": "shopturn_stock_removal",
+    "category": "shopturn",
+    "title": "Stock Removal",
+    "summary": "Для контурного точения используются контур и CYCLE952; остаточный материал можно обрабатывать отдельным шагом. AF/лыски нельзя считать диаметрами X/Z.",
+    "keywords": [
+      "Stock Removal",
+      "CYCLE952",
+      "остаточный материал",
+      "черновая",
+      "чистовая",
+      "AF",
+      "лыски"
+    ],
+    "source": {
+      "document": "828D_turning_op_man_0325_en-US.pdf",
+      "pages": [
+        522,
+        533
+      ]
+    },
+    "trust": "workflow_supplement_v525",
+    "safety": "geometry_separation_required"
+  },
+  {
+    "id": "tool_measurement",
+    "category": "tooling",
+    "title": "Измерение и коррекции инструмента",
+    "summary": "Tool management хранит геометрию и режущие кромки D. На этой стойке таблица содержит Length X/Z/Y, Radius и направление N.",
+    "keywords": [
+      "измерить инструмент",
+      "Measure tool",
+      "Tool list",
+      "D1",
+      "Length X",
+      "Length Z",
+      "Length Y",
+      "Radius",
+      "N",
+      "коррекция"
+    ],
+    "source": {
+      "document": "828D_turning_op_man_0325_en-US.pdf",
+      "pages": [
+        114,
+        805,
+        828
+      ]
+    },
+    "trust": "workflow_plus_machine_screen",
+    "safety": "verify_tool_orientation"
+  },
+  {
+    "id": "nc_program_header_495",
+    "category": "nc",
+    "title": "Типовая токарная NC-программа V4.95",
+    "summary": "Типовой заголовок включает безопасный отвод, T, D, G96/LIMS, DIAMON, G54, G18 и подход к стартовой позиции. T-вызовы и M-коды зависят от OEM.",
+    "keywords": [
+      "NC программа",
+      "MPF",
+      "T",
+      "D1",
+      "G96",
+      "LIMS",
+      "DIAMON",
+      "G54",
+      "G18",
+      "заголовок"
+    ],
+    "source": {
+      "document": "828D_ncprogramming_progr_man_0721_en-US.pdf",
+      "pages": [
+        52,
+        53,
+        54
+      ]
+    },
+    "trust": "primary_exact_v495",
+    "safety": "oem_tool_change_verify"
+  },
+  {
+    "id": "nc_coordinate_systems_495",
+    "category": "nc",
+    "title": "Координатные системы и G54",
+    "summary": "MCS, BCS, BZS, SZS и WCS имеют разные нули. G54 задаёт систему детали; машинные координаты нельзя путать с координатами детали.",
+    "keywords": [
+      "MCS",
+      "WCS",
+      "BCS",
+      "BZS",
+      "SZS",
+      "G54",
+      "ноль детали",
+      "машинные координаты"
+    ],
+    "source": {
+      "document": "828D_ncprogramming_progr_man_0721_en-US.pdf",
+      "pages": [
+        34,
+        36,
+        38,
+        39,
+        40,
+        41
+      ]
+    },
+    "trust": "primary_exact_v495",
+    "safety": "coordinate_check_required"
+  },
+  {
+    "id": "transmit_495",
+    "category": "turn_mill",
+    "title": "TRANSMIT — обработка торца",
+    "summary": "TRANSMIT активирует торцевую кинематическую трансформацию. Она сопоставляет декартовы перемещения реальным осям; отключение выполняется TRAFOOF.",
+    "keywords": [
+      "TRANSMIT",
+      "торец",
+      "торцевое фрезерование",
+      "C ось",
+      "X Y Z",
+      "TRAFOOF"
+    ],
+    "source": {
+      "document": "828D_ncprogramming_progr_man_0721_en-US.pdf",
+      "pages": [
+        620
+      ]
+    },
+    "trust": "primary_exact_v495",
+    "safety": "kinematic_dataset_must_be_commissioned"
+  },
+  {
+    "id": "tracyl_495",
+    "category": "turn_mill",
+    "title": "TRACYL — цилиндрическая поверхность",
+    "summary": "TRACYL активирует трансформацию цилиндрической поверхности с рабочим диаметром d. Применяется для пазов и контуров на цилиндре; отключается TRAFOOF.",
+    "keywords": [
+      "TRACYL",
+      "цилиндр",
+      "наружный диаметр",
+      "паз",
+      "карман",
+      "рабочий диаметр",
+      "TRAFOOF"
+    ],
+    "source": {
+      "document": "828D_ncprogramming_progr_man_0721_en-US.pdf",
+      "pages": [
+        620,
+        621
+      ]
+    },
+    "trust": "primary_exact_v495",
+    "safety": "working_diameter_and_dataset_verify"
+  },
+  {
+    "id": "thread_g33",
+    "category": "threading",
+    "title": "G33 — резьба с постоянным шагом",
+    "summary": "G33 выполняет синхронное резьбонарезание с постоянным шагом. Проверить направление шпинделя, заход/выход, предел оборотов и резец.",
+    "keywords": [
+      "G33",
+      "резьба",
+      "шаг",
+      "синхронизация",
+      "наружная резьба",
+      "внутренняя резьба"
+    ],
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "G代码"
+    },
+    "trust": "verify_with_primary_manual",
+    "safety": "dry_run_required"
+  },
+  {
+    "id": "alarm_reference",
+    "category": "diagnostics",
+    "title": "Диагностика SINUMERIK",
+    "summary": "Справочник разделяет NC, Cycle, HMI, SINAMICS, I/O и PLC alarms, реакции системы и stop conditions. Нужны номер и полный текст аварии.",
+    "keywords": [
+      "ошибка",
+      "авария",
+      "alarm",
+      "NC alarm",
+      "Cycle alarm",
+      "HMI",
+      "SINAMICS",
+      "PLC",
+      "I/O"
+    ],
+    "source": {
+      "document": "828D_alarms_diagnostics_man_0725_en-US.pdf",
+      "pages": [
+        25,
+        457,
+        651,
+        665,
+        1277,
+        1289,
+        1307
+      ]
+    },
+    "trust": "standard_alarm_reference",
+    "safety": "oem_alarm_may_differ"
+  },
+  {
+    "id": "oem_mcode_policy",
+    "category": "safety",
+    "title": "Политика OEM M-кодов",
+    "summary": "Коды патрона, тормоза, C-оси, приводного инструмента, задней бабки, датчика и револьвера нельзя переносить из SYNTEC или таблицы без подтверждения PLC/паспорта CK52DWY.",
+    "keywords": [
+      "M10",
+      "M11",
+      "M24",
+      "M25",
+      "M60",
+      "M61",
+      "M75",
+      "M76",
+      "M78",
+      "M79",
+      "OEM",
+      "M-код",
+      "PLC"
+    ],
+    "source": {
+      "document": "M,G代码.xlsx",
+      "sheet": "M代码"
+    },
+    "trust": "safety_rule",
+    "safety": "hard_block_unverified"
+  },
+  {
+    "id": "syntec_limit",
+    "category": "safety",
+    "title": "Ограничение руководства SYNTEC",
+    "summary": "Руководство Tengyue SYNTEC полезно только для общей механики. Его G/M-коды, меню и параметры несовместимы с SINUMERIK 828D.",
+    "keywords": [
+      "SYNTEC",
+      "Tengyue manual",
+      "несовместимо",
+      "M-коды",
+      "задняя бабка",
+      "револьвер"
+    ],
+    "source": {
+      "document": "TengyueCNC-User Manual Of SYNTEC-机床使用手册.pdf",
+      "pages": [
+        1,
+        2,
+        24
+      ]
+    },
+    "trust": "safety_rule",
+    "safety": "do_not_transfer_control_commands"
+  },
+  {
+    "id": "release_gate",
+    "category": "safety",
+    "title": "Шлюз выпуска MPF",
+    "summary": "MPF заблокирован, пока не подтверждены лимиты осей, геометрия патрона/инструмента, безопасная парковка, OEM M-коды и коллизионные оболочки.",
+    "keywords": [
+      "MPF",
+      "экспорт",
+      "постпроцессор",
+      "паспорт",
+      "коллизия",
+      "парковка",
+      "M-коды"
+    ],
+    "source": {
+      "type": "project_safety_policy"
+    },
+    "trust": "project_policy",
+    "safety": "hard_block"
+  },
+  {
+    "id": "cutoff_operation",
+    "category": "shopturn",
+    "title": "Отрезка / Cutoff на токарном станке",
+    "summary": "Отрезка выполняется последней операцией радиальным движением X при фиксированном Z. До расчёта необходимо подтвердить координату Z, ширину пластины, конечный X, обороты, подачу и свободную зону относительно кулачков, задней бабки и державки.",
+    "keywords": [
+      "отрезка",
+      "отрезание",
+      "cutoff",
+      "cut off",
+      "parting",
+      "прорезка",
+      "отрезной резец",
+      "ShopTurn"
+    ],
+    "source": {
+      "type": "project_cam_policy",
+      "profile": "CK52DWY / SINUMERIK 828D V4.95"
+    },
+    "trust": "project_policy",
+    "safety": "operator_confirmation_required"
+  }
+]
