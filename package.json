@@ -1,0 +1,9 @@
+{
+  "name": "cnc-trainer-pro",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Browser CNC training simulator for SINUMERIK 828D / ShopTurn workflows",
+  "type": "commonjs",
+  "scripts": {"start": "node server.js"},
+  "engines": {"node": ">=18"}
+}

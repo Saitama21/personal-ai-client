@@ -1,2 +1,0 @@
-101 Python tests passed
-JavaScript syntax passed

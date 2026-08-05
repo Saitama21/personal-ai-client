@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#070b11" />
+  <title>CNC Trainer PRO</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar glass">
+      <div class="brand"><span class="brand-mark">⌁</span><div><strong>CNC Trainer PRO</strong><small>v0.1.0 · ShopTurn 828D</small></div></div>
+      <nav class="tabs" aria-label="Режимы">
+        <button class="tab active" data-mode="turning">⚙ Токарная</button>
+        <button class="tab" data-mode="milling">▦ Фрезерная</button>
+        <button class="tab" data-mode="drilling">⌖ Сверление</button>
+        <button class="tab" data-panel="lessons">▱ Уроки</button>
+        <button class="tab" data-panel="exam">☑ Экзамен</button>
+      </nav>
+      <div class="top-actions"><span id="statusBadge" class="badge ok">● Готов к работе</span><button id="themeBtn" class="icon-btn">◐</button></div>
+    </header>
+
+    <main class="workspace">
+      <aside class="left-column">
+        <section class="panel glass">
+          <div class="panel-title">ИНСТРУМЕНТЫ · РЕВОЛЬВЕР 15</div>
+          <div id="toolGrid" class="tool-grid"></div>
+        </section>
+
+        <section class="panel glass form-panel">
+          <div class="panel-title">ПАРАМЕТРЫ РЕЗАНИЯ</div>
+          <label>Инструмент<input id="toolField" value="T1" readonly /></label>
+          <label>Скорость шпинделя, об/мин<input id="rpm" type="number" value="800" min="0" /></label>
+          <label>Подача, мм/об<input id="feed" type="number" value="0.15" min="0" step="0.01" /></label>
+          <label>Глубина резания, мм<input id="depth" type="number" value="1" min="0" step="0.1" /></label>
+          <button id="applyCut" class="outline-btn">Применить</button>
+        </section>
+
+        <section class="panel glass coords-panel">
+          <div class="panel-title">КООРДИНАТЫ</div>
+          <div class="coord-head"><span></span><span>Машинные</span><span>Относительные</span></div>
+          <div class="coord-row"><b>X</b><span id="mx">60.000</span><em id="rx">0.000</em></div>
+          <div class="coord-row"><b>Z</b><span id="mz">5.000</span><em id="rz">0.000</em></div>
+          <div class="coord-row"><b>Y</b><span id="my">0.000</span><em id="ry">0.000</em></div>
+          <div class="coord-row"><b>C</b><span id="mc">0.000°</span><em id="rc">0.000°</em></div>
+        </section>
+      </aside>
+
+      <section class="center-column">
+        <section class="viewport-panel glass">
+          <div class="viewport-head">
+            <div><small>СТАНОК TENGYUE CK52PT-Y</small><h1 id="sceneTitle">Токарная симуляция</h1></div>
+            <div class="view-actions"><button class="small-btn active">Вид 2D</button><button id="toggle3d" class="small-btn">Вид 3D</button><button id="resetView" class="icon-btn">⟳</button></div>
+          </div>
+          <canvas id="cncCanvas" width="1100" height="590" aria-label="Рабочая зона станка"></canvas>
+          <div class="hud"><span id="hudCoord">X60.0 · Z5.0</span><span id="hudMode">Безопасный ход</span></div>
+        </section>
+
+        <section class="control-panel glass">
+          <div class="control-head"><div class="seg"><button id="rapidMode" class="active">Быстрое перемещение</button><button id="cutMode">Рабочая подача</button></div><div class="step-row">Шаг:<button data-step="0.1">0.1</button><button class="active" data-step="1">1</button><button data-step="5">5</button><button data-step="10">10</button></div></div>
+          <div class="axis-controls">
+            <div class="axis-block"><strong>Z</strong><button data-move="z" data-dir="-1">← Z−</button><button data-move="z" data-dir="1">Z+ →</button></div>
+            <div class="axis-block"><strong>X</strong><button data-move="x" data-dir="-1">↓ X−</button><button data-move="x" data-dir="1">↑ X+</button></div>
+            <div class="axis-block optional"><strong>Y / C</strong><button data-move="y" data-dir="-1">Y−</button><button data-move="y" data-dir="1">Y+</button><button data-move="c" data-dir="-1">C−</button><button data-move="c" data-dir="1">C+</button></div>
+            <div class="machine-actions"><button id="spindle" class="start">Старт шпинделя</button><button id="pause" class="pause">Пауза</button><button id="stop" class="stop">Стоп</button><button id="setZero" class="outline-btn">Установить X0/Z0</button></div>
+          </div>
+        </section>
+
+        <section class="lesson-panel glass">
+          <div><small>УЧЕБНОЕ ЗАДАНИЕ 1/10</small><h2>Простое движение по координатам</h2><p>Подведите инструмент в точку <b>X40 Z0</b>, затем выполните рабочий ход до <b>X40 Z−20</b>.</p><div class="task-sequence">X40 Z0 → X40 Z−20 → X30 Z−20</div></div>
+          <div class="lesson-actions"><button id="checkTask" class="outline-btn">Проверить действие</button><span id="taskResult"></span></div>
+        </section>
+      </section>
+
+      <aside class="right-column">
+        <section class="panel glass stock-panel">
+          <div class="panel-title">ЗАГОТОВКА</div>
+          <label>Материал<select id="material"><option>Сталь</option><option>AISI 304</option><option>Алюминий</option><option>Полиамид</option></select></label>
+          <label>Диаметр, мм<input id="stockDiameter" type="number" value="60" min="5" max="200" /></label>
+          <label>Длина, мм<input id="stockLength" type="number" value="120" min="10" max="400" /></label>
+          <button id="applyStock" class="outline-btn">Установить заготовку</button>
+        </section>
+
+        <section class="panel glass program-panel">
+          <div class="panel-title">УЧЕБНАЯ ПРОГРАММА</div>
+          <textarea id="program" spellcheck="false">MODE TURNING
+TOOL T1
+RPM 800
+RAPID X60 Z5
+CUT X40 Z0
+CUT X40 Z-20
+CUT X30 Z-20</textarea>
+          <div class="program-actions"><button id="loadDemo" class="icon-btn">▣</button><button id="runProgram" class="outline-btn">▶ Запустить программу</button></div>
+        </section>
+
+        <section class="panel glass log-panel">
+          <div class="panel-title">ЖУРНАЛ ДЕЙСТВИЙ</div>
+          <div id="log"></div>
+        </section>
+
+        <section class="panel glass tips-panel">
+          <div class="panel-title">ПОДСКАЗКИ</div>
+          <ul><li><b>X</b> на токарном задаётся по диаметру.</li><li><b>Z−</b> обычно ведёт в глубину детали.</li><li>Рабочий ход снимает материал.</li><li>Перед запуском выставляйте ноль детали.</li></ul>
+        </section>
+      </aside>
+    </main>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>

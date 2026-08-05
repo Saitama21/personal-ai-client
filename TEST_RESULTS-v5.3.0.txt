@@ -1,4 +1,0 @@
-Personal CNC OS v5.3.0
-104 Python tests passed
-app.js syntax passed
-simulation3d.js syntax passed
