@@ -1,62 +1,8 @@
-import fs from 'node:fs';
-import path from 'node:path';
-
-const root=process.cwd();
-const cssFiles=[];
-const jsFiles=[];
-const skip=new Set(['.git','node_modules','dist','build','.next']);
-
-function walk(dir){
-  for(const ent of fs.readdirSync(dir,{withFileTypes:true})){
-    if(skip.has(ent.name)) continue;
-    const p=path.join(dir,ent.name);
-    if(ent.isDirectory()) walk(p);
-    else if(ent.isFile() && p.endsWith('.css')) cssFiles.push(p);
-    else if(ent.isFile() && /\.(?:js|mjs|cjs)$/.test(p)) jsFiles.push(p);
-  }
-}
-walk(root);
-
-const selectors=['.dock','.bottom-nav','.bottom-dock','.mobile-nav','.mobile-actions'];
-let marked=0;
-let protectedDock=0;
-const failures=[];
-const passes=[];
-const check=(ok,msg)=>(ok?passes:failures).push(msg);
-
-for(const file of cssFiles){
-  const text=fs.readFileSync(file,'utf8');
-  const marker=text.lastIndexOf('UI_CONTRACT_DOCK_V1');
-  if(marker<0) continue;
-  marked++;
-  const tail=text.slice(marker);
-  check(/--dock-bottom\s*:\s*2px/i.test(tail),'phone dock bottom token in '+file);
-  check(/--dock-width\s*:\s*87%/i.test(tail),'phone dock width token in '+file);
-  check(/--dock-height\s*:\s*68px/i.test(tail),'phone dock height token in '+file);
-  for(const selector of selectors){
-    const safe=selector.startsWith('.')?'\\.'+selector.slice(1):selector;
-    const blocks=[...tail.matchAll(new RegExp(safe+'\\s*\\{([^{}]*)\\}','gs'))].map(m=>m[1]);
-    for(const block of blocks){
-      if(!/position\s*:|bottom\s*:/.test(block)) continue;
-      protectedDock++;
-      check(/position\s*:\s*fixed\b/i.test(block),selector+' position is fixed in '+file);
-      check(/bottom\s*:\s*var\(\s*--dock-bottom\s*\)/i.test(block),selector+' bottom uses --dock-bottom in '+file);
-      check(!/safe-area|env\s*\(/i.test(block),selector+' geometry has no safe-area/env in '+file);
-    }
-  }
-}
-
-check(marked>0,'UI dock contract marker exists');
-check(protectedDock>0,'protected dock rule exists');
-
-const js=jsFiles.map(f=>fs.readFileSync(f,'utf8')).join('\n');
-check(!/(?:dock|bottomNav|bottom_nav)\s*\.\s*style\s*\.\s*bottom/i.test(js),'JS does not set dock.style.bottom');
-check(!/setProperty\s*\(\s*['"]--dock-bottom['"]/i.test(js),'JS does not mutate --dock-bottom');
-
-console.log('\nUI CONTRACT — Bottom Dock\n');
-for(const p of passes) console.log('PASS  '+p);
-if(failures.length){
-  for(const f of failures) console.error('FAIL  '+f);
-  process.exit(1);
-}
-console.log('\nPASS  Safari-independent dock contract protected.\n');
+import fs from 'node:fs';import path from 'node:path';
+const root=process.cwd(),cssFiles=[],jsFiles=[],skip=new Set(['.git','node_modules','dist','build','.next','tests','.github']);
+function walk(d){for(const e of fs.readdirSync(d,{withFileTypes:true})){if(skip.has(e.name))continue;const p=path.join(d,e.name);if(e.isDirectory())walk(p);else if(e.isFile()&&p.endsWith('.css'))cssFiles.push(p);else if(e.isFile()&&/\.(?:js|mjs|cjs)$/.test(p))jsFiles.push(p)}}walk(root);
+const sels=['.dock','.bottom-nav','.bottom-dock','.mobile-nav','.mobile-actions'];let marked=0,protectedDock=0;const fail=[];const check=(x,m)=>{if(!x)fail.push(m)};
+for(const file of cssFiles){const s=fs.readFileSync(file,'utf8'),i=s.lastIndexOf('UI_CONTRACT_DOCK_V1');if(i<0)continue;marked++;const t=s.slice(i);check(/--dock-bottom\s*:\s*2px/i.test(t),'phone bottom '+file);check(/--dock-width\s*:\s*87%/i.test(t),'phone width '+file);check(/--dock-height\s*:\s*68px/i.test(t),'phone height '+file);for(const sel of sels){const q=sel.startsWith('.')?'\\.'+sel.slice(1):sel;for(const m of t.matchAll(new RegExp(q+'\\s*\\{([^{}]*)\\}','gs'))){const b=m[1];if(!/position\s*:|bottom\s*:/.test(b))continue;protectedDock++;check(/position\s*:\s*fixed\b/i.test(b),sel+' fixed');check(/bottom\s*:\s*var\(\s*--dock-bottom\s*\)/i.test(b),sel+' bottom');check(!/safe-area|env\s*\(/i.test(b),sel+' no safe-area')}}}
+check(marked>0,'contract marker');check(protectedDock>0,'protected dock');
+const js=jsFiles.map(f=>fs.readFileSync(f,'utf8')).join('\n');check(!/(?:dock|bottomNav|bottom_nav)\s*\.\s*style\s*\.\s*bottom/i.test(js),'JS does not set dock.style.bottom');check(!/setProperty\s*\(\s*['"]--dock-bottom['"]/i.test(js),'JS does not mutate --dock-bottom');
+if(fail.length){fail.forEach(x=>console.error('FAIL '+x));process.exit(1)}console.log('PASS Safari-independent dock contract protected');
